@@ -223,15 +223,21 @@ def load_model_checkpoints(user_select, checkpoint):
         # ELECTRA-base
         model = ElectraForTokenClassification.from_pretrained(checkpoint)
     elif 3 == user_select:
+        # RoBERTa-base
+        model = AutoModelForTokenClassification.from_pretrained(checkpoint)
+    elif 4 == user_select:
         # BERT+LSTM(POS)+CRF
         model = BERT_LSTM_CRF.from_pretrained(checkpoint)
-    elif 4 == user_select:
+    elif 5 == user_select:
+        # RoBERTa+LSTM(POS)+CRF
+        model = RoBERTa_LSTM_CRF.from_pretrained(checkpoint)
+    elif 6 == user_select:
         # ELECTRA+LSTM(POS)+CRF
         model = ELECTRA_POS_LSTM.from_pretrained(checkpoint)
-    elif 5 == user_select:
+    elif 7 == user_select:
         # ELECTRA + Eojeol Embedding -> Transformer + CRF
         model = Electra_Eojeol_Model.from_pretrained(checkpoint)
-    elif 6 == user_select:
+    elif 8 == user_select:
         # ELECTRA + ALL FEATURES (POS, Eojeol, Entity) -> Transformer + CRF
         model = Electra_Feature_Model.from_pretrained(checkpoint)
 
