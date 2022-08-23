@@ -12,7 +12,7 @@ def make_ne_mp_list(src_pair: Tuple[str, str]):
     mp_file_path = src_pair[-1]
 
     NULL_DATA_ID_LIST = []
-    with open("../data/old_nikl/gold_corpus/null_mp_list.pkl", mode="rb") as null_except_file:
+    with open("../corpus/pkl/NIKL_null_pos_list.pkl", mode="rb") as null_except_file:
         NULL_DATA_ID_LIST = pickle.load(null_except_file)
 
     # NE
@@ -96,7 +96,7 @@ def make_ne_mp_list(src_pair: Tuple[str, str]):
 
 ### MAIN ###
 if "__main__" == __name__:
-    nx_json_file = ("../data/old_nikl/NXNE2102008030.json", "../data/old_nikl/gold_corpus/NXMP1902008040.json")
+    nx_json_file = ("../corpus/NIKL/NXNE2102008030.json", "../corpus/NIKL/POS/NXMP1902008040.json")
     # sx_json_file = ("../data/old_nikl/SXNE2102007240.json", "../data/old_nikl/gold_corpus/SXMP1902008031.json")
 
     nx_res_list = make_ne_mp_list(nx_json_file)
@@ -108,7 +108,7 @@ if "__main__" == __name__:
     print(f"merge_res_list.len : {len(merge_res_list)}")
 
     # save
-    save_path = "../data/pkl/ne_mp_old_nikl.pkl"
+    save_path = "../corpus/pkl/NIKL_ne_pos.pkl"
     with open(save_path, mode="wb") as save_file:
         pickle.dump(merge_res_list, save_file)
 

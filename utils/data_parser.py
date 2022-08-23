@@ -90,7 +90,7 @@ class ETRI_Parser:
 
 ### MAIN ###
 if "__main__" == __name__:
-    etri_parser = ETRI_Parser(src_dir="../data/old_nikl")
+    etri_parser = ETRI_Parser(src_dir="../corpus/NIKL")
 
     # Save - ETRI 언어분석 말뭉치 (NE)
     is_save_etri = False
@@ -115,5 +115,5 @@ if "__main__" == __name__:
         print(f"[data_maker][__main__] All sent data size : {len(all_sent_data)}")
 
         # save
-        with open("../data/pkl/old_nikl.pkl", mode="wb") as save_file:
+        with open("../corpus/pkl/NIKL_ne_parsed.pkl", mode="wb") as save_file:
             pickle.dump(all_sent_data, save_file)

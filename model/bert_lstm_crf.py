@@ -30,12 +30,13 @@ class BERT_LSTM_CRF(BertPreTrainedModel):
                 It only affects the model’s configuration. 
                 Use from_pretrained() to load the model weights.
         '''
-        self.bert = AutoModel.from_pretrained(config._name_or_path, config=config)
-        self.lstm = nn.LSTM(input_size=config.hidden_size + (self.pos_embed_out_dim * 3),
-                            hidden_size=config.hidden_size + (self.pos_embed_out_dim * 3),
+        self.bert = AutoModel.from_pretrained("klue/bert-base", config=config)
+        self.lstm_dim_size = config.hidden_size + (self.pos_embed_out_dim * 3)
+        self.lstm = nn.LSTM(input_size=self.lstm_dim_size,
+                            hidden_size=self.lstm_dim_size,
                             num_layers=1, batch_first=True, dropout=0.3)
-        self.dropout = nn.Dropout(0.3)
-        self.classifier = nn.Linear(config.hidden_size + (self.pos_embed_out_dim * 3), config.num_labels)
+        self.dropout = nn.Dropout(config.classifier_dropout)
+        self.classifier = nn.Linear(self.lstm_dim_size, config.num_labels)
         self.crf = CRF(num_tags=config.num_labels, batch_first=True)
 
         self.post_init()
@@ -71,11 +72,3 @@ class BERT_LSTM_CRF(BertPreTrainedModel):
         else:
             sequence_of_tags = self.crf.decode(logits)
             return sequence_of_tags
-
-        loss = None
-        if labels is not None:
-            loss_fct = nn.CrossEntropyLoss()
-            loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
-
-        output = (logits,) + outputs[2:]
-        return ((loss,) + output) if loss is not None else output

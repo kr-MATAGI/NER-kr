@@ -5,21 +5,23 @@ from typing import List
 from data_def import Sentence, Morp, NE, Word
 from transformers import AutoTokenizer, ElectraTokenizer
 
-### MAIN ##
-if "__main__" == __name__:
-    src_file_path = "../data/pkl/ne_mp_old_nikl.pkl"
-    tokenizer = ElectraTokenizer.from_pretrained("monologg/koelectra-base-v3-discriminator")
-    results = { # tag: (word_item, morp_item_list) pair
+#======================================================================
+def make_wordpiece_ne_pos_pkl(src_file_path: str):
+#======================================================================
+    print(f"[make_wordpiece_ne_pos_pkl] src_path : {src_file_path}")
+
+    results = {  # tag: (word_item, morp_item_list) pair
         "JX": [],
         "EP": [],
         "EF": [],
         "EC": [],
         "ETM": [],
     }
+
     src_list: List[Sentence] = []
     with open(src_file_path, mode="rb") as load_pkl:
         src_list = pickle.load(load_pkl)
-        print(f"LOAD SIZE: {len(src_list)}") # 371571
+        print(f"[make_wordpiece_ne_pos_pkl] LOAD SIZE: {len(src_list)}")  # 371571
 
     target_pos_list = results.keys()
     end_point_pos = ["SF", "SP", "SS", "SE", "SO", "SW"]
@@ -52,7 +54,7 @@ if "__main__" == __name__:
                         continue
                     if morp_item.form in conv_word_form:
                         if 0 >= len(conv_word_form.replace(morp_item.form, "")):
-                            prev_pos = morp_item.label # 만나/VV + 아/EC = 만나
+                            prev_pos = morp_item.label  # 만나/VV + 아/EC = 만나
                             continue
                         new_morp_item_list.append(copy.deepcopy(morp_item))
                         conv_word_form = conv_word_form.replace(morp_item.form, "")
@@ -73,8 +75,8 @@ if "__main__" == __name__:
                             new_morp_item = Morp(id=morp_item.id, form=conv_word_form[:-1], label=front_merge_label,
                                                  word_id=morp_item.word_id, position=morp_item.position)
                             new_morp_item_list.append(copy.deepcopy(new_morp_item))
-                            new_morp_item = Morp(id=morp_item.id+1, form=conv_word_form[-1], label=merge_label[-1],
-                                                 word_id=morp_item.word_id, position=morp_item.position+1)
+                            new_morp_item = Morp(id=morp_item.id + 1, form=conv_word_form[-1], label=merge_label[-1],
+                                                 word_id=morp_item.word_id, position=morp_item.position + 1)
                             new_morp_item_list.append(copy.deepcopy(new_morp_item))
                         else:
                             merge_label = "+".join(merge_label)
@@ -88,10 +90,17 @@ if "__main__" == __name__:
                         continue
                 new_morp_list.extend(new_morp_item_list)
         src_list[src_idx].morp_list = new_morp_list
-        #print([x.form+"/"+x.label for x in src_list[src_idx].morp_list])
+        # print([x.form+"/"+x.label for x in src_list[src_idx].morp_list])
     # end, src_list loop
 
     # save
-    with open("../data/pkl/merge_ne_mp_old_nikl.pkl", mode="wb") as save_file:
+    with open("../corpus/pkl/NIKL_wordpiece_ne_3pos.pkl", mode="wb") as save_file:
         pickle.dump(src_list, save_file)
         print(f"SAVE FILE SIZE: {len(src_list)}")
+
+### MAIN ##
+if "__main__" == __name__:
+    src_file_path = "../corpus/pkl/NIKL_ne_pos.pkl"
+
+    ##
+    make_wordpiece_ne_pos_pkl(src_file_path=src_file_path)

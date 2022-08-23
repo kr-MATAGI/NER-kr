@@ -10,7 +10,7 @@ class NER_POS_Dataset(Dataset):
             self,
             data: np.ndarray, labels: np.ndarray,
             toekn_seq_len: np.ndarray, pos_tag_ids: np.ndarray,
-            eojeol_ids: np.ndarray, entity_ids: np.ndarray
+            eojeol_ids: np.ndarray#, entity_ids: np.ndarray
     ):
         self.input_ids = data[:][:, :, 0]
         self.attention_mask = data[:][:, :, 1]
@@ -19,7 +19,7 @@ class NER_POS_Dataset(Dataset):
         self.token_seq_len = toekn_seq_len
         self.pos_tag_ids = pos_tag_ids
         self.eojeol_ids = eojeol_ids
-        self.entity_ids = entity_ids
+        #self.entity_ids = entity_ids
 
         self.input_ids = torch.tensor(self.input_ids, dtype=torch.long)
         self.attention_mask = torch.tensor(self.attention_mask, dtype=torch.long)
@@ -28,7 +28,7 @@ class NER_POS_Dataset(Dataset):
         self.token_seq_len = torch.tensor(self.token_seq_len, dtype=torch.long)
         self.pos_tag_ids = torch.tensor(self.pos_tag_ids, dtype=torch.long)
         self.eojeol_ids = torch.tensor(self.eojeol_ids, dtype=torch.long)
-        self.entity_ids = torch.tensor(self.entity_ids, dtype=torch.long)
+        #self.entity_ids = torch.tensor(self.entity_ids, dtype=torch.long)
 
     def __len__(self):
         return len(self.input_ids)
@@ -42,7 +42,7 @@ class NER_POS_Dataset(Dataset):
             "token_seq_len": self.token_seq_len[idx],
             "pos_tag_ids": self.pos_tag_ids[idx],
             "eojeol_ids": self.eojeol_ids[idx],
-            "entity_ids": self.entity_ids[idx]
+            #"entity_ids": self.entity_ids[idx]
         }
 
         return items

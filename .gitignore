@@ -1,0 +1,43 @@
+# datasets
+old_version/datasets
+*.pkl
+*.npy
+
+# ide
+/.idea
+
+# pycmache
+*.pyc
+
+# tensorboard
+old_version/logs
+old_versionklue_model/logs
+
+# results
+config.json
+test-*.txt
+
+
+# model
+old_version/ckpt
+old_version/model
+old_version/checkpoint-*
+*.pt
+*.bin
+
+# Mac
+.DS_Store
+
+# KorLex
+old_version/Utils/KorLex_api
+
+
+# new ner model
+/corpus
+/ckpt-*
+/logs
+
+
+# Data Check
+data_check/model
+data_check/train_model

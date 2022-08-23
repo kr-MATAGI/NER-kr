@@ -10,10 +10,11 @@ from sklearn import metrics as sklearn_metrics
 
 # config, model
 from transformers import ElectraConfig, AutoConfig, AutoModelForTokenClassification, ElectraForTokenClassification
-from model.electra_custom_model import ELECTRA_POS_LSTM
-from model.bert_custom_model import BERT_POS_LSTM
-from model.eojeol_embed_model import Eojeol_Embed_Model
-from model.electra_addi_trans_model import Electra_Addi_Feature_Model
+from model.electra_lstm_crf import ELECTRA_POS_LSTM
+from model.bert_lstm_crf import BERT_LSTM_CRF
+from model.roberta_lstm_crf import RoBERTa_LSTM_CRF
+from model.electra_eojeol_model import Electra_Eojeol_Model
+from model.electra_feature_model import Electra_Feature_Model
 
 #===============================================================
 def print_parameters(args, logger):
@@ -131,9 +132,15 @@ def load_ner_config_and_model(user_select: int, args, tag_dict):
                                                num_labels=len(tag_dict.keys()),
                                                id2label={str(i): label for i, label in enumerate(tag_dict.keys())},
                                                label2id={label: i for i, label in enumerate(tag_dict.keys())})
-        config.num_pos_labels = 49  # 국립국어원 형태 분석 말뭉치
         config.max_seq_len = 128
     elif 3 == user_select:
+        # RoBERTa
+        config = AutoConfig.from_pretrained(args.model_name_or_path,
+                                            num_labels=len(tag_dict.keys()),
+                                            id2label={str(i): label for i, label in enumerate(tag_dict.keys())},
+                                            label2id={label: i for i, label in enumerate(tag_dict.keys())})
+        config.max_seq_len = 128
+    elif 4 == user_select:
         # BERT+LSTM(POS)+CRF
         config = AutoConfig.from_pretrained(args.model_name_or_path,
                                             num_labels=len(tag_dict.keys()),
@@ -141,7 +148,15 @@ def load_ner_config_and_model(user_select: int, args, tag_dict):
                                             label2id={label: i for i, label in enumerate(tag_dict.keys())})
         config.num_pos_labels = 49  # NIKL
         config.max_seq_len = 128
-    elif 4 == user_select:
+    elif 5 == user_select:
+        # RoBERTa+LSTM(POS)+CRF
+        config = AutoConfig.from_pretrained(args.model_name_or_path,
+                                            num_labels=len(tag_dict.keys()),
+                                            id2label={str(i): label for i, label in enumerate(tag_dict.keys())},
+                                            label2id={label: i for i, label in enumerate(tag_dict.keys())})
+        config.num_pos_labels = 49  # NIKL
+        config.max_seq_len = 128
+    elif 6 == user_select:
         # ELECTRA+LSTM(POS)+CRF
         config = ElectraConfig.from_pretrained(args.model_name_or_path,
                                                num_labels=len(tag_dict.keys()),
@@ -149,7 +164,7 @@ def load_ner_config_and_model(user_select: int, args, tag_dict):
                                                label2id={label: i for i, label in enumerate(tag_dict.keys())})
         config.num_pos_labels = 49  # 국립국어원 형태 분석 말뭉치
         config.max_seq_len = 128
-    elif 5 == user_select:
+    elif 7 == user_select:
         # ELECTRA + Eojeol Embedding -> Transformer + CRF
         config = ElectraConfig.from_pretrained(args.model_name_or_path,
                                                num_labels=len(tag_dict.keys()),
@@ -158,7 +173,7 @@ def load_ner_config_and_model(user_select: int, args, tag_dict):
         config.model_name = args.model_name_or_path
         config.num_pos_labels = 49  # NIKLm
         config.max_seq_len = 128
-    elif 6 == user_select:
+    elif 8 == user_select:
         # ELECTRA + ALL FEATURES (POS, Eojeol, Entity) -> Transformer + CRF
         config = ElectraConfig.from_pretrained(args.model_name_or_path,
                                                num_labels=len(tag_dict.keys()),
@@ -176,17 +191,23 @@ def load_ner_config_and_model(user_select: int, args, tag_dict):
         # ELECTRA-base
         model = ElectraForTokenClassification.from_pretrained(args.model_name_or_path, config=config)
     elif 3 == user_select:
-        # BERT+LSTM(POS)+CRF
-        model = BERT_POS_LSTM.from_pretrained(args.model_name_or_path, config=config)
+        # RoBERTa-base
+        model = AutoModelForTokenClassification.from_pretrained(args.model_name_or_path, config=config)
     elif 4 == user_select:
+        # BERT+LSTM(POS)+CRF
+        model = BERT_LSTM_CRF.from_pretrained(args.model_name_or_path, config=config)
+    elif 5 == user_select:
+        # RoBERTa+LSTM(POS)+CRF
+        model = RoBERTa_LSTM_CRF.from_pretrained(args.model_name_or_path, config=config)
+    elif 6 == user_select:
         # ELECTRA+LSTM(POS)+CRF
         model = ELECTRA_POS_LSTM.from_pretrained(args.model_name_or_path, config=config)
-    elif 5 == user_select:
+    elif 7 == user_select:
         # ELECTRA + Eojeol Embedding -> Transformer + CRF
-        model = Eojeol_Embed_Model.from_pretrained(args.model_name_or_path, config=config)
-    elif 6 == user_select:
+        model = Electra_Eojeol_Model.from_pretrained(args.model_name_or_path, config=config)
+    elif 8 == user_select:
         # ELECTRA + ALL FEATURES (POS, Eojeol, Entity) -> Transformer + CRF
-        model = Electra_Addi_Feature_Model.from_pretrained(args.model_name_or_path, config=config)
+        model = Electra_Feature_Model.from_pretrained(args.model_name_or_path, config=config)
 
     return config, model
 
@@ -203,16 +224,16 @@ def load_model_checkpoints(user_select, checkpoint):
         model = ElectraForTokenClassification.from_pretrained(checkpoint)
     elif 3 == user_select:
         # BERT+LSTM(POS)+CRF
-        model = BERT_POS_LSTM.from_pretrained(checkpoint)
+        model = BERT_LSTM_CRF.from_pretrained(checkpoint)
     elif 4 == user_select:
         # ELECTRA+LSTM(POS)+CRF
         model = ELECTRA_POS_LSTM.from_pretrained(checkpoint)
     elif 5 == user_select:
         # ELECTRA + Eojeol Embedding -> Transformer + CRF
-        model = Eojeol_Embed_Model.from_pretrained(checkpoint)
+        model = Electra_Eojeol_Model.from_pretrained(checkpoint)
     elif 6 == user_select:
         # ELECTRA + ALL FEATURES (POS, Eojeol, Entity) -> Transformer + CRF
-        model = Electra_Addi_Feature_Model.from_pretrained(checkpoint)
+        model = Electra_Feature_Model.from_pretrained(checkpoint)
 
     return model
 
