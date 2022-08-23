@@ -35,7 +35,7 @@ class BERT_LSTM_CRF(BertPreTrainedModel):
         self.lstm = nn.LSTM(input_size=self.lstm_dim_size,
                             hidden_size=self.lstm_dim_size,
                             num_layers=1, batch_first=True, dropout=0.3)
-        self.dropout = nn.Dropout(config.classifier_dropout)
+        self.dropout = nn.Dropout(0.1)
         self.classifier = nn.Linear(self.lstm_dim_size, config.num_labels)
         self.crf = CRF(num_tags=config.num_labels, batch_first=True)
 
