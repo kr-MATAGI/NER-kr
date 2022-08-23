@@ -9,10 +9,6 @@ old_version/datasets
 # pycmache
 *.pyc
 
-# tensorboard
-old_version/logs
-old_versionklue_model/logs
-
 # results
 config.json
 test-*.txt
