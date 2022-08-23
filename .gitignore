@@ -19,9 +19,6 @@ test-*.txt
 
 
 # model
-old_version/ckpt
-old_version/model
-old_version/checkpoint-*
 *.pt
 *.bin
 
