@@ -196,8 +196,8 @@ class Electra_Eojeol_Model(ElectraPreTrainedModel):
 
         # CRF
         if labels is not None:
-            log_likelihood, sequence_of_tags = self.crf(emissions=logits, tags=labels, reduction="mean", mask=attention_mask.bool()), \
-                                               self.crf.decode(logits, mask=attention_mask.bool())
+            log_likelihood, sequence_of_tags = self.crf(emissions=logits, tags=labels, reduction="mean"),\
+                                               self.crf.decode(logits)#, mask=attention_mask.bool())
             return log_likelihood, sequence_of_tags
         else:
             sequence_of_tags = self.crf.decode(logits)
