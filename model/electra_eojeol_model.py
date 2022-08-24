@@ -183,7 +183,7 @@ class Electra_Eojeol_Model(ElectraPreTrainedModel):
         # enc_outputs = enc_outputs[-1]
 
         # LSTM
-        lstm_outputs = self.lstm(eojeol_tensor)
+        lstm_outputs, _ = self.lstm(eojeol_tensor)
 
         # 어절->Wordpiece
         # enc_outputs = one_hot_embed @ enc_outputs
