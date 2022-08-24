@@ -79,6 +79,6 @@ class RoBERTa_LSTM_CRF(RobertaPreTrainedModel):
             return sequence_of_tags
 
 if "__main__" == __name__:
-    from transformers import AutoConfig
-    a = AutoConfig.from_pretrained("klue/roberta-base")
+    from transformers import AutoConfig, ElectraConfig
+    a = ElectraConfig.from_pretrained("monologg/koelectra-base-v3-discriminator")
     print(a)

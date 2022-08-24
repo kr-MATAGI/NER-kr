@@ -140,7 +140,7 @@ class Encoder(nn.Module):
         return all_encoder_layers
 
 
-class Config(object):
+class Enc_Config(object):
     def __init__(self,
                  vocab_size_or_config_json_file,
                  act_fn="gelu",
@@ -175,7 +175,7 @@ class Config(object):
 
     @classmethod
     def from_dict(cls, json_object):
-        config = Config(vocab_size_or_config_json_file=-1)
+        config = Enc_Config(vocab_size_or_config_json_file=-1)
         for key, value in json_object.items():
             config.__dict__[key] = value
         return config

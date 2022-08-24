@@ -6,7 +6,7 @@ from typing import Tuple
 from transformers import ElectraModel, ElectraPreTrainedModel
 
 from model.crf_layer import CRF
-from model.transformer_encoder import Encoder
+from model.transformer_encoder import Encoder, Enc_Config
 
 #===============================================================
 class Electra_Eojeol_Model(ElectraPreTrainedModel):
@@ -19,21 +19,22 @@ class Electra_Eojeol_Model(ElectraPreTrainedModel):
         self.num_ne_labels = config.num_labels
         self.num_pos_labels = config.num_pos_labels
         self.pos_embed_out_dim = 128
-        self.dropout_rate = 0.33
+        self.dropout_rate = 0.1
         self.max_eojeol_len = 50
 
         # for encoder
         self.d_model_size = config.hidden_size + (self.pos_embed_out_dim * 3)  # [768 + 128 * 3] = 1152
-        self.enc_config = copy.deepcopy(config)
-        self.enc_config.num_hidden_layers = 4
+        self.enc_config = Enc_Config(config.vocab_size)
         self.enc_config.hidden_size = self.d_model_size
-        self.enc_config.ff_dim = self.d_model_size
-        self.enc_config.act_fn = "gelu"
-        self.enc_config.dropout_prob = 0.1
-        self.enc_config.num_heads = 12  # origin 12
+        # self.enc_config.num_hidden_layers = 4
+        # self.enc_config.hidden_size = self.d_model_size
+        # self.enc_config.ff_dim = self.d_model_size
+        # self.enc_config.act_fn = "gelu"
+        # self.enc_config.dropout_prob = 0.1
+        # self.enc_config.num_heads = 12  # origin 12
 
         # structure
-        self.electra = ElectraModel.from_pretrained(config.model_name, config=config)
+        self.electra = ElectraModel.from_pretrained("monologg/koelectra-base-v3-discriminator", config=config)
         self.dropout = nn.Dropout(self.dropout_rate)
 
         # POS
@@ -177,7 +178,7 @@ class Electra_Eojeol_Model(ElectraPreTrainedModel):
         enc_outputs = enc_outputs[-1]
 
         # 어절->Wordpiece
-        enc_outputs = one_hot_embed @ enc_outputs
+        # enc_outputs = one_hot_embed @ enc_outputs
 
         trans_outputs = self.dropout(enc_outputs)
 
