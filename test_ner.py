@@ -19,27 +19,24 @@ if "__main__" == __name__:
     train_labels_data = np.load(root_path + "/train_labels.npy")
     train_eojeol_ids = np.load(root_path + "/train_eojeol_ids.npy")
     train_token_seq_len = np.load(root_path + "/train_token_seq_len.npy")
-    print(train_token_seq_len.shape)
 
     dev_ids_data = np.load(root_path + "/dev.npy")
     dev_pos_data = np.load(root_path + "/dev_pos_tag.npy")
     dev_labels_data = np.load(root_path + "/dev_labels.npy")
     dev_eojeol_ids = np.load(root_path + "/dev_eojeol_ids.npy")
     dev_token_seq_len = np.load(root_path + "/dev_token_seq_len.npy")
-    print(dev_token_seq_len.shape)
 
     test_ids_data = np.load(root_path + "/test.npy")
     test_pos_data = np.load(root_path + "/test_pos_tag.npy")
     test_labels_data = np.load(root_path + "/test_labels.npy")
     test_eojeol_ids = np.load(root_path + "/test_eojeol_ids.npy")
     test_token_seq_len = np.load(root_path + "/test_token_seq_len.npy")
-    print(test_token_seq_len.shape)
 
     total_ids_data = np.vstack([train_ids_data, dev_ids_data, test_ids_data])
     total_pos_data = np.vstack([train_pos_data, dev_pos_data, test_pos_data])
     total_labels_data = np.vstack([train_labels_data, dev_labels_data, test_labels_data])
     total_eojeol_ids = np.vstack([train_eojeol_ids, dev_eojeol_ids, test_eojeol_ids])
-    total_token_seq_len = np.vstack([train_token_seq_len, dev_token_seq_len, test_token_seq_len])
+    total_token_seq_len = np.hstack([train_token_seq_len, dev_token_seq_len, test_token_seq_len])
 
     # Tokenizer
     tokenizer = ElectraTokenizer.from_pretrained("monologg/koelectra-base-v3-discriminator")
@@ -47,12 +44,13 @@ if "__main__" == __name__:
     # Eojeol Model
     checkpoint_path = "./test_model"
     model = Electra_Eojeol_Model.from_pretrained(checkpoint_path)
-    model.eval()
+    # model.eval()
 
     total_data_size = total_ids_data.shape[0]
     ids_to_tag = {v: k for k, v in ETRI_TAG.items()}
 
     while True:
+        print("문장을 입력하세요: \n>>>")
         user_input = str(input())
         target_tokens = [tokenizer(user_input, padding='max_length', truncation=True, max_length=128)["input_ids"]]
 
@@ -65,7 +63,7 @@ if "__main__" == __name__:
                 "attention_mask": torch.LongTensor([total_ids_data[data_idx, :, 1]]),
                 "token_type_ids": torch.LongTensor([total_ids_data[data_idx, :, 2]]),
                 # "labels": torch.LongTensor([total_labels_data[data_idx, :]]),
-                "token_seq_len": torch.LongTensor([total_token_seq_len[data_idx, :]]),
+                "token_seq_len": torch.LongTensor([total_token_seq_len[data_idx]]),
                 "pos_tag_ids": torch.LongTensor([total_pos_data[data_idx, :]]),
                 "eojeol_ids": torch.LongTensor([total_eojeol_ids[data_idx, :]])
             }
@@ -81,14 +79,15 @@ if "__main__" == __name__:
             preds = np.array(outputs)[0]
             labels = total_labels_data[data_idx, :]
 
-            columns = ["text", "label", "preds"]
+            print("TEXT: ", text)
+            columns = ["label", "preds"]
             rows_list = []
-            for p_idx in range(len(preds)):
-                conv_label = ids_to_tag[labels[p_idx]]
-                conv_preds = ids_to_tag[preds[p_idx]]
-                rows_list.append([text[p_idx], conv_label, conv_preds])
+            for p, l in zip(preds, labels):
+                conv_preds = ids_to_tag[p]
+                conv_label = ids_to_tag[l]
+                rows_list.append([conv_preds, conv_label])
             pd_df = pd.DataFrame(rows_list, columns=columns)
 
-            print("text\tlabel\tpreds")
+            print("preds\tlabel")
             for df_idx, df_item in pd_df.iterrows():
-                print(df_item["text"], df_item["label"], df_item["preds"])
+                print(df_item["preds"], df_item["label"])
