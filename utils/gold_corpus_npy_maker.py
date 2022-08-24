@@ -605,7 +605,7 @@ def make_eojeol_datasets_npy(
         "labels": [],
         "attention_mask": [],
         "token_type_ids": [],
-        "toeken_seq_len": [],
+        "token_seq_len": [],
         "pos_tag_ids": [],
         "eojeol_ids": [],
         "entity_ids": [], # for token_type_ids (bert segment embedding)
@@ -899,23 +899,23 @@ def make_eojeol_datasets_npy(
             input()
 
     # save npy_dict
-    save_eojeol_npy_dict(npy_dict, len(src_list))
+    save_eojeol_npy_dict(npy_dict, len(src_list), save_dir=save_model_dir)
 
 #==============================================================
-def save_eojeol_npy_dict(npy_dict: Dict[str, List], src_list_len):
+def save_eojeol_npy_dict(npy_dict: Dict[str, List], src_list_len, save_dir: str = None):
 #==============================================================
     npy_dict["input_ids"] = np.array(npy_dict["input_ids"])
     npy_dict["attention_mask"] = np.array(npy_dict["attention_mask"])
     npy_dict["token_type_ids"] = np.array(npy_dict["token_type_ids"])
     npy_dict["labels"] = np.array(npy_dict["labels"])
-    npy_dict["seq_len"] = np.array(npy_dict["seq_len"])
+    npy_dict["token_seq_len"] = np.array(npy_dict["token_seq_len"])
     npy_dict["pos_tag_ids"] = np.array(npy_dict["pos_tag_ids"])
     npy_dict["eojeol_ids"] = np.array(npy_dict["eojeol_ids"])
     # wordpiece 토큰 단위
     print(f"Unit: Tokens")
     print(f"attention_mask.shape: {npy_dict['attention_mask'].shape}")
     print(f"token_type_ids.shape: {npy_dict['token_type_ids'].shape}")
-    print(f"seq_len.shape: {npy_dict['seq_len'].shape}")
+    print(f"seq_len.shape: {npy_dict['token_seq_len'].shape}")
 
     # 어절 단위
     print(f"Unit: Eojoel")
@@ -935,7 +935,7 @@ def save_eojeol_npy_dict(npy_dict: Dict[str, List], src_list_len):
                 npy_dict["token_type_ids"][:train_size]]
     train_np = np.stack(train_np, axis=-1)
     train_labels_np = npy_dict["labels"][:train_size]
-    train_seq_len_np = npy_dict["seq_len"][:train_size]
+    train_seq_len_np = npy_dict["token_seq_len"][:train_size]
     train_pos_tag_np = npy_dict["pos_tag_ids"][:train_size]
     train_eojeol_ids_np = npy_dict["eojeol_ids"][:train_size]
     print(f"train_np.shape: {train_np.shape}")
@@ -950,7 +950,7 @@ def save_eojeol_npy_dict(npy_dict: Dict[str, List], src_list_len):
               npy_dict["token_type_ids"][train_size:valid_size]]
     dev_np = np.stack(dev_np, axis=-1)
     dev_labels_np = npy_dict["labels"][train_size:valid_size]
-    dev_seq_len_np = npy_dict["seq_len"][train_size:valid_size]
+    dev_seq_len_np = npy_dict["token_seq_len"][train_size:valid_size]
     dev_pos_tag_np = npy_dict["pos_tag_ids"][train_size:valid_size]
     dev_eojeol_ids_np = npy_dict["eojeol_ids"][train_size:valid_size]
     print(f"dev_np.shape: {dev_np.shape}")
@@ -965,7 +965,7 @@ def save_eojeol_npy_dict(npy_dict: Dict[str, List], src_list_len):
                npy_dict["token_type_ids"][valid_size:]]
     test_np = np.stack(test_np, axis=-1)
     test_labels_np = npy_dict["labels"][valid_size:]
-    test_seq_len_np = npy_dict["seq_len"][valid_size:]
+    test_seq_len_np = npy_dict["token_seq_len"][valid_size:]
     test_pos_tag_np = npy_dict["pos_tag_ids"][valid_size:]
     test_eojeol_ids_np = npy_dict["eojeol_ids"][valid_size:]
     print(f"test_np.shape: {test_np.shape}")
@@ -974,7 +974,7 @@ def save_eojeol_npy_dict(npy_dict: Dict[str, List], src_list_len):
     print(f"test_pos_tag_ids_np.shape: {test_pos_tag_np.shape}")
     print(f"test_eojeol_ids_np.shape: {test_eojeol_ids_np.shape}")
 
-    root_path = "../data/npy/old_nikl/eojeol_electra"
+    root_path = "../corpus/npy/" + save_dir
     # save input_ids, attention_mask, token_type_ids
     np.save(root_path+"/train", train_np)
     np.save(root_path+"/dev", dev_np)
@@ -1007,7 +1007,7 @@ if "__main__" == __name__:
     print("[gold_corpus_npy_maker] __main__ !")
 
     all_sent_list = []
-    with open("../corpus/pkl/NIKL_wordpiece_ne_3pos.pkl", mode="rb") as pkl_file:
+    with open("../corpus/pkl/NIKL_ne_pos.pkl", mode="rb") as pkl_file:
     # with open("../data/pkl/ne_mp_old_nikl.pkl", mode="rb") as pkl_file:
         all_sent_list = pickle.load(pkl_file)
         print(f"[make_gold_corpus_npy][__main__] all_sent_list size: {len(all_sent_list)}")
@@ -1024,8 +1024,9 @@ if "__main__" == __name__:
         bert : klue/bert-base
         roberta : klue/roberta-base
     '''
-    make_wordpiece_npy(tokenizer_name="klue/roberta-base", ex_dictionary=hash_dict,
-                       src_list=all_sent_list, max_len=128, is_use_dict=False, debug_mode=False, save_model_dir="roberta")
+    # make_wordpiece_npy(tokenizer_name="klue/roberta-base", ex_dictionary=hash_dict,
+    #                    src_list=all_sent_list, max_len=128, is_use_dict=False, debug_mode=False, save_model_dir="roberta")
 
-    # make_eojeol_datasets_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator", ex_dictionary=hash_dict,
-    #                          src_list=all_sent_list, max_len=128, debug_mode=False, is_use_dict=False)
+    make_eojeol_datasets_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator", ex_dictionary=hash_dict,
+                             src_list=all_sent_list, max_len=128, debug_mode=False, is_use_dict=False,
+                             save_model_dir="eojeol_electra")

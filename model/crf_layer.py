@@ -124,7 +124,7 @@ class CRF(nn.Module):
 
         if self.batch_first:
             emissions = emissions.transpose(0, 1)
-            mask = mask.transpose(0, 1)
+            mask = mask.transpose(0, 1) # [seq_len, batch]
 
         return self._viterbi_decode(emissions, mask)
 

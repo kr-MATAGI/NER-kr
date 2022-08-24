@@ -86,12 +86,18 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
         tb_writer.add_scalar("Loss/val_" + str(train_epoch), eval_loss / nb_eval_steps, nb_eval_steps)
         eval_pbar.set_description("Eval Loss - %.04f" % (eval_loss / nb_eval_steps))
 
+        conv_outputs = np.zeros_like(inputs["labels"].detach().cpu().numpy())
+        max_seq_len = conv_outputs.shape[1]
+        for oi_idx, out_item in enumerate(outputs):
+            out_item_len = len(out_item)
+            out_item.extend([0 for _ in range(max_seq_len - out_item_len)])
+            conv_outputs[oi_idx] = np.array(out_item)
         if g_use_crf:
             if preds is None:
-                preds = np.array(outputs)
+                preds = np.array(conv_outputs)
                 out_label_ids = inputs["labels"].detach().cpu().numpy()
             else:
-                preds = np.append(preds, np.array(outputs), axis=0)
+                preds = np.append(preds, np.array(conv_outputs), axis=0)
                 out_label_ids = np.append(out_label_ids, inputs["labels"].detach().cpu().numpy(), axis=0)
         else:
             # Not CRF
@@ -121,10 +127,9 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
     preds_list = [[] for _ in range(out_label_ids.shape[0])]
 
     ignore_index = torch.nn.CrossEntropyLoss().ignore_index
-    ignore_list = ignore_index
     for i in range(out_label_ids.shape[0]):
         for j in range(out_label_ids.shape[1]):
-            if out_label_ids[i, j] != ignore_list:
+            if out_label_ids[i, j] != ignore_index:
                 out_label_list[i].append(label_map[out_label_ids[i][j]])
                 preds_list[i].append(label_map[preds[i][j]])
     result = f1_pre_rec(out_label_list, preds_list, is_ner=True)
