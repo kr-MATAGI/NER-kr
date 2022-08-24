@@ -121,28 +121,28 @@ def load_ner_config_and_model(user_select: int, args, tag_dict):
     # config
     if 1 == user_select:
         # BERT
-        config = AutoConfig.from_pretrained(args.model_name_or_path,
+        config = AutoConfig.from_pretrained("klue/bert-base",
                                             num_labels=len(tag_dict.keys()),
                                             id2label={str(i): label for i, label in enumerate(tag_dict.keys())},
                                             label2id={label: i for i, label in enumerate(tag_dict.keys())})
         config.max_seq_len = 128
     elif 2 == user_select:
         # ELECTRA
-        config = ElectraConfig.from_pretrained(args.model_name_or_path,
+        config = ElectraConfig.from_pretrained("monologg/koelectra-base-v3-discriminator",
                                                num_labels=len(tag_dict.keys()),
                                                id2label={str(i): label for i, label in enumerate(tag_dict.keys())},
                                                label2id={label: i for i, label in enumerate(tag_dict.keys())})
         config.max_seq_len = 128
     elif 3 == user_select:
         # RoBERTa
-        config = AutoConfig.from_pretrained(args.model_name_or_path,
+        config = AutoConfig.from_pretrained("klue/roberta-base",
                                             num_labels=len(tag_dict.keys()),
                                             id2label={str(i): label for i, label in enumerate(tag_dict.keys())},
                                             label2id={label: i for i, label in enumerate(tag_dict.keys())})
         config.max_seq_len = 128
     elif 4 == user_select:
         # BERT+LSTM(POS)+CRF
-        config = AutoConfig.from_pretrained(args.model_name_or_path,
+        config = AutoConfig.from_pretrained("klue/bert-base",
                                             num_labels=len(tag_dict.keys()),
                                             id2label={str(i): label for i, label in enumerate(tag_dict.keys())},
                                             label2id={label: i for i, label in enumerate(tag_dict.keys())})
@@ -150,7 +150,7 @@ def load_ner_config_and_model(user_select: int, args, tag_dict):
         config.max_seq_len = 128
     elif 5 == user_select:
         # RoBERTa+LSTM(POS)+CRF
-        config = AutoConfig.from_pretrained(args.model_name_or_path,
+        config = AutoConfig.from_pretrained("klue/roberta-base",
                                             num_labels=len(tag_dict.keys()),
                                             id2label={str(i): label for i, label in enumerate(tag_dict.keys())},
                                             label2id={label: i for i, label in enumerate(tag_dict.keys())})
@@ -158,7 +158,7 @@ def load_ner_config_and_model(user_select: int, args, tag_dict):
         config.max_seq_len = 128
     elif 6 == user_select:
         # ELECTRA+LSTM(POS)+CRF
-        config = ElectraConfig.from_pretrained(args.model_name_or_path,
+        config = ElectraConfig.from_pretrained("monologg/koelectra-base-v3-discriminator",
                                                num_labels=len(tag_dict.keys()),
                                                id2label={str(i): label for i, label in enumerate(tag_dict.keys())},
                                                label2id={label: i for i, label in enumerate(tag_dict.keys())})
@@ -166,16 +166,16 @@ def load_ner_config_and_model(user_select: int, args, tag_dict):
         config.max_seq_len = 128
     elif 7 == user_select:
         # ELECTRA + Eojeol Embedding -> Transformer + CRF
-        config = ElectraConfig.from_pretrained(args.model_name_or_path,
+        config = ElectraConfig.from_pretrained("monologg/koelectra-base-v3-discriminator",
                                                num_labels=len(tag_dict.keys()),
                                                id2label={str(i): label for i, label in enumerate(tag_dict.keys())},
                                                label2id={label: i for i, label in enumerate(tag_dict.keys())})
-        config.model_name = args.model_name_or_path
+        config.model_name = "monologg/koelectra-base-v3-discriminator"
         config.num_pos_labels = 49  # NIKLm
         config.max_seq_len = 128
     elif 8 == user_select:
         # ELECTRA + ALL FEATURES (POS, Eojeol, Entity) -> Transformer + CRF
-        config = ElectraConfig.from_pretrained(args.model_name_or_path,
+        config = ElectraConfig.from_pretrained("monologg/koelectra-base-v3-discriminator",
                                                num_labels=len(tag_dict.keys()),
                                                id2label={str(i): label for i, label in enumerate(tag_dict.keys())},
                                                label2id={label: i for i, label in enumerate(tag_dict.keys())})

@@ -17,7 +17,7 @@ class ELECTRA_POS_LSTM(ElectraPreTrainedModel):
         self.pos_embed_out_dim = 100
         self.entity_embed_out_dim = 128
 
-        self.dropout_rate = 0.3
+        self.dropout_rate = 0.1
 
         # pos tag embedding
         self.pos_embedding_1 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
@@ -43,7 +43,6 @@ class ELECTRA_POS_LSTM(ElectraPreTrainedModel):
         self.lstm_dim_size = config.hidden_size + (self.pos_embed_out_dim * 3)# + self.max_eojeol_len# + self.entity_embed_out_dim
         self.lstm = nn.LSTM(input_size=self.lstm_dim_size, hidden_size=self.lstm_dim_size,
                             num_layers=1, batch_first=True, dropout=self.dropout_rate)
-        self.dropout = nn.Dropout(self.dropout_rate)
         self.classifier = nn.Linear(self.lstm_dim_size, config.num_labels)
         self.crf = CRF(num_tags=config.num_labels, batch_first=True)
 
@@ -83,13 +82,12 @@ class ELECTRA_POS_LSTM(ElectraPreTrainedModel):
         # concat_embed = torch.concat([concat_embed, eojeol_embed, entity_embed], dim=-1)
         #concat_embed = torch.concat([concat_embed, eojeol_embed], dim=-1)
         lstm_out, _ = self.lstm(concat_embed) # [batch_size, seq_len, hidden_size]
-        lstm_out = self.dropout(lstm_out)
         logits = self.classifier(lstm_out) # [128, 128, 31]
 
         # crf
         if labels is not None:
             log_likelihood, sequence_of_tags = self.crf(emissions=logits, tags=labels, mask=attention_mask.bool(),
-                                                        reduction="mean"), self.crf.decode(logits),# mask=attention_mask.bool())
+                                                        reduction="mean"), self.crf.decode(logits, mask=attention_mask.bool())
             return log_likelihood, sequence_of_tags
         else:
             sequence_of_tags = self.crf.decode(logits)

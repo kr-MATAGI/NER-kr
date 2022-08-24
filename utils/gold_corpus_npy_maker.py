@@ -1014,11 +1014,16 @@ if "__main__" == __name__:
     all_sent_list = conv_TTA_ne_category(all_sent_list)
 
     # make npy
-    #make_pos_tag_npy(tokenizer_name="klue/bert-base", src_list=all_sent_list, max_len=128)
     is_use_external_dict = False
     hash_dict = None
     if is_use_external_dict:
         hash_dict = make_dict_hash_table(dict_path="../우리말샘_dict.pkl")
+
+    '''
+        electra : monologg/koelectra-base-v3-discriminator
+        bert : klue/bert-base
+        roberta : klue/roberta-base
+    '''
     make_wordpiece_npy(tokenizer_name="klue/roberta-base", ex_dictionary=hash_dict,
                        src_list=all_sent_list, max_len=128, is_use_dict=False, debug_mode=False, save_model_dir="roberta")
 
