@@ -24,9 +24,9 @@
   "model_name_or_path": "monologg/koelectra-base-v3-discriminator",
   "output_dir": "klue-electra-lstm-crf",
   "seed": 42,
-  "train_batch_size": 64,
+  "train_batch_size": 128,
   "eval_batch_size": 64,
-  "logging_steps": 2,
+  "logging_steps": 4105,
   "save_steps": 821,
   "learning_rate": 5e-5,
   "n_gpu": 1
