@@ -322,8 +322,6 @@ def main():
         config_file_path = "./config/electra-lstm-crf.json"
     elif 7 == g_user_select:
         config_file_path = "./config/electra-eojeol-model.json"
-        # temp
-        g_use_crf = False
     elif 8 == g_user_select:
         config_file_path = "./config/electra-all-feature-model.json"
 

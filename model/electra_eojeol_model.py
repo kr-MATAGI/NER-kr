@@ -174,7 +174,7 @@ class Electra_Eojeol_Model(ElectraPreTrainedModel):
                                                                         eojeol_ids=eojeol_ids,
                                                                         one_hot_embed=one_hot_embed_t,
                                                                         max_eojeol_len=self.max_eojeol_len)
-
+        crf_eojeo_attn_mask = copy.deepcopy(eojeol_attention_mask)
         eojeol_attention_mask = eojeol_attention_mask.unsqueeze(1).unsqueeze(2) # [64, 1, 1, max_eojeol_len]
         eojeol_attention_mask = eojeol_attention_mask.to(dtype=next(self.parameters()).dtype) # fp16 compatibility
         eojeol_attention_mask = (1.0 - eojeol_attention_mask) * -10000.0
@@ -197,8 +197,8 @@ class Electra_Eojeol_Model(ElectraPreTrainedModel):
 
         # CRF
         if labels is not None:
-            log_likelihood, sequence_of_tags = self.crf(emissions=logits, tags=labels, reduction="mean", mask=eojeol_attention_mask.bool()),\
-                                               self.crf.decode(logits, mask=eojeol_attention_mask.bool())
+            log_likelihood, sequence_of_tags = self.crf(emissions=logits, tags=labels, reduction="mean", mask=crf_eojeo_attn_mask.bool()),\
+                                               self.crf.decode(logits, mask=crf_eojeo_attn_mask.bool())
             return log_likelihood, sequence_of_tags
         else:
             sequence_of_tags = self.crf.decode(logits)
