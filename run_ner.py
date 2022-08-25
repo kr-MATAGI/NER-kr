@@ -78,7 +78,9 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
                 loss = -1 * log_likelihood
             else:
                 outputs = model(**inputs)
-                loss, logits = outputs[:2]
+                loss = outputs.loss
+                logits = outputs.logits
+                # loss, logits = outputs[:2]
 
             eval_loss += loss.mean().item()
 
@@ -86,13 +88,15 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
         tb_writer.add_scalar("Loss/val_" + str(train_epoch), eval_loss / nb_eval_steps, nb_eval_steps)
         eval_pbar.set_description("Eval Loss - %.04f" % (eval_loss / nb_eval_steps))
 
-        conv_outputs = np.zeros_like(inputs["labels"].detach().cpu().numpy())
-        max_seq_len = conv_outputs.shape[1]
-        for oi_idx, out_item in enumerate(outputs):
-            out_item_len = len(out_item)
-            out_item.extend([0 for _ in range(max_seq_len - out_item_len)])
-            conv_outputs[oi_idx] = np.array(out_item)
         if g_use_crf:
+            conv_outputs = np.zeros_like(inputs["labels"].detach().cpu().numpy())
+            max_seq_len = conv_outputs.shape[1]
+
+            for oi_idx, out_item in enumerate(outputs):
+                out_item_len = len(out_item)
+                out_item.extend([0 for _ in range(max_seq_len - out_item_len)])
+                conv_outputs[oi_idx] = np.array(out_item)
+
             if preds is None:
                 preds = np.array(conv_outputs)
                 out_label_ids = inputs["labels"].detach().cpu().numpy()
@@ -103,9 +107,12 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
             # Not CRF
             if preds is None:
                 preds = logits.detach().cpu().numpy()
+                preds = np.argmax(preds, axis=-1)
                 out_label_ids = inputs["labels"].detach().cpu().numpy()
             else:
-                preds = np.append(preds, logits.detach().cpu().numpy(), axis=0)
+                logits = logits.detach().cpu().numpy()
+                logits = np.argmax(logits, axis=-1)
+                preds = np.append(preds, logits, axis=0)
                 out_label_ids = np.append(out_label_ids, inputs["labels"].detach().cpu().numpy(), axis=0)
 
     logger.info("  Eval End !")
@@ -115,10 +122,6 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
     results = {
         "loss": eval_loss
     }
-
-    # CRF 안쓴다면 사용
-    if not g_use_crf:
-        preds = np.argmax(preds, axis=-1)
 
     labels = ETRI_TAG.keys()
     label_map = {i: label for i, label in enumerate(labels)}

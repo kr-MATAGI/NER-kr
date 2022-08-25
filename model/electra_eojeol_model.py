@@ -48,7 +48,7 @@ class Electra_Eojeol_Model(ElectraPreTrainedModel):
         self.one_hot_embedding = nn.Embedding(self.max_seq_len, self.max_eojeol_len)
 
         # Transformer Encoder
-        self.encoder = Encoder(self.enc_config)
+        # self.encoder = Encoder(self.enc_config)
 
         # LSTM
         # self.lstm = nn.LSTM(input_size=self.d_model_size, hidden_size=self.d_model_size,
@@ -193,13 +193,13 @@ class Electra_Eojeol_Model(ElectraPreTrainedModel):
         # trans_outputs = self.dropout(enc_outputs)
 
         # Classifier
-        logits = self.linear(enc_outputs)  # [batch_size, seq_len, num_labels]
+        logits = self.linear(eojeol_tensor)  # [batch_size, seq_len, num_labels]
 
         # TEST
         loss = None
         if labels is not None:
-            loss_fct = CrossEntropyLoss()
-            loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
+            loss_fct = nn.CrossEntropyLoss()
+            loss = loss_fct(logits.view(-1, self.num_ne_labels), labels.view(-1))
 
         return TokenClassifierOutput(
             loss=loss,
