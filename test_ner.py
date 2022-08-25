@@ -54,6 +54,11 @@ if "__main__" == __name__:
         user_input = str(input())
         target_tokens = [tokenizer(user_input, padding='max_length', truncation=True, max_length=128)["input_ids"]]
 
+        # eojeol
+        eojeol_word = user_input.split(" ")
+        eojeol_word.insert(0, "[CLS]")
+        eojeol_word.append("[SEP]")
+
         for data_idx in range(total_data_size):
             if 0 == (data_idx % 10000):
                 print(f"[test_ner][__main__] {data_idx} is processing...")
@@ -80,14 +85,15 @@ if "__main__" == __name__:
             labels = total_labels_data[data_idx, :]
 
             print("TEXT: ", text)
-            columns = ["label", "preds"]
+            columns = ["eojeol", "label", "preds"]
             rows_list = []
-            for p, l in zip(preds, labels):
+            for eoj, p, l in zip(eojeol_word, preds, labels):
                 conv_preds = ids_to_tag[p]
                 conv_label = ids_to_tag[l]
-                rows_list.append([conv_preds, conv_label])
+                rows_list.append([eoj, conv_preds, conv_label])
             pd_df = pd.DataFrame(rows_list, columns=columns)
 
-            print("preds\tlabel")
+            print("eojeol\tpreds\tlabel")
             for df_idx, df_item in pd_df.iterrows():
-                print(df_item["preds"], df_item["label"])
+                print(df_item["eojeol"], df_item["preds"], df_item["label"])
+            break

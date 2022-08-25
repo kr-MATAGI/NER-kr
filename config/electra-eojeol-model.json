@@ -1,7 +1,7 @@
 {
   "task": "custom",
   "data_dir": "data",
-  "ckpt_dir": "ckpt-electra-eojeol-embed-linear",
+  "ckpt_dir": "ckpt-electra-eojeol-embed-drop-05",
   "train_npy": "./corpus/npy/eojeol_electra/train.npy",
   "dev_npy": "./corpus/npy/eojeol_electra/dev.npy",
   "test_npy": "./corpus/npy/eojeol_electra/test.npy",
@@ -22,7 +22,7 @@
   "no_cuda": false,
   "model_type": "monologg/koelectra-base-v3-discriminator",
   "model_name_or_path": "monologg/koelectra-base-v3-discriminator",
-  "output_dir": "electra-eojeol-embed-linear",
+  "output_dir": "electra-eojeol-embed-drop-05",
   "seed": 42,
   "train_batch_size": 128,
   "eval_batch_size": 128,
