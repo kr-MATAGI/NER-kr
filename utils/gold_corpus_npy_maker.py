@@ -1029,4 +1029,4 @@ if "__main__" == __name__:
 
     make_eojeol_datasets_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator", ex_dictionary=hash_dict,
                              src_list=all_sent_list, max_len=128, debug_mode=False, is_use_dict=False,
-                             save_model_dir="eojeol_electra")
+                             save_model_dir="eojeol_300M_electra")

@@ -20,19 +20,13 @@ class Electra_Eojeol_Model(ElectraPreTrainedModel):
         self.num_ne_labels = config.num_labels
         self.num_pos_labels = config.num_pos_labels
         self.pos_embed_out_dim = 128
-        self.dropout_rate = 0.5
+        self.dropout_rate = 0.1
         self.max_eojeol_len = 50
 
         # for encoder
         self.d_model_size = config.hidden_size + (self.pos_embed_out_dim * 3)  # [768 + 128 * 3] = 1152
         self.enc_config = Enc_Config(config.vocab_size)
         self.enc_config.hidden_size = self.d_model_size
-        # self.enc_config.num_hidden_layers = 4
-        # self.enc_config.hidden_size = self.d_model_size
-        # self.enc_config.ff_dim = self.d_model_size
-        # self.enc_config.act_fn = "gelu"
-        # self.enc_config.dropout_prob = 0.1
-        # self.enc_config.num_heads = 12  # origin 12
 
         # structure
         self.electra = ElectraModel.from_pretrained("monologg/koelectra-base-v3-discriminator", config=config)
@@ -125,7 +119,7 @@ class Electra_Eojeol_Model(ElectraPreTrainedModel):
         eojeol_pos_1 = pos_ids[:, :, 0] # [64, eojeol_max_len]
         eojeol_pos_2 = pos_ids[:, :, 1]
         eojeol_pos_3 = pos_ids[:, :, 2]
-
+        #
         eojeol_pos_1 = self.eojeol_pos_embedding_1(eojeol_pos_1) # [batch_size, eojeol_max_len, pos_embed]
         eojeol_pos_2 = self.eojeol_pos_embedding_1(eojeol_pos_2)
         eojeol_pos_3 = self.eojeol_pos_embedding_1(eojeol_pos_3)
