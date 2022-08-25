@@ -24,7 +24,7 @@
   "model_name_or_path": "monologg/koelectra-base-v3-discriminator",
   "output_dir": "electra-eojeol-embed-drop-05",
   "seed": 42,
-  "train_batch_size": 32,
+  "train_batch_size": 128,
   "eval_batch_size": 128,
   "logging_steps": 4105,
   "save_steps": 821,
