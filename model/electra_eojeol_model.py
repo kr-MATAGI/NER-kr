@@ -4,6 +4,7 @@ import torch.nn as nn
 
 from typing import Tuple
 from transformers import ElectraModel, ElectraPreTrainedModel
+from transformers.modeling_outputs import TokenClassifierOutput
 
 from model.crf_layer import CRF
 from model.transformer_encoder import Encoder, Enc_Config
@@ -179,8 +180,8 @@ class Electra_Eojeol_Model(ElectraPreTrainedModel):
         eojeol_attention_mask = (1.0 - eojeol_attention_mask) * -10000.0
 
         # Transformer Encoder
-        enc_outputs = self.encoder(eojeol_tensor, eojeol_attention_mask)
-        enc_outputs = enc_outputs[-1]
+        # enc_outputs = self.encoder(eojeol_tensor, eojeol_attention_mask)
+        # enc_outputs = enc_outputs[-1]
 
         # LSTM
         # lstm_outputs, _ = self.lstm(eojeol_tensor)
@@ -193,6 +194,18 @@ class Electra_Eojeol_Model(ElectraPreTrainedModel):
 
         # Classifier
         logits = self.linear(enc_outputs)  # [batch_size, seq_len, num_labels]
+
+        # TEST
+        loss = None
+        if labels is not None:
+            loss_fct = CrossEntropyLoss()
+            loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
+
+        return TokenClassifierOutput(
+            loss=loss,
+            logits=logits,
+            attentions=eojeol_attention_mask,
+        )
 
         # CRF
         if labels is not None:
