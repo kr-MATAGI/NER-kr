@@ -33,16 +33,20 @@ class Electra_Eojeol_Model(ElectraPreTrainedModel):
         self.dropout = nn.Dropout(self.dropout_rate)
 
         # POS
-        self.eojeol_pos_embedding_1 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
-        self.eojeol_pos_embedding_2 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
-        self.eojeol_pos_embedding_3 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
+        # self.eojeol_pos_embedding_1 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
+        # self.eojeol_pos_embedding_2 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
+        # self.eojeol_pos_embedding_3 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
         # self.eojeol_pos_embedding_4 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
 
         # One-Hot Embed
         self.one_hot_embedding = nn.Embedding(self.max_seq_len, self.max_eojeol_len)
 
         # Transformer Encoder
-        self.encoder = Trans_Encoder(self.enc_config)
+        # self.encoder = Trans_Encoder(self.enc_config)
+
+        # LSTM
+        self.lstm = nn.LSTM(input_size=self.d_model_size, hidden_size=(self.d_model_size // 2),
+                            batch_first=True, num_layers=1, bidirectional=True)
 
         # Classifier
         self.linear = nn.Linear(self.d_model_size, config.num_labels)
@@ -168,20 +172,20 @@ class Electra_Eojeol_Model(ElectraPreTrainedModel):
                                                                         eojeol_ids=eojeol_ids,
                                                                         one_hot_embed=one_hot_embed_t,
                                                                         max_eojeol_len=self.max_eojeol_len)
-        eojeol_origin_attn = copy.deepcopy(eojeol_attention_mask)
+        # eojeol_origin_attn = copy.deepcopy(eojeol_attention_mask)
         eojeol_attention_mask = eojeol_attention_mask.unsqueeze(1).unsqueeze(2) # [64, 1, 1, max_eojeol_len]
         eojeol_attention_mask = eojeol_attention_mask.to(dtype=next(self.parameters()).dtype) # fp16 compatibility
         eojeol_attention_mask = (1.0 - eojeol_attention_mask) * -10000.0
 
         # Transformer Encoder
-        enc_outputs = self.encoder(eojeol_tensor, eojeol_attention_mask)
-        enc_outputs = enc_outputs[-1]
+        # enc_outputs = self.encoder(eojeol_tensor, eojeol_attention_mask)
+        # enc_outputs = enc_outputs[-1]
 
         # LSTM
-        # lstm_outputs, _ = self.lstm(eojeol_tensor)
+        lstm_outputs, _ = self.lstm(eojeol_tensor)
 
         # 어절->Wordpiece
-        enc_outputs = one_hot_embed @ enc_outputs
+        enc_outputs = one_hot_embed @ lstm_outputs
 
         # Dropout
         # enc_outputs = self.dropout(enc_outputs)
