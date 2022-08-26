@@ -4,7 +4,7 @@ import torch.nn as nn
 
 from transformers import ElectraModel, ElectraPreTrainedModel
 from model.crf_layer import CRF
-from model.transformer_encoder import Encoder
+from model.transformer_encoder import Trans_Encoder
 
 #===============================================================
 class Electra_Feature_Model(ElectraPreTrainedModel):
@@ -56,7 +56,7 @@ class Electra_Feature_Model(ElectraPreTrainedModel):
         # self.ffn_1 = nn.Linear()
 
         # Transformer Encoder
-        self.trans_encoder = Encoder(self.t_enc_config)
+        self.trans_encoder = Trans_Encoder(self.t_enc_config)
 
         # FFN_2 (for CRF)
         self.ffn_2 = nn.Linear(self.d_model_size, config.num_labels)

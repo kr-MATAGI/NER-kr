@@ -123,9 +123,9 @@ class Block(nn.Module):
         return x
 
 
-class Encoder(nn.Module):
+class Trans_Encoder(nn.Module):
     def __init__(self, config):
-        super(Encoder, self).__init__()
+        super(Trans_Encoder, self).__init__()
         self.layer = nn.ModuleList()
         for l in range(config.num_hidden_layers):
             layer = Block(config)
@@ -292,7 +292,7 @@ class Model(nn.Module):
     def __init__(self, config):
         super(Model, self).__init__()
         self.embeddings = Embeddings(config)
-        self.encoder = Encoder(config)
+        self.encoder = Trans_Encoder(config)
         self.pooler = Pooler(config)
 
     def forward(self, input_ids, token_type_ids=None, attention_mask=None):
@@ -348,7 +348,7 @@ class QuestionAnswering(nn.Module):
         config.hidden_size = 768
         config.ff_dim = 768 * 4
 
-        self.additional_layer1 = Encoder(config)
+        self.additional_layer1 = Trans_Encoder(config)
         #self.additional_layer2 = Encoder(config)
 
         self.qa_hidden1 = Linear(768, 768)

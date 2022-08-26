@@ -7,7 +7,7 @@ from transformers import ElectraModel, ElectraPreTrainedModel
 from transformers.modeling_outputs import TokenClassifierOutput
 
 from model.crf_layer import CRF
-from model.transformer_encoder import Encoder, Enc_Config
+from model.transformer_encoder import Trans_Encoder, Enc_Config
 
 #===============================================================
 class Electra_Eojeol_Model(ElectraPreTrainedModel):
@@ -42,11 +42,7 @@ class Electra_Eojeol_Model(ElectraPreTrainedModel):
         self.one_hot_embedding = nn.Embedding(self.max_seq_len, self.max_eojeol_len)
 
         # Transformer Encoder
-        self.encoder = Encoder(self.enc_config)
-
-        # LSTM
-        # self.lstm = nn.LSTM(input_size=self.d_model_size, hidden_size=self.d_model_size,
-        #                     num_layers=1, batch_first=True, dropout=self.dropout_rate)
+        self.encoder = Trans_Encoder(self.enc_config)
 
         # Classifier
         self.linear = nn.Linear(self.d_model_size, config.num_labels)
@@ -181,18 +177,18 @@ class Electra_Eojeol_Model(ElectraPreTrainedModel):
         # lstm_outputs, _ = self.lstm(eojeol_tensor)
 
         # 어절->Wordpiece
-        # enc_outputs = one_hot_embed @ enc_outputs
+        enc_outputs = one_hot_embed @ enc_outputs
 
         # Dropout
-        trans_outputs = self.dropout(enc_outputs)
+        # enc_outputs = self.dropout(enc_outputs)
 
         # Classifier
-        logits = self.linear(trans_outputs)  # [batch_size, seq_len, num_labels]
+        logits = self.linear(enc_outputs)  # [batch_size, seq_len, num_labels]
 
         # CRF
         if labels is not None:
-            log_likelihood, sequence_of_tags = self.crf(emissions=logits, tags=labels, reduction="mean", mask=eojeol_origin_attn.bool()),\
-                                               self.crf.decode(logits, mask=eojeol_origin_attn.bool())
+            log_likelihood, sequence_of_tags = self.crf(emissions=logits, tags=labels, reduction="mean", mask=attention_mask.bool()),\
+                                               self.crf.decode(logits, mask=attention_mask.bool())
             return log_likelihood, sequence_of_tags
         else:
             sequence_of_tags = self.crf.decode(logits)

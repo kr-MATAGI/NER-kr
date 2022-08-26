@@ -671,12 +671,6 @@ def make_eojeol_datasets_npy(
                 text_tokens.extend(form_tokens)
                 word_tokens_pos_pair_list.append((word_item.form, form_tokens, (word_item.begin, word_item.end)))
 
-        # split (.+), ~, ·
-        # [(word, [tokens], (begin, end))]
-        new_word_tokens_pos_pair_list: List[Tuple[str, List[str], Tuple[int, int]]] = []
-        # for wtpp_idx, wtpp_item in enumerate(word_tokens_pos_pair_list):
-        #     pass
-
         # make NE labels
         labels_ids = [ETRI_TAG["O"]] * len(word_tokens_pos_pair_list)
         b_check_use_eojeol = [False for _ in range(len(word_tokens_pos_pair_list))]
@@ -737,10 +731,10 @@ def make_eojeol_datasets_npy(
             for _ in range(len(text_tokens)):
                 span_ids.append(0)
 
-            nn_pos_list = ["NNG", "NNP"]  # "NNB", "NP"
+            nn_pos_list = ["NNG", "NNP"] # "NNB", "NP"
             pre_pos_list = ["MMA", "VA", "ETM"]
             post_pos_list = ["XSN"]
-            find_word_list = []  # 사전에서 찾은 것들
+            find_word_list = [] # 사전에서 찾은 것들
             candi_list = []
             for morp_idx in range(len(src_item.morp_list)):
                 # print(morp_item.form, morp_item.label)
@@ -1002,6 +996,302 @@ def save_eojeol_npy_dict(npy_dict: Dict[str, List], src_list_len, save_dir: str 
 
     print(f"[make_gold_corpus_npy][save_eojeol_npy_dict] Complete - Save all npy files !")
 
+#==============================================================
+def make_eojeol_and_wordpiece_labels_npy(
+        tokenizer_name: str, src_list: List[Sentence],
+        max_len: int=128, eojeol_max_len: int=50, debug_mode: bool=False,
+        save_model_dir: str = None
+):
+#==============================================================
+    if not save_model_dir:
+        print(f"[make_eojeol_datasets_npy] Plz check save_model_dir: {save_model_dir}")
+        return
+
+    random.shuffle(src_list)
+
+    npy_dict = {
+        "input_ids": [],
+        "labels": [],
+        "attention_mask": [],
+        "token_type_ids": [],
+        "token_seq_len": [],
+        "pos_tag_ids": [],
+        "eojeol_ids": [],
+    }
+
+    pos_tag2ids = {v: int(k) for k, v in NIKL_POS_TAG.items()}
+    pos_ids2tag = {k: v for k, v in NIKL_POS_TAG.items()}
+    ne_ids2tag = {v: k for k, v in ETRI_TAG.items()}
+
+
+    if "bert" in tokenizer_name:
+        tokenizer_name = AutoTokenizer.from_pretrained(tokenizer_name)
+    else:
+        tokenizer = ElectraTokenizer.from_pretrained(tokenizer_name)
+
+    for proc_idx, src_item in enumerate(src_list):
+        if 0 == (proc_idx % 1000):
+            print(f"{proc_idx} Processing... {src_item.text}")
+
+        # make (word, token, pos) pair
+        text_tokens = []
+        # [(word, [tokens], (begin, end))]
+        word_tokens_pos_pair_list: List[Tuple[str, List[str], Tuple[int, int]]] = []
+        for word_idx, word_item in enumerate(src_item.word_list):
+            if "·" in word_item.form:
+                split_form = word_item.form.split("·")
+                new_begin = word_item.begin
+                for sp_idx, sp_item in enumerate(split_form):
+                    conv_sp_item = copy.deepcopy(sp_item)
+                    if sp_idx != len(split_form) - 1:
+                        conv_sp_item += "·"
+                    sp_item_tokens = tokenizer.tokenize(conv_sp_item)
+                    new_end = new_begin + len(list(conv_sp_item))
+                    word_tokens_pos_pair_list.append((conv_sp_item, sp_item_tokens, (new_begin, new_end)))
+                    new_begin = new_end + 1
+                    text_tokens.extend(sp_item_tokens)
+            elif re.search(r"\([^)]+\)", word_item.form) or re.search(r"[가-힣]+~[가-힣]+", word_item.form):
+                if re.search(r"\([^)]+\)", word_item.form):
+                    bracket_open_idx = word_item.form.find("(")
+                if re.search(r"[가-힣]+\~[가-힣]+", word_item.form):
+                    # e.g. 임진강역~평화누리공원까지
+                    bracket_open_idx = word_item.form.find("~")
+
+                # lhs
+                lhs_word_form = word_item.form[:bracket_open_idx+1]
+                lhs_form_tokens = tokenizer.tokenize(lhs_word_form)
+                lhs_begin = word_item.begin
+                lhs_end = lhs_begin + bracket_open_idx + 1
+                word_tokens_pos_pair_list.append((lhs_word_form, lhs_form_tokens, (lhs_begin, lhs_end)))
+
+                # rhs
+                rhs_word_form = word_item.form[bracket_open_idx+1:]
+                rhs_form_tokens = tokenizer.tokenize(rhs_word_form)
+                rhs_begin = lhs_begin + bracket_open_idx + 2
+                rhs_end = word_item.end
+                word_tokens_pos_pair_list.append((rhs_word_form, rhs_form_tokens, (rhs_begin, rhs_end)))
+
+                text_tokens.extend(lhs_form_tokens)
+                text_tokens.extend(rhs_form_tokens)
+            else:
+                form_tokens = tokenizer.tokenize(word_item.form)
+                text_tokens.extend(form_tokens)
+                word_tokens_pos_pair_list.append((word_item.form, form_tokens, (word_item.begin, word_item.end)))
+
+        # NE
+        labels = ["O"] * len(text_tokens)
+        start_idx = 0
+        for ne_item in src_item.ne_list:
+            is_find = False
+            for s_idx in range(start_idx, len(text_tokens)):
+                if is_find:
+                    break
+                for word_cnt in range(0, len(text_tokens) - s_idx + 1):
+                    concat_text_tokens = text_tokens[s_idx:s_idx + word_cnt]
+                    concat_text_tokens = [x.replace("##", "") for x in concat_text_tokens]
+
+                    if "".join(concat_text_tokens) == ne_item.text.replace(" ", ""):
+                        # BIO Tagging
+                        for bio_idx in range(s_idx, s_idx + word_cnt):
+                            if bio_idx == s_idx:
+                                labels[bio_idx] = "B-" + ne_item.type
+                            else:
+                                labels[bio_idx] = "I-" + ne_item.type
+
+                        is_find = True
+                        start_idx = s_idx + word_cnt
+                        break
+        ## end, NE loop
+
+        # POS
+        pos_tag_ids = []  # [[POS, * 4]]
+        cur_pos_tag = [pos_tag2ids["O"]] * 10
+        add_idx = 0
+        cur_word_id = 1
+        for ps_idx, morp_item in enumerate(src_item.morp_list):
+            if cur_word_id != morp_item.word_id:
+                cur_word_id = morp_item.word_id
+                pos_tag_ids.append(copy.deepcopy(cur_pos_tag))
+                cur_pos_tag = [pos_tag2ids["O"]] * 10
+                add_idx = 0
+            if 10 > add_idx:
+                cur_pos_tag[add_idx] = pos_tag2ids[morp_item.label]
+                add_idx += 1
+        # last word_id
+        pos_tag_ids.append(copy.deepcopy(cur_pos_tag))
+
+        # Eojeol boundary
+        eojeol_boundary_list: List[int] = []
+        for wtp_ids, wtp_item in enumerate(word_tokens_pos_pair_list):
+            token_size = len(wtp_item[1])
+            eojeol_boundary_list.append(token_size)
+
+        # 토큰 단위
+        valid_token_len = 0
+        text_tokens.insert(0, "[CLS]")
+        labels.insert(0, "O")
+        if max_len <= len(text_tokens):
+            text_tokens = text_tokens[:max_len-1]
+            labels = labels[:max_len - 1]
+            text_tokens.append("[SEP]")
+            labels.append("O")
+
+            valid_token_len = max_len
+        else:
+            text_tokens.append("[SEP]")
+            labels.append("O")
+
+            valid_token_len = len(text_tokens)
+            text_tokens += ["[PAD]"] * (max_len - valid_token_len)
+            labels = labels + ["O"] * (max_len - valid_token_len)
+        attention_mask = ([1] * valid_token_len) + ([0] * (max_len - valid_token_len))
+        token_type_ids = [0] * max_len
+        input_ids = tokenizer.convert_tokens_to_ids(text_tokens)
+        labels = [ETRI_TAG[x] for x in labels]
+        
+        # 어절 단위
+        valid_eojeol_len = 0
+        # pos_tag_ids
+        pos_tag_ids.insert(0, [pos_tag2ids["O"]] * 10)  # [CLS]
+        pos_tag_ids.append([pos_tag2ids["O"]] * 10)  # [SEP]
+        if eojeol_max_len <= len(pos_tag_ids):
+            pos_tag_ids = pos_tag_ids[:eojeol_max_len - 1]
+            pos_tag_ids.append([pos_tag2ids["O"]] * 10)  # [SEP]
+        else:
+            pos_tag_ids_size = len(pos_tag_ids)
+            for _ in range(eojeol_max_len - pos_tag_ids_size):
+                pos_tag_ids.append([pos_tag2ids["O"]] * 10)
+
+        # eojeol_ids
+        eojeol_boundary_list.insert(0, 1)  # [CLS]
+        eojeol_boundary_list.append(1)  # [SEP]
+        if eojeol_max_len <= len(eojeol_boundary_list):
+            eojeol_boundary_list = eojeol_boundary_list[:eojeol_max_len - 1]
+            eojeol_boundary_list.append(1)  # [SEP]
+        else:
+            eojeol_boundary_size = len(eojeol_boundary_list)
+            eojeol_boundary_list += [0] * (eojeol_max_len - eojeol_boundary_size)
+        assert len(input_ids) == max_len, f"{len(input_ids)} + {input_ids}"
+        assert len(attention_mask) == max_len, f"{len(attention_mask)} + {attention_mask}"
+        assert len(token_type_ids) == max_len, f"{len(token_type_ids)} + {token_type_ids}"
+        assert len(labels) == max_len, f"{len(labels)} + {labels}"
+        assert len(pos_tag_ids) == eojeol_max_len, f"{len(pos_tag_ids)} + {pos_tag_ids}"
+        assert len(eojeol_boundary_list) == eojeol_max_len, f"{len(eojeol_boundary_list)} + {eojeol_boundary_list}"
+
+        # add to npy_dict
+        npy_dict["input_ids"].append(input_ids)
+        npy_dict["attention_mask"].append(attention_mask)
+        npy_dict["token_type_ids"].append(token_type_ids)
+        npy_dict["token_seq_len"].append(valid_eojeol_len)  # eojeol !
+        npy_dict["labels"].append(labels)
+        npy_dict["pos_tag_ids"].append(pos_tag_ids)
+        npy_dict["eojeol_ids"].append(eojeol_boundary_list)
+
+    # save npy_dict
+    save_eojeol_and_wordpiece_labels_npy(npy_dict, len(src_list), save_dir=save_model_dir)
+
+#==============================================================
+def save_eojeol_and_wordpiece_labels_npy(npy_dict: Dict[str, List], src_list_len, save_dir: str = None):
+#==============================================================
+    npy_dict["input_ids"] = np.array(npy_dict["input_ids"])
+    npy_dict["attention_mask"] = np.array(npy_dict["attention_mask"])
+    npy_dict["token_type_ids"] = np.array(npy_dict["token_type_ids"])
+    npy_dict["labels"] = np.array(npy_dict["labels"])
+    npy_dict["token_seq_len"] = np.array(npy_dict["token_seq_len"])
+    npy_dict["pos_tag_ids"] = np.array(npy_dict["pos_tag_ids"])
+    npy_dict["eojeol_ids"] = np.array(npy_dict["eojeol_ids"])
+
+    # wordpiece 토큰 단위
+    print(f"Unit: Tokens")
+    print(f"attention_mask.shape: {npy_dict['attention_mask'].shape}")
+    print(f"token_type_ids.shape: {npy_dict['token_type_ids'].shape}")
+    print(f"token_seq_len.shape: {npy_dict['token_seq_len'].shape}")
+    print(f"labels.shape: {npy_dict['labels'].shape}")
+
+    # 어절 단위
+    print(f"Unit: Eojoel")
+    print(f"input_ids.shape: {npy_dict['input_ids'].shape}")
+    print(f"pos_tag_ids.shape: {npy_dict['pos_tag_ids'].shape}")
+    print(f"eojeol_ids.shape: {npy_dict['eojeol_ids'].shape}")
+
+    # train/dev/test 분할
+    split_size = int(src_list_len * 0.1)
+    train_size = split_size * 7
+    valid_size = train_size + split_size
+
+    # train
+    train_np = [npy_dict["input_ids"][:train_size],
+                npy_dict["attention_mask"][:train_size],
+                npy_dict["token_type_ids"][:train_size]]
+    train_np = np.stack(train_np, axis=-1)
+    train_labels_np = npy_dict["labels"][:train_size]
+    train_seq_len_np = npy_dict["token_seq_len"][:train_size]
+    train_pos_tag_np = npy_dict["pos_tag_ids"][:train_size]
+    train_eojeol_ids_np = npy_dict["eojeol_ids"][:train_size]
+    print(f"train_np.shape: {train_np.shape}")
+    print(f"train_labels_np.shape: {train_labels_np.shape}")
+    print(f"train_seq_len_np.shape: {train_seq_len_np.shape}")
+    print(f"train_pos_tag_ids_np.shape: {train_pos_tag_np.shape}")
+    print(f"train_eojeol_ids_np.shape: {train_eojeol_ids_np.shape}")
+
+    # dev
+    dev_np = [npy_dict["input_ids"][train_size:valid_size],
+              npy_dict["attention_mask"][train_size:valid_size],
+              npy_dict["token_type_ids"][train_size:valid_size]]
+    dev_np = np.stack(dev_np, axis=-1)
+    dev_labels_np = npy_dict["labels"][train_size:valid_size]
+    dev_seq_len_np = npy_dict["token_seq_len"][train_size:valid_size]
+    dev_pos_tag_np = npy_dict["pos_tag_ids"][train_size:valid_size]
+    dev_eojeol_ids_np = npy_dict["eojeol_ids"][train_size:valid_size]
+    print(f"dev_np.shape: {dev_np.shape}")
+    print(f"dev_labels_np.shape: {dev_labels_np.shape}")
+    print(f"dev_seq_len_np.shape: {dev_seq_len_np.shape}")
+    print(f"dev_pos_tag_ids_np.shape: {dev_pos_tag_np.shape}")
+    print(f"dev_eojeol_ids_np.shape: {dev_eojeol_ids_np.shape}")
+
+    # test
+    test_np = [npy_dict["input_ids"][valid_size:],
+               npy_dict["attention_mask"][valid_size:],
+               npy_dict["token_type_ids"][valid_size:]]
+    test_np = np.stack(test_np, axis=-1)
+    test_labels_np = npy_dict["labels"][valid_size:]
+    test_seq_len_np = npy_dict["token_seq_len"][valid_size:]
+    test_pos_tag_np = npy_dict["pos_tag_ids"][valid_size:]
+    test_eojeol_ids_np = npy_dict["eojeol_ids"][valid_size:]
+    print(f"test_np.shape: {test_np.shape}")
+    print(f"test_labels_np.shape: {test_labels_np.shape}")
+    print(f"test_seq_len_np.shape: {test_seq_len_np.shape}")
+    print(f"test_pos_tag_ids_np.shape: {test_pos_tag_np.shape}")
+    print(f"test_eojeol_ids_np.shape: {test_eojeol_ids_np.shape}")
+
+    root_path = "../corpus/npy/" + save_dir
+    # save input_ids, attention_mask, token_type_ids
+    np.save(root_path+"/train", train_np)
+    np.save(root_path+"/dev", dev_np)
+    np.save(root_path+"/test", test_np)
+
+    # save labels
+    np.save(root_path+"/train_labels", train_labels_np)
+    np.save(root_path+"/dev_labels", dev_labels_np)
+    np.save(root_path+"/test_labels", test_labels_np)
+
+    # save seq_len
+    np.save(root_path+"/train_token_seq_len", train_seq_len_np)
+    np.save(root_path+"/dev_token_seq_len", dev_seq_len_np)
+    np.save(root_path+"/test_token_seq_len", test_seq_len_np)
+
+    # save pos_tag_ids
+    np.save(root_path+"/train_pos_tag", train_pos_tag_np)
+    np.save(root_path+"/dev_pos_tag", dev_pos_tag_np)
+    np.save(root_path+"/test_pos_tag", test_pos_tag_np)
+
+    # save eojeol_ids
+    np.save(root_path+"/train_eojeol_ids", train_eojeol_ids_np)
+    np.save(root_path+"/dev_eojeol_ids", dev_eojeol_ids_np)
+    np.save(root_path+"/test_eojeol_ids", test_eojeol_ids_np)
+
+    print(f"[make_gold_corpus_npy][save_eojeol_npy_dict] Complete - Save all npy files !")
+
 ### MAIN ###
 if "__main__" == __name__:
     print("[gold_corpus_npy_maker] __main__ !")
@@ -1027,6 +1317,10 @@ if "__main__" == __name__:
     # make_wordpiece_npy(tokenizer_name="klue/roberta-base", ex_dictionary=hash_dict,
     #                    src_list=all_sent_list, max_len=128, is_use_dict=False, debug_mode=False, save_model_dir="roberta")
 
-    make_eojeol_datasets_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator", ex_dictionary=hash_dict,
-                             src_list=all_sent_list, max_len=128, debug_mode=False, is_use_dict=False,
-                             save_model_dir="eojeol_300M_electra")
+    # make_eojeol_datasets_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator", ex_dictionary=hash_dict,
+    #                          src_list=all_sent_list, max_len=128, debug_mode=False, is_use_dict=False,
+    #                          save_model_dir="eojeol_300M_electra")
+
+    make_eojeol_and_wordpiece_labels_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",
+                                         src_list=all_sent_list, max_len=128, debug_mode=False,
+                                         save_model_dir="eojeol2wp_electra")
