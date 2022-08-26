@@ -111,6 +111,7 @@ class Electra_Eojeol_Model(ElectraPreTrainedModel):
         # last_hidden.shape : [64, 128, 768] = [batch, max_seq_len, hidden]
         matmul_out_embed = one_hot_embed @ last_hidden # [64, 50, 768] = [batch, max_eojeol, hidden]
 
+        '''
         # [ This, O, O, ... ], [ O, This, O, ... ], [ O, O, This, ...]
         eojeol_pos_1 = pos_ids[:, :, 0] # [64, eojeol_max_len]
         eojeol_pos_2 = pos_ids[:, :, 1]
@@ -119,9 +120,12 @@ class Electra_Eojeol_Model(ElectraPreTrainedModel):
         eojeol_pos_1 = self.eojeol_pos_embedding_1(eojeol_pos_1) # [batch_size, eojeol_max_len, pos_embed]
         eojeol_pos_2 = self.eojeol_pos_embedding_1(eojeol_pos_2)
         eojeol_pos_3 = self.eojeol_pos_embedding_1(eojeol_pos_3)
+        
         concat_eojeol_pos_embed = torch.concat([eojeol_pos_1, eojeol_pos_2, eojeol_pos_3], dim=-1)
+        
         # [batch_size, max_eojeol_len, hidd_size + (pos_embed * 3)]
         matmul_out_embed = torch.concat([matmul_out_embed, concat_eojeol_pos_embed], dim=-1)
+        '''
 
         for batch_idx in range(batch_size):
             valid_eojeol_cnt = 0
