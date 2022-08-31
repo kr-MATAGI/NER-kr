@@ -1020,9 +1020,9 @@ def save_eojeol_npy_dict(npy_dict: Dict[str, List], src_list_len, save_dir: str 
     np.save(root_path+"/test_eojeol_ids", test_eojeol_ids_np)
 
     # save LS_ids
-    np.save(root_path+"/train_LS_ids", train_LS_ids_np)
-    np.save(root_path+"/dev_LS_ids", dev_eojeol_ids_np)
-    np.save(root_path+"/test_LS_ids", test_eojeol_ids_np)
+    np.save(root_path+"/train_ls_ids", train_LS_ids_np)
+    np.save(root_path+"/dev_ls_ids", dev_eojeol_ids_np)
+    np.save(root_path+"/test_ls_ids", test_eojeol_ids_np)
 
     print(f"[make_gold_corpus_npy][save_eojeol_npy_dict] Complete - Save all npy files !")
 
