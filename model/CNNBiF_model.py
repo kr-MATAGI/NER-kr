@@ -26,7 +26,7 @@ class ELECTRA_CNNBiF_Model(ElectraPreTrainedModel):
         # CNNBiF
         self.cnn_bi_f = nn.Conv1d(
             in_channels=config.max_eojeol_len, out_channels=config.max_eojeol_len,
-            kernel_size=2, padding=0
+            kernel_size=2, padding=1
         )
 
         # For compare - LSTM

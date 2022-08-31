@@ -368,6 +368,7 @@ def main():
     print(f"test.shape - dataset: {test_npy.shape}, token_seq_len: {test_token_seq_len.shape}, "
           f"pos_tag: {test_pos_tag.shape}, labels: {test_labels.shape}, eojeol_ids: {test_eojeol_ids.shape}")
     #print(f"entitty_ids - train: {train_entity_ids.shape}, dev: {dev_entity_ids.shape}, test: {test_entity_ids.shape}")
+    print(f"ls_ids - train: {train_ls_ids.shape}, dev: {dev_ls_ids.shape}, test: {test_ls_ids.shape}")
 
     # make train/dev/test dataset
     if (5 == g_user_select) or (9 == g_user_select):
