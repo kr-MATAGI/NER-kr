@@ -10,11 +10,13 @@ from sklearn import metrics as sklearn_metrics
 
 # config, model
 from transformers import ElectraConfig, AutoConfig, AutoModelForTokenClassification, ElectraForTokenClassification
+
 from model.electra_lstm_crf import ELECTRA_POS_LSTM
 from model.bert_lstm_crf import BERT_LSTM_CRF
 from model.roberta_lstm_crf import RoBERTa_LSTM_CRF
 from model.electra_eojeol_model import Electra_Eojeol_Model
 from model.electra_feature_model import Electra_Feature_Model
+from model.CNNBiF_model import ELECTRA_CNNBiF_Model
 
 #===============================================================
 def print_parameters(args, logger):
@@ -66,9 +68,10 @@ def load_corpus_npy_datasets(src_path: str, mode: str="train"):
     pos_tag_npy = np.load(root_path + "_pos_tag.npy")
     labels_npy = np.load(root_path + "_labels.npy")
     eojeol_ids = np.load(root_path + "_eojeol_ids.npy")
+    ls_ids = np.load(root_path + "_ls_ids.npy")
     #entity_ids = np.load(root_path + "_entity_ids.npy")
 
-    return dataset_npy, token_seq_len, pos_tag_npy, labels_npy, eojeol_ids, #entity_ids
+    return dataset_npy, token_seq_len, pos_tag_npy, labels_npy, eojeol_ids, ls_ids, #entity_ids
 
 #===============================================================
 def init_logger():
@@ -179,9 +182,18 @@ def load_ner_config_and_model(user_select: int, args, tag_dict):
                                                num_labels=len(tag_dict.keys()),
                                                id2label={str(i): label for i, label in enumerate(tag_dict.keys())},
                                                label2id={label: i for i, label in enumerate(tag_dict.keys())})
-        config.num_pos_labels = 49  # NIKLm
+        config.num_pos_labels = 49  # NIKL
         config.max_seq_len = 128
-        config.max_eojeol_len = 48
+        config.max_eojeol_len = 50
+    elif 9 == user_select:
+        # ELECTRA + CNNBiF
+        config = ElectraConfig.from_pretrained("monologg/koelectra-base-v3-discriminator",
+                                               num_labels=len(tag_dict.keys()),
+                                               id2label={str(i): label for i, label in enumerate(tag_dict.keys())},
+                                               label2id={label: i for i, label in enumerate(tag_dict.keys())})
+        config.num_pos_labels = 49 # NIKL
+        config.max_seq_len = 128
+        config.max_eojeol_len = 50
 
     # model
     if 1 == user_select:
@@ -208,6 +220,9 @@ def load_ner_config_and_model(user_select: int, args, tag_dict):
     elif 8 == user_select:
         # ELECTRA + ALL FEATURES (POS, Eojeol, Entity) -> Transformer + CRF
         model = Electra_Feature_Model.from_pretrained(args.model_name_or_path, config=config)
+    elif 9 == user_select:
+        # ELECTRA + CNNBiF
+        model = ELECTRA_CNNBiF_Model.from_pretrained(args.model_name_or_path, config=config)
 
     return config, model
 
@@ -240,6 +255,9 @@ def load_model_checkpoints(user_select, checkpoint):
     elif 8 == user_select:
         # ELECTRA + ALL FEATURES (POS, Eojeol, Entity) -> Transformer + CRF
         model = Electra_Feature_Model.from_pretrained(checkpoint)
+    elif 9 == user_select:
+        # ELECTRA + CNNBiF
+        model = ELECTRA_CNNBiF_Model.from_pretrained(checkpoint)
 
     return model
 

@@ -70,6 +70,7 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
                 "token_seq_len": batch["token_seq_len"].to(args.device),
                 "pos_tag_ids": batch["pos_tag_ids"].to(args.device),
                 "eojeol_ids": batch["eojeol_ids"].to(args.device),
+                # "ls_ids": batch["ls_ids"].to(args.device)
                 # "entity_ids": batch["entity_ids"].to(args.device)
             }
 
@@ -218,6 +219,7 @@ def train(args, model, train_dataset, dev_dataset):
                 "token_seq_len": batch["token_seq_len"].to(args.device),
                 "pos_tag_ids": batch["pos_tag_ids"].to(args.device),
                 "eojeol_ids": batch["eojeol_ids"].to(args.device),
+                "ls_ids": batch["ls_ids"].to(args.device)
                 # "entity_ids": batch["entity_ids"].to(args.device)
             }
 
@@ -294,6 +296,7 @@ def main():
     print(f"6. {NER_MODEL_LIST[6]}")
     print(f"7. {NER_MODEL_LIST[7]}")
     print(f"8. {NER_MODEL_LIST[8]}")
+    print(f"9. {NER_MODEL_LIST[9]}")
     print("=======================================")
     print(">>>> number: ")
 
@@ -324,6 +327,9 @@ def main():
         config_file_path = "./config/electra-eojeol-model.json"
     elif 8 == g_user_select:
         config_file_path = "./config/electra-all-feature-model.json"
+    elif 9 == g_user_select:
+        config_file_path = "./config/electra-eojeol-cnnbif.json"
+        g_use_crf = False
 
     with open(config_file_path) as config_file:
         args = AttrDict(json.load(config_file))
@@ -348,11 +354,11 @@ def main():
     model.to(args.device)
 
     # load train/dev/test npy
-    train_npy, train_token_seq_len, train_pos_tag, train_labels, train_eojeol_ids = \
+    train_npy, train_token_seq_len, train_pos_tag, train_labels, train_eojeol_ids, train_ls_ids = \
         load_corpus_npy_datasets(args.train_npy, mode="train")
-    dev_npy, dev_token_seq_len, dev_pos_tag, dev_labels, dev_eojeol_ids = \
+    dev_npy, dev_token_seq_len, dev_pos_tag, dev_labels, dev_eojeol_ids, dev_ls_ids = \
         load_corpus_npy_datasets(args.dev_npy, mode="dev")
-    test_npy, test_token_seq_len, test_pos_tag, test_labels, test_eojeol_ids = \
+    test_npy, test_token_seq_len, test_pos_tag, test_labels, test_eojeol_ids, test_ls_ids = \
         load_corpus_npy_datasets(args.test_npy, mode="test")
 
     print(f"train.shape - dataset: {train_npy.shape}, token_seq_len: {train_token_seq_len.shape}, "
@@ -364,16 +370,16 @@ def main():
     #print(f"entitty_ids - train: {train_entity_ids.shape}, dev: {dev_entity_ids.shape}, test: {test_entity_ids.shape}")
 
     # make train/dev/test dataset
-    if 5 == g_user_select:
+    if (5 == g_user_select) or (9 == g_user_select):
         train_dataset = NER_Eojeol_Datasets(token_data=train_npy, labels=train_labels,
                                             pos_tag_ids=train_pos_tag, token_seq_len=train_token_seq_len,
-                                            eojeol_ids=train_eojeol_ids)
+                                            eojeol_ids=train_eojeol_ids, ls_ids=train_ls_ids)
         dev_dataset = NER_Eojeol_Datasets(token_data=dev_npy, labels=dev_labels,
                                           pos_tag_ids=dev_pos_tag, token_seq_len=dev_token_seq_len,
-                                          eojeol_ids=dev_eojeol_ids)
+                                          eojeol_ids=dev_eojeol_ids, ls_ids=dev_ls_ids)
         test_dataset = NER_Eojeol_Datasets(token_data=test_npy, labels=test_labels,
                                            pos_tag_ids=test_pos_tag, token_seq_len=test_token_seq_len,
-                                           eojeol_ids=test_eojeol_ids)
+                                           eojeol_ids=test_eojeol_ids, ls_ids=test_ls_ids)
     else:
         train_dataset = NER_POS_Dataset(data=train_npy, labels=train_labels, toekn_seq_len=train_token_seq_len,
                                         pos_tag_ids=train_pos_tag, eojeol_ids=train_eojeol_ids)

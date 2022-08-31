@@ -42,11 +42,11 @@ class Electra_Eojeol_Model(ElectraPreTrainedModel):
         self.one_hot_embedding = nn.Embedding(self.max_seq_len, self.max_eojeol_len)
 
         # Transformer Encoder
-        # self.encoder = Trans_Encoder(self.enc_config)
+        self.encoder = Trans_Encoder(self.enc_config)
 
         # LSTM
-        self.lstm = nn.LSTM(input_size=self.d_model_size, hidden_size=(self.d_model_size // 2),
-                            batch_first=True, num_layers=1, bidirectional=True)
+        # self.lstm = nn.LSTM(input_size=self.d_model_size, hidden_size=(self.d_model_size // 2),
+        #                     batch_first=True, num_layers=1, bidirectional=True)
 
         # Classifier
         self.linear = nn.Linear(self.d_model_size, config.num_labels)
@@ -178,14 +178,14 @@ class Electra_Eojeol_Model(ElectraPreTrainedModel):
         eojeol_attention_mask = (1.0 - eojeol_attention_mask) * -10000.0
 
         # Transformer Encoder
-        # enc_outputs = self.encoder(eojeol_tensor, eojeol_attention_mask)
-        # enc_outputs = enc_outputs[-1]
+        enc_outputs = self.encoder(eojeol_tensor, eojeol_attention_mask)
+        enc_outputs = enc_outputs[-1]
 
         # LSTM
-        lstm_outputs, _ = self.lstm(eojeol_tensor)
+        # lstm_outputs, _ = self.lstm(eojeol_tensor)
 
         # 어절->Wordpiece
-        enc_outputs = one_hot_embed @ lstm_outputs
+        enc_outputs = one_hot_embed_t.transpose(2, 1) @ enc_outputs
 
         # Dropout
         # enc_outputs = self.dropout(enc_outputs)
