@@ -24,9 +24,15 @@ class ELECTRA_CNNBiF_Model(ElectraPreTrainedModel):
         self.eojeol_boundary_embedding = nn.Embedding(config.max_seq_len, config.max_eojeol_len)
 
         # CNNBiF
-        self.cnn_bi_f = nn.Conv1d(
-            in_channels=config.max_eojeol_len, out_channels=config.max_eojeol_len,
-            kernel_size=2, padding=0
+        # self.cnn_bi_f = nn.Conv1d(
+        #     in_channels=config.max_eojeol_len, out_channels=config.max_eojeol_len,
+        #     kernel_size=2, padding=0
+        # )
+
+        # For compare - LSTM
+        self.lstm = nn.LSTM(
+            input_size=config.max_eojeol_len, hidden_size=(config.max_eojeol_len // 2),
+            bidirectional=True, batch_first=True
         )
 
         # NE - Classifier
@@ -134,6 +140,10 @@ class ELECTRA_CNNBiF_Model(ElectraPreTrainedModel):
         # CNNBiF
         cnn_bi_f_outputs = self.cnn_bi_f(eojeol_tensor) # [batch, kernel, hidden-1]
         cnn_bi_f_outputs = self.ls_classifier(cnn_bi_f_outputs) # [batch, eojeol, 2]
+
+        # For Compare - LSTM
+        cnn_bi_f_outputs = self.lstm(eojeol_tensor)  # [batch, kernel, hidden-1]
+        cnn_bi_f_outputs = self.ls_classifier(cnn_bi_f_outputs)  # [batch, eojeol, 2]
 
         # Get Loss
         ls_loss = None
