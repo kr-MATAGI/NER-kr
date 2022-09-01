@@ -40,7 +40,7 @@ class ELECTRA_CNNBiF_Model(ElectraPreTrainedModel):
         )
 
         # NE - Classifier
-        self.ne_classifier = nn.Linear(config.hidden_size, config.num_labels)
+        self.ne_classifier = nn.Linear(config.hidden_size - 1, config.num_labels)
         # LS - Classifier
         self.ls_classifier = nn.Linear(config.hidden_size, 2)
 
