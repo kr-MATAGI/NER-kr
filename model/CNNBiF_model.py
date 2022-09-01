@@ -19,7 +19,7 @@ class ELECTRA_CNNBiF_Model(ElectraPreTrainedModel):
         self.config = config
 
         # Transformer Encoder Config
-        self.d_model_size = config.hidden_size
+        self.d_model_size = config.hidden_size - 1
         self.transformer_config = Enc_Config(vocab_size_or_config_json_file=config.vocab_size)
         self.transformer_config.hidden_size = self.d_model_size
 
@@ -40,7 +40,7 @@ class ELECTRA_CNNBiF_Model(ElectraPreTrainedModel):
         )
 
         # NE - Classifier
-        self.ne_classifier = nn.Linear(config.hidden_size - 1, config.num_labels)
+        self.ne_classifier = nn.Linear(config.hidden_size, config.num_labels)
         # LS - Classifier
         self.ls_classifier = nn.Linear(config.hidden_size, 2)
 
