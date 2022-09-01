@@ -1,3 +1,5 @@
+import copy
+
 import torch
 import torch.nn as nn
 import numpy as np
@@ -145,6 +147,7 @@ class ELECTRA_CNNBiF_Model(ElectraPreTrainedModel):
                                                                    eojeol_ids=eojeol_ids,
                                                                    eojeol_bound_embd=eojeol_boundary_embed,
                                                                    max_eojeol_len=self.config.max_eojeol_len)
+        eojeol_attn_mask_copy = copy.deepcopy(eojeol_attn_mask)
         eojeol_attn_mask = eojeol_attn_mask.unsqueeze(1).unsqueeze(2)
         eojeol_attn_mask = eojeol_attn_mask.to(dtype=next(self.parameters()).dtype)
         eojeol_attn_mask = (1.0 - eojeol_attn_mask) * -10000.0
@@ -175,10 +178,9 @@ class ELECTRA_CNNBiF_Model(ElectraPreTrainedModel):
             # ner_loss = ner_loss_fct(logits.view(-1, self.config.num_labels), labels.view(-1))
 
             # CRF
-            eojeol_attn_mask = eojeol_attn_mask.squeeze(1).squeeze(2)
             ner_loss, sequence_of_tags = self.crf(emissions=logits, tags=labels, reduction="mean",
-                                                  mask=eojeol_attn_mask.bool()), \
-                                         self.crf.decode(logits, mask=eojeol_attn_mask.bool())
+                                                  mask=eojeol_attn_mask_copy.bool()), \
+                                         self.crf.decode(logits, mask=eojeol_attn_mask_copy.bool())
             ner_loss *= -1
         else:
             sequence_of_tags = self.crf.decode(logits)
