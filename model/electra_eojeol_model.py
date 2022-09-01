@@ -185,7 +185,7 @@ class Electra_Eojeol_Model(ElectraPreTrainedModel):
         # lstm_outputs, _ = self.lstm(eojeol_tensor)
 
         # 어절->Wordpiece
-        enc_outputs = one_hot_embed_t.transpose(2, 1) @ enc_outputs
+        # enc_outputs = one_hot_embed_t.transpose(2, 1) @ enc_outputs
 
         # Dropout
         # enc_outputs = self.dropout(enc_outputs)

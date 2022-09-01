@@ -133,6 +133,9 @@ class ELECTRA_CNNBiF_Model(ElectraPreTrainedModel):
                                                                    eojeol_ids=eojeol_ids,
                                                                    eojeol_bound_embd=eojeol_boundary_embed,
                                                                    max_eojeol_len=self.config.max_eojeol_len)
+        eojeol_attn_mask = eojeol_attn_mask.unsqueeze(1).unsqueeze(2)
+        eojeol_attn_mask = eojeol_attn_mask.to(dtype=next(self.parameters()).dtype)
+        eojeol_attn_mask = (1.0 - eojeol_attn_mask) * -10000.0
 
         # Transformer Encoder
         enc_outputs = self.trans_encoder(eojeol_tensor, eojeol_attn_mask)
