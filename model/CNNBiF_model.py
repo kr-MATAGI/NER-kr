@@ -24,7 +24,7 @@ class ELECTRA_CNNBiF_Model(ElectraPreTrainedModel):
         self.config = config
 
         # Transformer Encoder Config
-        self.d_model_size = config.hidden_size + (self.pos_embed_dim * 4)
+        self.d_model_size = config.hidden_size# + (self.pos_embed_dim * 4)
         self.transformer_config = Enc_Config(vocab_size_or_config_json_file=config.vocab_size)
         self.transformer_config.hidden_size = self.d_model_size
 
@@ -33,10 +33,10 @@ class ELECTRA_CNNBiF_Model(ElectraPreTrainedModel):
         self.dropout = nn.Dropout(self.dropout_rate)
 
         # POS Embedding
-        self.eojeol_pos_embedding_1 = nn.Embedding(config.num_pos_labels, self.pos_embed_dim)
-        self.eojeol_pos_embedding_2 = nn.Embedding(config.num_pos_labels, self.pos_embed_dim)
-        self.eojeol_pos_embedding_3 = nn.Embedding(config.num_pos_labels, self.pos_embed_dim)
-        self.eojeol_pos_embedding_4 = nn.Embedding(config.num_pos_labels, self.pos_embed_dim)
+        # self.eojeol_pos_embedding_1 = nn.Embedding(config.num_pos_labels, self.pos_embed_dim)
+        # self.eojeol_pos_embedding_2 = nn.Embedding(config.num_pos_labels, self.pos_embed_dim)
+        # self.eojeol_pos_embedding_3 = nn.Embedding(config.num_pos_labels, self.pos_embed_dim)
+        # self.eojeol_pos_embedding_4 = nn.Embedding(config.num_pos_labels, self.pos_embed_dim)
 
         # Transformer Encoder
         self.trans_encoder = Trans_Encoder(self.transformer_config)
@@ -153,21 +153,21 @@ class ELECTRA_CNNBiF_Model(ElectraPreTrainedModel):
         eojeol_attn_mask = (1.0 - eojeol_attn_mask) * -10000.0
 
         # POS Embedding : [batch, eojeol_max_len] -> [batch, eojeol_max_len, pos_embed]
-        eojeol_pos_1 = pos_tag_ids[:, :, 0]
-        eojeol_pos_2 = pos_tag_ids[:, :, 1]
-        eojeol_pos_3 = pos_tag_ids[:, :, 2]
-        eojeol_pos_4 = pos_tag_ids[:, :, 3]
-
-        eojeol_pos_1 = self.eojeol_pos_embedding_1(eojeol_pos_1)
-        eojeol_pos_2 = self.eojeol_pos_embedding_2(eojeol_pos_2)
-        eojeol_pos_3 = self.eojeol_pos_embedding_3(eojeol_pos_3)
-        eojeol_pos_4 = self.eojeol_pos_embedding_4(eojeol_pos_4)
-
-        concat_eojeol_pos = torch.concat([eojeol_pos_1, eojeol_pos_2, eojeol_pos_3, eojeol_pos_4], dim=-1)
-        eojeol_pos_concat = torch.concat([eojeol_tensor, concat_eojeol_pos], dim=-1)
+        # eojeol_pos_1 = pos_tag_ids[:, :, 0]
+        # eojeol_pos_2 = pos_tag_ids[:, :, 1]
+        # eojeol_pos_3 = pos_tag_ids[:, :, 2]
+        # eojeol_pos_4 = pos_tag_ids[:, :, 3]
+        #
+        # eojeol_pos_1 = self.eojeol_pos_embedding_1(eojeol_pos_1)
+        # eojeol_pos_2 = self.eojeol_pos_embedding_2(eojeol_pos_2)
+        # eojeol_pos_3 = self.eojeol_pos_embedding_3(eojeol_pos_3)
+        # eojeol_pos_4 = self.eojeol_pos_embedding_4(eojeol_pos_4)
+        #
+        # concat_eojeol_pos = torch.concat([eojeol_pos_1, eojeol_pos_2, eojeol_pos_3, eojeol_pos_4], dim=-1)
+        # eojeol_pos_concat = torch.concat([eojeol_tensor, concat_eojeol_pos], dim=-1)
 
         # Transformer Encoder
-        enc_outputs = self.trans_encoder(eojeol_pos_concat, eojeol_attn_mask)
+        enc_outputs = self.trans_encoder(eojeol_tensor, eojeol_attn_mask)
         enc_outputs = enc_outputs[-1]
 
         # NER Sequence Labeling
@@ -206,6 +206,8 @@ class ELECTRA_CNNBiF_Model(ElectraPreTrainedModel):
         #     loss=total_loss,
         #     logits=logits
         # )
+
+        # CRF
         if labels is not None:
             return total_loss, sequence_of_tags
         else:
