@@ -175,7 +175,7 @@ class ELECTRA_CNNBiF_Model(ElectraPreTrainedModel):
             # ner_loss = ner_loss_fct(logits.view(-1, self.config.num_labels), labels.view(-1))
 
             # CRF
-            eojeol_attn_mask = eojeol_attn_mask.unsqueeze(2).unsqueeze(1)
+            eojeol_attn_mask = eojeol_attn_mask.squeeze(2).squeeze(1)
             ner_loss, sequence_of_tags = self.crf(emissions=logits, tags=labels, reduction="mean",
                                                   mask=eojeol_attn_mask.bool()), \
                                          self.crf.decode(logits, mask=eojeol_attn_mask.bool())
