@@ -329,8 +329,7 @@ def main():
         config_file_path = "./config/electra-all-feature-model.json"
     elif 9 == g_user_select:
         config_file_path = "./config/electra-eojeol-cnnbif.json"
-        g_use_crf = False
-
+        # g_use_crf = False
 
     with open(config_file_path) as config_file:
         args = AttrDict(json.load(config_file))
