@@ -224,7 +224,7 @@ def train(args, model, train_dataset, dev_dataset):
             }
 
             if g_use_crf:
-                log_likelihood, outputs = model(**inputs)
+                loss, outputs = model(**inputs)
                 # loss = -1 * log_likelihood
             else:
                 outputs = model(**inputs)
@@ -330,6 +330,7 @@ def main():
     elif 9 == g_user_select:
         config_file_path = "./config/electra-eojeol-cnnbif.json"
         # g_use_crf = False
+
 
     with open(config_file_path) as config_file:
         args = AttrDict(json.load(config_file))
