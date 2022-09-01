@@ -3,7 +3,7 @@ import torch.nn as nn
 import numpy as np
 from transformers import ElectraPreTrainedModel, ElectraModel, ElectraConfig
 from transformers.modeling_outputs import TokenClassifierOutput
-
+from model.transformer_encoder import Trans_Encoder, Enc_Config
 
 #===============================================================
 class ELECTRA_CNNBiF_Model(ElectraPreTrainedModel):
@@ -12,13 +12,23 @@ class ELECTRA_CNNBiF_Model(ElectraPreTrainedModel):
     def __init__(self, config):
     #===================================
         super(ELECTRA_CNNBiF_Model, self).__init__(config)
+        # init
+        self.dropout_rate = 0.1
+
+        # default config
         self.config = config
 
-        self.dropout_rate = 0.1
+        # Transformer Encoder Config
+        self.d_model_size = config.hidden_size
+        self.transformer_config = Enc_Config(vocab_size_or_config_json_file=config.vocab_size)
+        self.transformer_config.hidden_size = self.d_model_size
 
         # KoELECTRA
         self.electra = ElectraModel.from_pretrained("monologg/koelectra-base-v3-discriminator", config=config)
         self.dropout = nn.Dropout(self.dropout_rate)
+
+        # Transformer Encoder
+        self.trans_encoder = Trans_Encoder(self.transformer_config)
 
         # Eojeol Boundary Embedding
         self.eojeol_boundary_embedding = nn.Embedding(config.max_seq_len, config.max_eojeol_len)
@@ -29,16 +39,10 @@ class ELECTRA_CNNBiF_Model(ElectraPreTrainedModel):
             kernel_size=2, padding=1
         )
 
-        # For compare - LSTM
-        # self.lstm = nn.LSTM(
-        #     input_size=config.hidden_size, hidden_size=(config.hidden_size // 2),
-        #     bidirectional=True, batch_first=True
-        # )
-
         # NE - Classifier
         self.ne_classifier = nn.Linear(config.hidden_size, config.num_labels)
         # LS - Classifier
-        self.ls_classifier = nn.Linear(config.hidden_size + 1, 2)
+        self.ls_classifier = nn.Linear(config.hidden_size, 2)
 
         self.post_init()
 
@@ -130,8 +134,12 @@ class ELECTRA_CNNBiF_Model(ElectraPreTrainedModel):
                                                                    eojeol_bound_embd=eojeol_boundary_embed,
                                                                    max_eojeol_len=self.config.max_eojeol_len)
 
+        # Transformer Encoder
+        enc_outputs = self.trans_encoder(eojeol_tensor, eojeol_attn_mask)
+        enc_outputs = enc_outputs[-1]
+
         # NER Sequence Labeling
-        logits = self.ne_classifier(eojeol_tensor)
+        logits = self.ne_classifier(enc_outputs)
         ner_loss = None
         if labels is not None:
             ner_loss_fct = nn.CrossEntropyLoss()
@@ -140,10 +148,6 @@ class ELECTRA_CNNBiF_Model(ElectraPreTrainedModel):
         # CNNBiF
         cnn_bi_f_outputs = self.cnn_bi_f(eojeol_tensor) # [batch, kernel, hidden-1]
         cnn_bi_f_outputs = self.ls_classifier(cnn_bi_f_outputs) # [batch, eojeol, 2]
-
-        # For Compare - LSTM
-        # cnn_bi_f_outputs, _ = self.lstm(eojeol_tensor)  # [batch, kernel, hidden-1]
-        # cnn_bi_f_outputs = self.ls_classifier(cnn_bi_f_outputs)  # [batch, eojeol, 2]
 
         # Get Loss
         ls_loss = None
