@@ -5,6 +5,8 @@ from transformers import ElectraPreTrainedModel, ElectraModel, ElectraConfig
 from transformers.modeling_outputs import TokenClassifierOutput
 from model.transformer_encoder import Trans_Encoder, Enc_Config
 
+from model.crf_layer import CRF
+
 #===============================================================
 class ELECTRA_CNNBiF_Model(ElectraPreTrainedModel):
 #===============================================================
@@ -14,18 +16,25 @@ class ELECTRA_CNNBiF_Model(ElectraPreTrainedModel):
         super(ELECTRA_CNNBiF_Model, self).__init__(config)
         # init
         self.dropout_rate = 0.1
+        self.pos_embed_dim = 102
 
         # default config
         self.config = config
 
         # Transformer Encoder Config
-        self.d_model_size = config.hidden_size
+        self.d_model_size = config.hidden_size + (self.pos_embed_dim * 4)
         self.transformer_config = Enc_Config(vocab_size_or_config_json_file=config.vocab_size)
         self.transformer_config.hidden_size = self.d_model_size
 
         # KoELECTRA
         self.electra = ElectraModel.from_pretrained("monologg/koelectra-base-v3-discriminator", config=config)
         self.dropout = nn.Dropout(self.dropout_rate)
+
+        # POS Embedding
+        self.eojeol_pos_embedding_1 = nn.Embedding(config.num_pos_labels, self.pos_embed_dim)
+        self.eojeol_pos_embedding_2 = nn.Embedding(config.num_pos_labels, self.pos_embed_dim)
+        self.eojeol_pos_embedding_3 = nn.Embedding(config.num_pos_labels, self.pos_embed_dim)
+        self.eojeol_pos_embedding_4 = nn.Embedding(config.num_pos_labels, self.pos_embed_dim)
 
         # Transformer Encoder
         self.trans_encoder = Trans_Encoder(self.transformer_config)
@@ -40,7 +49,10 @@ class ELECTRA_CNNBiF_Model(ElectraPreTrainedModel):
         )
 
         # NE - Classifier
-        self.ne_classifier = nn.Linear(config.hidden_size, config.num_labels)
+        self.ne_classifier = nn.Linear(self.d_model_size, config.num_labels)
+        # CRF
+        self.crf = CRF(num_tags=config.num_labels, batch_first=True)
+
         # LS - Classifier
         self.ls_classifier = nn.Linear(config.hidden_size + 1, 2)
 
@@ -137,16 +149,38 @@ class ELECTRA_CNNBiF_Model(ElectraPreTrainedModel):
         eojeol_attn_mask = eojeol_attn_mask.to(dtype=next(self.parameters()).dtype)
         eojeol_attn_mask = (1.0 - eojeol_attn_mask) * -10000.0
 
+        # POS Embedding : [batch, eojeol_max_len] -> [batch, eojeol_max_len, pos_embed]
+        eojeol_pos_1 = pos_tag_ids[:, :, 0]
+        eojeol_pos_2 = pos_tag_ids[:, :, 1]
+        eojeol_pos_3 = pos_tag_ids[:, :, 2]
+        eojeol_pos_4 = pos_tag_ids[:, :, 3]
+
+        eojeol_pos_1 = self.eojeol_pos_embedding_1(eojeol_pos_1)
+        eojeol_pos_2 = self.eojeol_pos_embedding_2(eojeol_pos_2)
+        eojeol_pos_3 = self.eojeol_pos_embedding_3(eojeol_pos_3)
+        eojeol_pos_4 = self.eojeol_pos_embedding_4(eojeol_pos_4)
+
+        concat_eojeol_pos = torch.concat([eojeol_pos_1, eojeol_pos_2, eojeol_pos_3, eojeol_pos_4], dim=-1)
+        eojeol_pos_concat = torch.concat([eojeol_tensor, concat_eojeol_pos], dim=-1)
+
         # Transformer Encoder
-        enc_outputs = self.trans_encoder(eojeol_tensor, eojeol_attn_mask)
+        enc_outputs = self.trans_encoder(eojeol_pos_concat, eojeol_attn_mask)
         enc_outputs = enc_outputs[-1]
 
         # NER Sequence Labeling
         logits = self.ne_classifier(enc_outputs)
         ner_loss = None
         if labels is not None:
-            ner_loss_fct = nn.CrossEntropyLoss()
-            ner_loss = ner_loss_fct(logits.view(-1, self.config.num_labels), labels.view(-1))
+            # ner_loss_fct = nn.CrossEntropyLoss()
+            # ner_loss = ner_loss_fct(logits.view(-1, self.config.num_labels), labels.view(-1))
+
+            # CRF
+            ner_loss, sequence_of_tags = self.crf(emissions=logits, tags=labels, reduction="mean",
+                                                  mask=attention_mask.bool()), \
+                                         self.crf.decode(logits, mask=attention_mask.bool())
+            ner_loss *= -1
+        else:
+            sequence_of_tags = self.crf.decode(logits)
 
         # CNNBiF
         cnn_bi_f_outputs = self.cnn_bi_f(eojeol_tensor) # [batch, kernel, hidden-1]
@@ -165,10 +199,14 @@ class ELECTRA_CNNBiF_Model(ElectraPreTrainedModel):
         elif ls_ids is None:
             total_loss = ner_loss
 
-        return TokenClassifierOutput(
-            loss=total_loss,
-            logits=logits
-        )
+        # return TokenClassifierOutput(
+        #     loss=total_loss,
+        #     logits=logits
+        # )
+        if labels is not None:
+            return total_loss, sequence_of_tags
+        else:
+            return sequence_of_tags
 
 if "__main__" == __name__:
     config = ElectraConfig.from_pretrained("monologg/koelectra-base-v3-discriminator")
