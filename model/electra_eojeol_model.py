@@ -24,8 +24,9 @@ class Electra_Eojeol_Model(ElectraPreTrainedModel):
         self.max_eojeol_len = 50
 
         # for encoder
-        self.d_model_size = config.hidden_size #+ (self.pos_embed_out_dim * 3)  # [768 + 128 * 3] = 1152
+        self.d_model_size = config.hidden_size + (self.pos_embed_out_dim * 10)  # [768 + 128 * 10] = 2048
         self.enc_config = Enc_Config(config.vocab_size)
+        self.enc_config.num_heads = 8 # For TEST POS_10
         self.enc_config.hidden_size = self.d_model_size
 
         # structure
@@ -33,20 +34,22 @@ class Electra_Eojeol_Model(ElectraPreTrainedModel):
         self.dropout = nn.Dropout(self.dropout_rate)
 
         # POS
-        # self.eojeol_pos_embedding_1 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
-        # self.eojeol_pos_embedding_2 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
-        # self.eojeol_pos_embedding_3 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
-        # self.eojeol_pos_embedding_4 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
+        self.eojeol_pos_embedding_1 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
+        self.eojeol_pos_embedding_2 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
+        self.eojeol_pos_embedding_3 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
+        self.eojeol_pos_embedding_4 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
+        self.eojeol_pos_embedding_5 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
+        self.eojeol_pos_embedding_6 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
+        self.eojeol_pos_embedding_7 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
+        self.eojeol_pos_embedding_8 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
+        self.eojeol_pos_embedding_9 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
+        self.eojeol_pos_embedding_10 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
 
         # One-Hot Embed
         self.one_hot_embedding = nn.Embedding(self.max_seq_len, self.max_eojeol_len)
 
         # Transformer Encoder
         self.encoder = Trans_Encoder(self.enc_config)
-
-        # LSTM
-        # self.lstm = nn.LSTM(input_size=self.d_model_size, hidden_size=(self.d_model_size // 2),
-        #                     batch_first=True, num_layers=1, bidirectional=True)
 
         # Classifier
         self.linear = nn.Linear(self.d_model_size, config.num_labels)
@@ -115,21 +118,38 @@ class Electra_Eojeol_Model(ElectraPreTrainedModel):
         # last_hidden.shape : [64, 128, 768] = [batch, max_seq_len, hidden]
         matmul_out_embed = one_hot_embed @ last_hidden # [64, 50, 768] = [batch, max_eojeol, hidden]
 
-        '''
         # [ This, O, O, ... ], [ O, This, O, ... ], [ O, O, This, ...]
         eojeol_pos_1 = pos_ids[:, :, 0] # [64, eojeol_max_len]
         eojeol_pos_2 = pos_ids[:, :, 1]
         eojeol_pos_3 = pos_ids[:, :, 2]
+
+        eojeol_pos_4 = pos_ids[:, :, 3]
+        eojeol_pos_5 = pos_ids[:, :, 4]
+        eojeol_pos_6 = pos_ids[:, :, 5]
+        eojeol_pos_7 = pos_ids[:, :, 6]
+        eojeol_pos_8 = pos_ids[:, :, 7]
+        eojeol_pos_9 = pos_ids[:, :, 8]
+        eojeol_pos_10 = pos_ids[:, :, 9]
+
         #
         eojeol_pos_1 = self.eojeol_pos_embedding_1(eojeol_pos_1) # [batch_size, eojeol_max_len, pos_embed]
         eojeol_pos_2 = self.eojeol_pos_embedding_1(eojeol_pos_2)
         eojeol_pos_3 = self.eojeol_pos_embedding_1(eojeol_pos_3)
+
+        eojeol_pos_4 = self.eojeol_pos_embedding_1(eojeol_pos_4)
+        eojeol_pos_5 = self.eojeol_pos_embedding_1(eojeol_pos_5)
+        eojeol_pos_6 = self.eojeol_pos_embedding_1(eojeol_pos_6)
+        eojeol_pos_7 = self.eojeol_pos_embedding_1(eojeol_pos_7)
+        eojeol_pos_8 = self.eojeol_pos_embedding_1(eojeol_pos_8)
+        eojeol_pos_9 = self.eojeol_pos_embedding_1(eojeol_pos_9)
+        eojeol_pos_10 = self.eojeol_pos_embedding_1(eojeol_pos_10)
         
-        concat_eojeol_pos_embed = torch.concat([eojeol_pos_1, eojeol_pos_2, eojeol_pos_3], dim=-1)
+        concat_eojeol_pos_embed = torch.concat([eojeol_pos_1, eojeol_pos_2, eojeol_pos_3,
+                                                eojeol_pos_4, eojeol_pos_5, eojeol_pos_6,
+                                                eojeol_pos_7, eojeol_pos_8, eojeol_pos_9, eojeol_pos_10], dim=-1)
         
         # [batch_size, max_eojeol_len, hidd_size + (pos_embed * 3)]
         matmul_out_embed = torch.concat([matmul_out_embed, concat_eojeol_pos_embed], dim=-1)
-        '''
 
         for batch_idx in range(batch_size):
             valid_eojeol_cnt = 0
@@ -172,7 +192,7 @@ class Electra_Eojeol_Model(ElectraPreTrainedModel):
                                                                         eojeol_ids=eojeol_ids,
                                                                         one_hot_embed=one_hot_embed_t,
                                                                         max_eojeol_len=self.max_eojeol_len)
-        # eojeol_origin_attn = copy.deepcopy(eojeol_attention_mask)
+        eojeol_origin_attn = copy.deepcopy(eojeol_attention_mask)
         eojeol_attention_mask = eojeol_attention_mask.unsqueeze(1).unsqueeze(2) # [64, 1, 1, max_eojeol_len]
         eojeol_attention_mask = eojeol_attention_mask.to(dtype=next(self.parameters()).dtype) # fp16 compatibility
         eojeol_attention_mask = (1.0 - eojeol_attention_mask) * -10000.0
@@ -181,22 +201,16 @@ class Electra_Eojeol_Model(ElectraPreTrainedModel):
         enc_outputs = self.encoder(eojeol_tensor, eojeol_attention_mask)
         enc_outputs = enc_outputs[-1]
 
-        # LSTM
-        # lstm_outputs, _ = self.lstm(eojeol_tensor)
-
-        # 어절->Wordpiece
-        # enc_outputs = one_hot_embed_t.transpose(2, 1) @ enc_outputs
-
         # Dropout
-        # enc_outputs = self.dropout(enc_outputs)
+        enc_outputs = self.dropout(enc_outputs)
 
         # Classifier
         logits = self.linear(enc_outputs)  # [batch_size, seq_len, num_labels]
 
         # CRF
         if labels is not None:
-            log_likelihood, sequence_of_tags = self.crf(emissions=logits, tags=labels, reduction="mean", mask=attention_mask.bool()),\
-                                               self.crf.decode(logits, mask=attention_mask.bool())
+            log_likelihood, sequence_of_tags = self.crf(emissions=logits, tags=labels, reduction="mean", mask=eojeol_origin_attn.bool()),\
+                                               self.crf.decode(logits, mask=eojeol_origin_attn.bool())
             return log_likelihood, sequence_of_tags
         else:
             sequence_of_tags = self.crf.decode(logits)
