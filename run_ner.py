@@ -225,7 +225,7 @@ def train(args, model, train_dataset, dev_dataset):
 
             if g_use_crf:
                 loss, outputs = model(**inputs)
-                # loss = -1 * log_likelihood
+                loss = -1 * loss
             else:
                 outputs = model(**inputs)
                 loss = outputs[0]
