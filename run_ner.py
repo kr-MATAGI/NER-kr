@@ -76,7 +76,7 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
 
             if g_use_crf:
                 loss, outputs = model(**inputs)
-                # loss = -1 * log_likelihood
+                loss = -1 * loss
             else:
                 outputs = model(**inputs)
                 loss = outputs.loss
