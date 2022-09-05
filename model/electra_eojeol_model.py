@@ -38,12 +38,6 @@ class Electra_Eojeol_Model(ElectraPreTrainedModel):
         self.eojeol_pos_embedding_2 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
         self.eojeol_pos_embedding_3 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
         self.eojeol_pos_embedding_4 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
-        self.eojeol_pos_embedding_5 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
-        self.eojeol_pos_embedding_6 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
-        self.eojeol_pos_embedding_7 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
-        self.eojeol_pos_embedding_8 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
-        self.eojeol_pos_embedding_9 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
-        self.eojeol_pos_embedding_10 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
 
         # One-Hot Embed
         self.one_hot_embedding = nn.Embedding(self.max_seq_len, self.max_eojeol_len)
@@ -122,31 +116,15 @@ class Electra_Eojeol_Model(ElectraPreTrainedModel):
         eojeol_pos_1 = pos_ids[:, :, 0] # [64, eojeol_max_len]
         eojeol_pos_2 = pos_ids[:, :, 1]
         eojeol_pos_3 = pos_ids[:, :, 2]
-
         eojeol_pos_4 = pos_ids[:, :, 3]
-        eojeol_pos_5 = pos_ids[:, :, 4]
-        eojeol_pos_6 = pos_ids[:, :, 5]
-        eojeol_pos_7 = pos_ids[:, :, 6]
-        eojeol_pos_8 = pos_ids[:, :, 7]
-        eojeol_pos_9 = pos_ids[:, :, 8]
-        eojeol_pos_10 = pos_ids[:, :, 9]
 
         #
         eojeol_pos_1 = self.eojeol_pos_embedding_1(eojeol_pos_1) # [batch_size, eojeol_max_len, pos_embed]
         eojeol_pos_2 = self.eojeol_pos_embedding_1(eojeol_pos_2)
         eojeol_pos_3 = self.eojeol_pos_embedding_1(eojeol_pos_3)
-
         eojeol_pos_4 = self.eojeol_pos_embedding_1(eojeol_pos_4)
-        eojeol_pos_5 = self.eojeol_pos_embedding_1(eojeol_pos_5)
-        eojeol_pos_6 = self.eojeol_pos_embedding_1(eojeol_pos_6)
-        eojeol_pos_7 = self.eojeol_pos_embedding_1(eojeol_pos_7)
-        eojeol_pos_8 = self.eojeol_pos_embedding_1(eojeol_pos_8)
-        eojeol_pos_9 = self.eojeol_pos_embedding_1(eojeol_pos_9)
-        eojeol_pos_10 = self.eojeol_pos_embedding_1(eojeol_pos_10)
         
-        concat_eojeol_pos_embed = torch.concat([eojeol_pos_1, eojeol_pos_2, eojeol_pos_3,
-                                                eojeol_pos_4, eojeol_pos_5, eojeol_pos_6,
-                                                eojeol_pos_7, eojeol_pos_8, eojeol_pos_9, eojeol_pos_10], dim=-1)
+        concat_eojeol_pos_embed = torch.concat([eojeol_pos_1, eojeol_pos_2, eojeol_pos_3, eojeol_pos_4], dim=-1)
         
         # [batch_size, max_eojeol_len, hidd_size + (pos_embed * 3)]
         matmul_out_embed = torch.concat([matmul_out_embed, concat_eojeol_pos_embed], dim=-1)
@@ -207,11 +185,22 @@ class Electra_Eojeol_Model(ElectraPreTrainedModel):
         # Classifier
         logits = self.linear(enc_outputs)  # [batch_size, seq_len, num_labels]
 
-        # CRF
+        # Get Loss
+        loss = None
         if labels is not None:
-            log_likelihood, sequence_of_tags = self.crf(emissions=logits, tags=labels, reduction="mean", mask=eojeol_origin_attn.bool()),\
-                                               self.crf.decode(logits, mask=eojeol_origin_attn.bool())
-            return log_likelihood, sequence_of_tags
-        else:
-            sequence_of_tags = self.crf.decode(logits)
-            return sequence_of_tags
+            loss_fct = nn.CrossEntropyLoss()
+            loss = loss_fct(logits.view(-1, self.config.num_labels), labels.view(-1))
+
+        return TokenClassifierOutput(
+            loss=loss,
+            logits=logits
+        )
+
+        # CRF
+        # if labels is not None:
+        #     log_likelihood, sequence_of_tags = self.crf(emissions=logits, tags=labels, reduction="mean", mask=eojeol_origin_attn.bool()),\
+        #                                        self.crf.decode(logits, mask=eojeol_origin_attn.bool())
+        #     return log_likelihood, sequence_of_tags
+        # else:
+        #     sequence_of_tags = self.crf.decode(logits)
+        #     return sequence_of_tags

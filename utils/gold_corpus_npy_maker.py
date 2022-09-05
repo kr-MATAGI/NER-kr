@@ -873,7 +873,11 @@ def make_eojeol_datasets_npy(
         npy_dict["token_type_ids"].append(token_type_ids)
         npy_dict["token_seq_len"].append(valid_eojeol_len) # eojeol !
         npy_dict["labels"].append(labels_ids)
+
+        # convert tags
+        pos_tag_ids = convert_pos_tag_to_combi_tag(pos_tag_ids)
         npy_dict["pos_tag_ids"].append(pos_tag_ids)
+
         npy_dict["eojeol_ids"].append(eojeol_boundary_list)
         npy_dict["LS_ids"].append(LS_ids)
 
@@ -910,6 +914,68 @@ def make_eojeol_datasets_npy(
 
     # save npy_dict
     save_eojeol_npy_dict(npy_dict, len(src_list), save_dir=save_model_dir)
+
+#==============================================================
+def convert_pos_tag_to_combi_tag(src_pos: List[int]):
+#==============================================================
+    conv_pos_tok2ids = {v: k for k, v in NIKL_POS_TAG.items()}
+
+    # convert
+    ret_pos_list = []
+    for eojeol_pos in src_pos:
+        add_idx = 0
+        new_eojeol_pos = [0 for _ in range(len(eojeol_pos))]
+        check_used = [False for _ in range(len(eojeol_pos))]
+        for p_idx, pos_item in enumerate(eojeol_pos):
+            is_add = True
+            if check_used[p_idx]:
+                continue
+            elif p_idx == (len(eojeol_pos) - 1):
+                new_eojeol_pos[add_idx] = pos_item
+                continue
+
+            next_pos_item = eojeol_pos[p_idx+1]
+            if conv_pos_tok2ids["NNP"] == pos_item and conv_pos_tok2ids["NNP"] == next_pos_item:
+                # [2, 2] -> 49
+                new_eojeol_pos[add_idx] = conv_pos_tok2ids["NNP+NNP"]
+            elif conv_pos_tok2ids["NNG"] == pos_item and conv_pos_tok2ids["NNG"] == next_pos_item:
+                # [1, 1] -> 50
+                new_eojeol_pos[add_idx] = conv_pos_tok2ids["NNG+NNG"]
+            elif conv_pos_tok2ids["EP"] == pos_item:
+                if conv_pos_tok2ids["EC"] == next_pos_item:
+                    # [26, 28] -> 51
+                    new_eojeol_pos[add_idx] = conv_pos_tok2ids["EP+EC"]
+                elif conv_pos_tok2ids["ETM"] == next_pos_item:
+                    # [26, 30] -> 52
+                    new_eojeol_pos[add_idx] = conv_pos_tok2ids["EP+ETM"]
+                else:
+                    is_add = False
+            elif conv_pos_tok2ids["SN"] == pos_item:
+                if conv_pos_tok2ids["NNB"] == next_pos_item:
+                    # [44, 3] -> 53
+                    new_eojeol_pos[add_idx] = conv_pos_tok2ids["SN+NNB"]
+                elif conv_pos_tok2ids["NR"] == next_pos_item:
+                    # [44, 5] -> 54
+                    new_eojeol_pos[add_idx] = conv_pos_tok2ids["SN+NR"]
+                elif conv_pos_tok2ids["SW"] == next_pos_item:
+                    # [44, 41] -> 55
+                    new_eojeol_pos[add_idx] = conv_pos_tok2ids["SN+SW"]
+                else:
+                    is_add = False
+            else:
+                is_add = False
+
+            if is_add:
+                check_used[p_idx] = check_used[p_idx+1] = True
+            else:
+                new_eojeol_pos[add_idx] = pos_item
+            add_idx += 1
+        # end loop, eojeol_pos
+        ret_pos_list.append(new_eojeol_pos)
+    #     print(eojeol_pos, " -> ", new_eojeol_pos)
+    # input()
+
+    return ret_pos_list
 
 #==============================================================
 def save_eojeol_npy_dict(npy_dict: Dict[str, List], src_list_len, save_dir: str = None):
@@ -1348,7 +1414,7 @@ if "__main__" == __name__:
     #                    src_list=all_sent_list, max_len=128, is_use_dict=False, debug_mode=False, save_model_dir="roberta")
 
     make_eojeol_datasets_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator", ex_dictionary=hash_dict,
-                             src_list=all_sent_list, max_len=128, debug_mode=True, is_use_dict=False,
+                             src_list=all_sent_list, max_len=128, debug_mode=False, is_use_dict=False,
                              save_model_dir="eojeol_electra")
 
     # make_eojeol_and_wordpiece_labels_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",

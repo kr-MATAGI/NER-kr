@@ -56,7 +56,16 @@ NIKL_POS_TAG = {
     43: "SH", # 한자
     44: "SN", # 숫자
     45: "NA", 46: "NF", 47: "NV", # 분석불능범주, 명사추정범주, 용언추정범주
-    48: "NAP" # 개인정보를 가린거
+    48: "NAP", # 개인정보를 가린거
+
+    # POS Combination
+    49: "NNP+NNP", # NNP + NNP
+    50: "NNG+NNG", # NNG + NNG
+    51: "EP+EC", # EP + EC
+    52: "EP+ETM", # EP + ETM
+    53: "SN+NNB", # SN + NNB
+    54: "SN+NR", # SN + NR
+    55: "SN+SW", # SN + SW
 }
 
 # ref: https://openuiz.tistory.com/90
