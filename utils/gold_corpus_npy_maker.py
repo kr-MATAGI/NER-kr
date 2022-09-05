@@ -664,6 +664,8 @@ def make_eojeol_datasets_npy(
         text_tokens = []
         # [(word, [tokens], (begin, end))]
         word_tokens_pos_pair_list: List[Tuple[str, List[str], Tuple[int, int]]] = []
+        print(src_item)
+        print("\n")
         for word_idx, word_item in enumerate(src_item.word_list):
             if "·" in word_item.form:
                 split_form = word_item.form.split("·")
@@ -1430,8 +1432,7 @@ if "__main__" == __name__:
         all_sent_list = pickle.load(pkl_file)
         print(f"[make_gold_corpus_npy][__main__] all_sent_list size: {len(all_sent_list)}")
     all_sent_list = conv_TTA_ne_category(all_sent_list)
-    all_sent_list = conv_NIKL_pos_giho_category(all_sent_list,
-                                                is_status_nn=True, is_verb_nn=True)
+    all_sent_list = conv_NIKL_pos_giho_category(all_sent_list, is_status_nn=False, is_verb_nn=False)
 
     # make npy
     is_use_external_dict = False
