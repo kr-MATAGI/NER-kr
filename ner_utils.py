@@ -174,7 +174,7 @@ def load_ner_config_and_model(user_select: int, args, tag_dict):
                                                id2label={str(i): label for i, label in enumerate(tag_dict.keys())},
                                                label2id={label: i for i, label in enumerate(tag_dict.keys())})
         config.model_name = "monologg/koelectra-base-v3-discriminator"
-        config.num_pos_labels = 49  # NIKLm
+        config.num_pos_labels = 49 + 7  # NIKL
         config.max_seq_len = 128
     elif 8 == user_select:
         # ELECTRA + ALL FEATURES (POS, Eojeol, Entity) -> Transformer + CRF

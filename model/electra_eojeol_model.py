@@ -24,7 +24,7 @@ class Electra_Eojeol_Model(ElectraPreTrainedModel):
         self.max_eojeol_len = 50
 
         # for encoder
-        self.d_model_size = config.hidden_size + (self.pos_embed_out_dim * 4)  # [768 + 128 * 10] = 2048
+        self.d_model_size = config.hidden_size + (self.pos_embed_out_dim * 4)  # [768 + 128 * 4] = 1280
         self.enc_config = Enc_Config(config.vocab_size)
         self.enc_config.num_heads = 8 # For TEST POS_10
         self.enc_config.hidden_size = self.d_model_size
@@ -170,7 +170,7 @@ class Electra_Eojeol_Model(ElectraPreTrainedModel):
                                                                         eojeol_ids=eojeol_ids,
                                                                         one_hot_embed=one_hot_embed_t,
                                                                         max_eojeol_len=self.max_eojeol_len)
-        eojeol_origin_attn = copy.deepcopy(eojeol_attention_mask)
+        # eojeol_origin_attn = copy.deepcopy(eojeol_attention_mask)
         eojeol_attention_mask = eojeol_attention_mask.unsqueeze(1).unsqueeze(2) # [64, 1, 1, max_eojeol_len]
         eojeol_attention_mask = eojeol_attention_mask.to(dtype=next(self.parameters()).dtype) # fp16 compatibility
         eojeol_attention_mask = (1.0 - eojeol_attention_mask) * -10000.0
