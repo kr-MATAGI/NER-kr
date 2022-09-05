@@ -1366,7 +1366,7 @@ if "__main__" == __name__:
     #                    src_list=all_sent_list, max_len=128, is_use_dict=False, debug_mode=False, save_model_dir="roberta")
 
     make_eojeol_datasets_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator", ex_dictionary=hash_dict,
-                             src_list=all_sent_list, max_len=128, debug_mode=True, is_use_dict=False,
+                             src_list=all_sent_list, max_len=128, debug_mode=False, is_use_dict=False,
                              save_model_dir="eojeol_electra")
 
     # make_eojeol_and_wordpiece_labels_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",
