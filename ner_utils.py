@@ -5,6 +5,8 @@ import random
 import pickle
 import os
 
+from utils.tag_def import NIKL_POS_TAG
+
 from seqeval import metrics as seqeval_metrics
 from sklearn import metrics as sklearn_metrics
 
@@ -168,13 +170,13 @@ def load_ner_config_and_model(user_select: int, args, tag_dict):
         config.num_pos_labels = 49  # 국립국어원 형태 분석 말뭉치
         config.max_seq_len = 128
     elif 7 == user_select:
-        # ELECTRA + Eojeol Embedding -> Transformer + CRF
+        # ELECTRA + Eojeol Embedding -> Transformer
         config = ElectraConfig.from_pretrained("monologg/koelectra-base-v3-discriminator",
                                                num_labels=len(tag_dict.keys()),
                                                id2label={str(i): label for i, label in enumerate(tag_dict.keys())},
                                                label2id={label: i for i, label in enumerate(tag_dict.keys())})
         config.model_name = "monologg/koelectra-base-v3-discriminator"
-        config.num_pos_labels = 49 + 7  # NIKL
+        config.num_pos_labels = len(NIKL_POS_TAG.keys())  # NIKL
         config.max_seq_len = 128
     elif 8 == user_select:
         # ELECTRA + ALL FEATURES (POS, Eojeol, Entity) -> Transformer + CRF

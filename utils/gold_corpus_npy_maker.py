@@ -18,6 +18,38 @@ random.seed(42)
 np.random.seed(42)
 
 #==============================================================
+def conv_NIKL_pos_giho_category(sent_list: List[Sentence], is_status_nn: bool=False, is_verb_nn: bool=False):
+#==============================================================
+    if is_status_nn:
+        with open("../corpus/nn_list/nn_sang_list.pkl", mode="rb") as status_nn_pkl:
+            status_nn_list = pickle.load(status_nn_pkl)
+            print(f"[conv_NIKL_pos_giho_categoy] status_nn_list.len: {len(status_nn_list)}")
+    if is_verb_nn:
+        with open("../corpus/nn_list/nn_verb_list.pkl", mode="rb") as verb_nn_pkl:
+            verb_nn_list = pickle.load(verb_nn_pkl)
+            print(f"[conv_NIKL_pos_giho_categoy] verb_nn_list.len: {len(verb_nn_list)}")
+
+    '''
+    SF, SW not converted
+    쉼표, 가운뎃점, 콜론, 빗금 (SP), 따옴표, 괄호표, 줄표(SS), 줄임표(SE), 붙임표(물결) (SO) -> SP
+    '''
+    for sent_item in sent_list:
+        for morp_item in sent_item.morp_list:
+            if "SS" == morp_item.label or "SE" == morp_item.label or "SO" == morp_item.label:
+                morp_item.label = "SP"
+            if "NNG" == morp_item.label or "NNP" == morp_item.label or "NNB" == morp_item.label:
+                if morp_item.form in status_nn_list:
+                    morp_item.label = "STATUS_NN"
+                    # print("\nAAAAAAAAAA:\n", morp_item)
+                    # input()
+                elif morp_item.form in verb_nn_list:
+                    morp_item.label = "VERB_NN"
+                    # print("\nBBBBBBBBB:\n", morp_item)
+                    # input()
+
+    return sent_list
+
+#==============================================================
 def conv_TTA_ne_category(sent_list: List[Sentence]):
 #==============================================================
     '''
@@ -622,8 +654,8 @@ def make_eojeol_datasets_npy(
         tokenizer = ElectraTokenizer.from_pretrained(tokenizer_name)
     for proc_idx, src_item in enumerate(src_list):
         # Test
-        # if "29·미국·사진" not in src_item.text:
-        #     continue
+        if "29·미국·사진" not in src_item.text:
+            continue
 
         if 0 == (proc_idx % 1000):
             print(f"{proc_idx} Processing... {src_item.text}")
@@ -1398,6 +1430,8 @@ if "__main__" == __name__:
         all_sent_list = pickle.load(pkl_file)
         print(f"[make_gold_corpus_npy][__main__] all_sent_list size: {len(all_sent_list)}")
     all_sent_list = conv_TTA_ne_category(all_sent_list)
+    all_sent_list = conv_NIKL_pos_giho_category(all_sent_list,
+                                                is_status_nn=True, is_verb_nn=True)
 
     # make npy
     is_use_external_dict = False
@@ -1414,7 +1448,7 @@ if "__main__" == __name__:
     #                    src_list=all_sent_list, max_len=128, is_use_dict=False, debug_mode=False, save_model_dir="roberta")
 
     make_eojeol_datasets_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator", ex_dictionary=hash_dict,
-                             src_list=all_sent_list, max_len=128, debug_mode=False, is_use_dict=False,
+                             src_list=all_sent_list, max_len=128, debug_mode=True, is_use_dict=False,
                              save_model_dir="eojeol_electra")
 
     # make_eojeol_and_wordpiece_labels_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",

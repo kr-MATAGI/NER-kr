@@ -48,24 +48,28 @@ NIKL_POS_TAG = {
     35: "XR", # 어근
     36: "SF", # 마침표, 물음표, 느낌표
     37: "SP", # 쉼표, 가운뎃점, 콜론, 빗금
-    38: "SS", # 따옴표, 괄호표, 줄표
-    39: "SE", # 줄임표
-    40: "SO", # 붙임표(물결)
-    41: "SW", # 기타 기호
-    42: "SL", # 외국어
-    43: "SH", # 한자
-    44: "SN", # 숫자
-    45: "NA", 46: "NF", 47: "NV", # 분석불능범주, 명사추정범주, 용언추정범주
-    48: "NAP", # 개인정보를 가린거
+    # 38: "SS", # 따옴표, 괄호표, 줄표
+    # 39: "SE", # 줄임표
+    # 40: "SO", # 붙임표(물결)
+    38: "SW", # 기타 기호
+    39: "SL", # 외국어
+    40: "SH", # 한자
+    41: "SN", # 숫자
+    42: "NA", 43: "NF", 44: "NV", # 분석불능범주, 명사추정범주, 용언추정범주
+    45: "NAP", # 개인정보를 가린거
 
     # POS Combination
-    49: "NNP+NNP", # NNP + NNP
-    50: "NNG+NNG", # NNG + NNG
-    51: "EP+EC", # EP + EC
-    52: "EP+ETM", # EP + ETM
-    53: "SN+NNB", # SN + NNB
-    54: "SN+NR", # SN + NR
-    55: "SN+SW", # SN + SW
+    46: "NNP+NNP", # NNP + NNP
+    47: "NNG+NNG", # NNG + NNG
+    48: "EP+EC", # EP + EC
+    49: "EP+ETM", # EP + ETM
+    50: "SN+NNB", # SN + NNB
+    51: "SN+NR", # SN + NR
+    52: "SN+SW", # SN + SW
+
+    # 상태성/동작성 명사
+    53: "STATUS_NN",
+    54: "VERB_NN"
 }
 
 # ref: https://openuiz.tistory.com/90
@@ -93,3 +97,6 @@ MECAB_POS_TAG = {
     41: "SL", 42: "SH", 43: "SN" # 외국어, 한자, 숫자
 }
 
+if "__main__" == __name__:
+    a = len(NIKL_POS_TAG.keys())
+    print(a)
