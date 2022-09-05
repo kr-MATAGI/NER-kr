@@ -49,7 +49,7 @@ class Electra_Eojeol_Model(ElectraPreTrainedModel):
         self.linear = nn.Linear(self.d_model_size, config.num_labels)
 
         # CRF
-        self.crf = CRF(num_tags=config.num_labels, batch_first=True)
+        # self.crf = CRF(num_tags=config.num_labels, batch_first=True)
 
         # Initialize weights and apply final processing
         self.post_init()
