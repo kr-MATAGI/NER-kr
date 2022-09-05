@@ -120,9 +120,9 @@ class Electra_Eojeol_Model(ElectraPreTrainedModel):
 
         #
         eojeol_pos_1 = self.eojeol_pos_embedding_1(eojeol_pos_1) # [batch_size, eojeol_max_len, pos_embed]
-        eojeol_pos_2 = self.eojeol_pos_embedding_1(eojeol_pos_2)
-        eojeol_pos_3 = self.eojeol_pos_embedding_1(eojeol_pos_3)
-        eojeol_pos_4 = self.eojeol_pos_embedding_1(eojeol_pos_4)
+        eojeol_pos_2 = self.eojeol_pos_embedding_2(eojeol_pos_2)
+        eojeol_pos_3 = self.eojeol_pos_embedding_3(eojeol_pos_3)
+        eojeol_pos_4 = self.eojeol_pos_embedding_4(eojeol_pos_4)
         
         concat_eojeol_pos_embed = torch.concat([eojeol_pos_1, eojeol_pos_2, eojeol_pos_3, eojeol_pos_4], dim=-1)
         
