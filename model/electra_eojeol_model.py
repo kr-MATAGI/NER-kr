@@ -164,11 +164,11 @@ class Electra_Eojeol_Model(ElectraPreTrainedModel):
                                                     eojeol_ids=eojeol_ids)
 
         # matmul one_hot @ plm outputs
-        one_hot_embed_t = one_hot_embed.transpose(1, 2)
+        one_hot_embed = one_hot_embed.transpose(1, 2)
         eojeol_tensor, eojeol_attention_mask = self._make_eojeol_tensor(last_hidden=el_last_hidden,
                                                                         pos_ids=pos_tag_ids,
                                                                         eojeol_ids=eojeol_ids,
-                                                                        one_hot_embed=one_hot_embed_t,
+                                                                        one_hot_embed=one_hot_embed,
                                                                         max_eojeol_len=self.max_eojeol_len)
         # eojeol_origin_attn = copy.deepcopy(eojeol_attention_mask)
         eojeol_attention_mask = eojeol_attention_mask.unsqueeze(1).unsqueeze(2) # [64, 1, 1, max_eojeol_len]

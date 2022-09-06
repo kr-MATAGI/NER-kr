@@ -658,6 +658,8 @@ def make_eojeol_datasets_npy(
         #     continue
         # if "전창수(42) 두산타워 마케팅팀 차장" not in src_item.text:
         #     continue
+        # if '샌드위치→역(逆)샌드위치→신(新)샌드위치….' not in src_item.text:
+        #     continue
         # if "그동안 각 언론사와 후보 진영이 실시한 여론조사에서도 홍준표·원희룡·나경원 후보가 '3강'을 형성하며 엎치락뒤치락해 왔다." not in src_item.text:
         #     continue
 
@@ -665,7 +667,6 @@ def make_eojeol_datasets_npy(
             print(f"{proc_idx} Processing... {src_item.text}")
 
         # make (word, token, pos) pair
-        text_tokens = []
         # [(word, [tokens], [POS])]
         word_tokens_pos_pair_list: List[Tuple[str, List[str], List[str]]] = []
         separation_giho = ["「", "」", "…", "〔", "〕", "(", ")",
@@ -678,29 +679,48 @@ def make_eojeol_datasets_npy(
             target_morp_list = [x for x in src_item.morp_list if x.word_id == target_word_id]
             sp_pos_list = [x for x in target_morp_list if x.form in separation_giho]
 
-            for sp_pos_item in sp_pos_list:
-                split_list = word_item.form.split(sp_pos_item.form)
-                lhs_item = split_list[0]
-                if 0 < len(lhs_item):
-                    lhs_tokens = tokenizer.tokenize(lhs_item)
-                    lhs_pos = [p for p in target_morp_list if p.position < sp_pos_item.position]
-                    lhs_pair = (lhs_item, lhs_tokens, lhs_pos)
-                    word_tokens_pos_pair_list.append(lhs_pair)
+            if 0 < len(sp_pos_list):
+                word_ch_list = []
+                char_list = list(word_item.form)
+                for ch in char_list:
+                    if 0 < len(sp_pos_list):
+                        if ch != sp_pos_list[0].form:
+                            word_ch_list.append(ch)
+                        else:
+                            concat_ch = "".join(word_ch_list)
+                            concat_ch_tokens = tokenizer.tokenize(concat_ch)
+                            concat_ch_pos = [p for p in target_morp_list if p.position < sp_pos_list[0].position]
+                            for ch_pos in concat_ch_pos:
+                                target_morp_list.remove(ch_pos)
+                            concat_ch_pair = (concat_ch, concat_ch_tokens, concat_ch_pos)
+                            word_tokens_pos_pair_list.append(concat_ch_pair)
+                            word_ch_list.clear()
 
-                sp_item = sp_pos_item.form
-                sp_tokens = tokenizer.tokenize(sp_item)
-                sp_pos = [sp_pos_item]
-                sp_pair = (sp_item, sp_tokens, sp_pos)
-                word_tokens_pos_pair_list.append(sp_pair)
+                            sp_form = sp_pos_list[0].form
+                            sp_tokens = tokenizer.tokenize(sp_form)
+                            sp_pos = [sp_pos_list[0]]
+                            target_morp_list.remove(sp_pos_list[0])
+                            sp_pair = (sp_form, sp_tokens, sp_pos)
+                            word_tokens_pos_pair_list.append(sp_pair)
+                            sp_pos_list.remove(sp_pos_list[0])
+                    else:
+                        word_ch_list.append(ch)
+                if 0 < len(word_ch_list):
+                    left_form = "".join(word_ch_list)
+                    word_ch_list.clear()
+                    left_tokens = tokenizer.tokenize(left_form)
+                    left_pos = [p for p in target_morp_list]
+                    left_pair = (left_form, left_tokens, left_pos)
+                    word_tokens_pos_pair_list.append(left_pair)
+            else:
+                normal_word_tokens = tokenizer.tokenize(word_item.form)
+                normal_pair = (word_item.form, normal_word_tokens, target_morp_list)
+                word_tokens_pos_pair_list.append(normal_pair)
 
-                target_morp_list = [x for x in target_morp_list if x.position > sp_pos_item.position]
-                remove_str = lhs_item + sp_item
-                word_item.form = word_item.form.replace(remove_str, "")
-
-            if 0 >= len(sp_pos_list):
-                tokens = tokenizer.tokenize(word_item.form)
-                add_pair = (word_item.form, tokens, target_morp_list)
-                word_tokens_pos_pair_list.append(add_pair)
+        # Text Tokens
+        text_tokens = []
+        for wtp_item in word_tokens_pos_pair_list:
+            text_tokens.extend(wtp_item[1])
 
         # NE
         wtp_pair_len = len(word_tokens_pos_pair_list)

@@ -81,7 +81,6 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
                 outputs = model(**inputs)
                 loss = outputs.loss
                 logits = outputs.logits
-                # loss, logits = outputs[:2]
 
             eval_loss += loss.mean().item()
 
@@ -228,7 +227,7 @@ def train(args, model, train_dataset, dev_dataset):
                 loss = -1 * loss
             else:
                 outputs = model(**inputs)
-                loss = outputs[0]
+                loss = outputs.loss
 
             if 1 < args.n_gpu:
                 loss = loss.mean()

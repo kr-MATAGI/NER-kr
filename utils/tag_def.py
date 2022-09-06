@@ -68,8 +68,8 @@ NIKL_POS_TAG = {
     52: "SN+SW", # SN + SW
 
     # 상태성/동작성 명사
-    53: "STATUS_NN",
-    54: "VERB_NN"
+    # 53: "STATUS_NN",
+    # 54: "VERB_NN"
 }
 
 # ref: https://openuiz.tistory.com/90
