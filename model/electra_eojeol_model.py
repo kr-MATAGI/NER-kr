@@ -26,7 +26,7 @@ class Electra_Eojeol_Model(ElectraPreTrainedModel):
         # for encoder
         self.d_model_size = config.hidden_size + (self.pos_embed_out_dim * 4)  # [768 + 128 * 4] = 1280
         self.enc_config = Enc_Config(config.vocab_size)
-        self.enc_config.num_heads = 8 # For TEST POS_10
+        self.enc_config.num_heads = 8
         self.enc_config.hidden_size = self.d_model_size
 
         # structure

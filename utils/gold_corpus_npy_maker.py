@@ -658,6 +658,8 @@ def make_eojeol_datasets_npy(
         #     continue
         # if "전창수(42) 두산타워 마케팅팀 차장" not in src_item.text:
         #     continue
+        # if "그동안 각 언론사와 후보 진영이 실시한 여론조사에서도 홍준표·원희룡·나경원 후보가 '3강'을 형성하며 엎치락뒤치락해 왔다." not in src_item.text:
+        #     continue
 
         if 0 == (proc_idx % 1000):
             print(f"{proc_idx} Processing... {src_item.text}")
@@ -666,10 +668,15 @@ def make_eojeol_datasets_npy(
         text_tokens = []
         # [(word, [tokens], [POS])]
         word_tokens_pos_pair_list: List[Tuple[str, List[str], List[str]]] = []
+        separation_giho = ["「", "」", "…", "〔", "〕", "(", ")",
+                           "\"", "….", "...", "→", "_", "|", "〈", "〉",
+                           "?", ".", "!", "<", ">", "ㆍ", "•", "《", "》",
+                           "[", "]", "ㅡ", "+", "“", "”", ";", "·",
+                           "‘", "’", "″", "″", "'", "'"]
         for word_idx, word_item in enumerate(src_item.word_list):
             target_word_id = word_item.id
             target_morp_list = [x for x in src_item.morp_list if x.word_id == target_word_id]
-            sp_pos_list = [x for x in target_morp_list if (x.label == "SP") or (x.label == "SF")]
+            sp_pos_list = [x for x in target_morp_list if x.form in separation_giho]
 
             for sp_pos_item in sp_pos_list:
                 split_list = word_item.form.split(sp_pos_item.form)
@@ -858,8 +865,8 @@ def make_eojeol_datasets_npy(
             temp_word_tokens_pos_pair_list.insert(0, ["[CLS]", ["[CLS]"]])
             temp_word_tokens_pos_pair_list.append(["[SEP]", ["[SEP]"]])
             debug_pos_tag_ids = [[pos_ids2tag[x] for x in pos_tag_item] for pos_tag_item in pos_tag_ids]
-            for wtpp, la, ls, pti in zip(temp_word_tokens_pos_pair_list, labels_ids, LS_ids, debug_pos_tag_ids):
-                print(wtpp[0], ne_ids2tag[la], ls_ids2tag[ls], pti, wtpp[1])
+            for wtpp, la, ls, pti, ej_b in zip(temp_word_tokens_pos_pair_list, labels_ids, LS_ids, debug_pos_tag_ids, eojeol_boundary_list):
+                print(wtpp[0], ne_ids2tag[la], ls_ids2tag[ls], pti, wtpp[1], ej_b)
 
             input()
 
