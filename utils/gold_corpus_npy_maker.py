@@ -656,6 +656,8 @@ def make_eojeol_datasets_npy(
         # Test
         # if "29·미국·사진" not in src_item.text:
         #     continue
+        # if "전창수(42) 두산타워 마케팅팀 차장" not in src_item.text:
+        #     continue
 
         if 0 == (proc_idx % 1000):
             print(f"{proc_idx} Processing... {src_item.text}")
@@ -672,10 +674,11 @@ def make_eojeol_datasets_npy(
             for sp_pos_item in sp_pos_list:
                 split_list = word_item.form.split(sp_pos_item.form)
                 lhs_item = split_list[0]
-                lhs_tokens = tokenizer.tokenize(lhs_item)
-                lhs_pos = [p for p in target_morp_list if p.position < sp_pos_item.position]
-                lhs_pair = (lhs_item, lhs_tokens, lhs_pos)
-                word_tokens_pos_pair_list.append(lhs_pair)
+                if 0 < len(lhs_item):
+                    lhs_tokens = tokenizer.tokenize(lhs_item)
+                    lhs_pos = [p for p in target_morp_list if p.position < sp_pos_item.position]
+                    lhs_pair = (lhs_item, lhs_tokens, lhs_pos)
+                    word_tokens_pos_pair_list.append(lhs_pair)
 
                 sp_item = sp_pos_item.form
                 sp_tokens = tokenizer.tokenize(sp_item)
@@ -767,7 +770,6 @@ def make_eojeol_datasets_npy(
         # label_ids
         valid_eojeol_len = 0
         labels_ids.insert(0, ETRI_TAG["O"])
-        # labels_ids.append(ETRI_TAG["O"])
         if eojeol_max_len <= len(labels_ids):
             labels_ids = labels_ids[:eojeol_max_len-1]
             labels_ids.append(ETRI_TAG["O"])
@@ -790,7 +792,6 @@ def make_eojeol_datasets_npy(
 
         # pos_tag_ids
         pos_tag_ids.insert(0, [pos_tag2ids["O"]] * 10) # [CLS]
-        # pos_tag_ids.append([pos_tag2ids["O"]] * 10)  # [SEP]
         if eojeol_max_len <= len(pos_tag_ids):
             pos_tag_ids = pos_tag_ids[:eojeol_max_len-1]
             pos_tag_ids.append([pos_tag2ids["O"]] * 10)  # [SEP]
@@ -821,7 +822,7 @@ def make_eojeol_datasets_npy(
         npy_dict["input_ids"].append(input_ids)
         npy_dict["attention_mask"].append(attention_mask)
         npy_dict["token_type_ids"].append(token_type_ids)
-        npy_dict["token_seq_len"].append(valid_eojeol_len) # eojeol !
+        npy_dict["token_seq_len"].append(valid_eojeol_len)
         npy_dict["labels"].append(labels_ids)
 
         # convert tags
@@ -854,12 +855,11 @@ def make_eojeol_datasets_npy(
             print(f"eojeol boundary: {eojeol_boundary_list}")
             # [(word, [tokens], (begin, end))]
             temp_word_tokens_pos_pair_list = copy.deepcopy(word_tokens_pos_pair_list)
-            temp_word_tokens_pos_pair_list.insert(0, ["[CLS]", ["[CLS]", (0, 0)]])
-            temp_word_tokens_pos_pair_list.append(["[SEP]", ["[SEP]", (len(temp_word_tokens_pos_pair_list)+1,
-                                                                       len(temp_word_tokens_pos_pair_list)+1)]])
+            temp_word_tokens_pos_pair_list.insert(0, ["[CLS]", ["[CLS]"]])
+            temp_word_tokens_pos_pair_list.append(["[SEP]", ["[SEP]"]])
             debug_pos_tag_ids = [[pos_ids2tag[x] for x in pos_tag_item] for pos_tag_item in pos_tag_ids]
             for wtpp, la, ls, pti in zip(temp_word_tokens_pos_pair_list, labels_ids, LS_ids, debug_pos_tag_ids):
-                print(wtpp[0], ne_ids2tag[la], ls_ids2tag[ls], pti)
+                print(wtpp[0], ne_ids2tag[la], ls_ids2tag[ls], pti, wtpp[1])
 
             input()
 
