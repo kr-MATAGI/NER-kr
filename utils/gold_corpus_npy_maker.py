@@ -662,6 +662,8 @@ def make_eojeol_datasets_npy(
         #     continue
         # if "그동안 각 언론사와 후보 진영이 실시한 여론조사에서도 홍준표·원희룡·나경원 후보가 '3강'을 형성하며 엎치락뒤치락해 왔다." not in src_item.text:
         #     continue
+        # if "P 불투르(Vulture) 인사위원회 위원장은" not in src_item.text:
+        #     continue
 
         if 0 == (proc_idx % 1000):
             print(f"{proc_idx} Processing... {src_item.text}")
@@ -670,7 +672,7 @@ def make_eojeol_datasets_npy(
         # [(word, [tokens], [POS])]
         word_tokens_pos_pair_list: List[Tuple[str, List[str], List[str]]] = []
         separation_giho = ["「", "」", "…", "〔", "〕", "(", ")",
-                           "\"", "….", "...", "→", "_", "|", "〈", "〉",
+                           "\"", "…", "...", "→", "_", "|", "〈", "〉",
                            "?", ".", "!", "<", ">", "ㆍ", "•", "《", "》",
                            "[", "]", "ㅡ", "+", "“", "”", ";", "·",
                            "‘", "’", "″", "″", "'", "'"]
@@ -687,14 +689,15 @@ def make_eojeol_datasets_npy(
                         if ch != sp_pos_list[0].form:
                             word_ch_list.append(ch)
                         else:
-                            concat_ch = "".join(word_ch_list)
-                            concat_ch_tokens = tokenizer.tokenize(concat_ch)
-                            concat_ch_pos = [p for p in target_morp_list if p.position < sp_pos_list[0].position]
-                            for ch_pos in concat_ch_pos:
-                                target_morp_list.remove(ch_pos)
-                            concat_ch_pair = (concat_ch, concat_ch_tokens, concat_ch_pos)
-                            word_tokens_pos_pair_list.append(concat_ch_pair)
-                            word_ch_list.clear()
+                            if 0 < len(word_ch_list):
+                                concat_ch = "".join(word_ch_list)
+                                concat_ch_tokens = tokenizer.tokenize(concat_ch)
+                                concat_ch_pos = [p for p in target_morp_list if p.position < sp_pos_list[0].position]
+                                for ch_pos in concat_ch_pos:
+                                    target_morp_list.remove(ch_pos)
+                                concat_ch_pair = (concat_ch, concat_ch_tokens, concat_ch_pos)
+                                word_tokens_pos_pair_list.append(concat_ch_pair)
+                                word_ch_list.clear()
 
                             sp_form = sp_pos_list[0].form
                             sp_tokens = tokenizer.tokenize(sp_form)
@@ -734,8 +737,8 @@ def make_eojeol_datasets_npy(
             for wtp_idx, wtp_item in enumerate(word_tokens_pos_pair_list):
                 if b_check_use_eojeol[wtp_idx]:
                     continue
+
                 concat_wtp = [x[0] for x in word_tokens_pos_pair_list[wtp_idx:wtp_idx+ne_eojeol_size]]
-                # print(" ".join(ne_item_split_eojeol), " ".join(concat_wtp), " ".join(ne_item_split_eojeol) in " ".join(concat_wtp))
                 if " ".join(ne_item_split_eojeol) in " ".join(concat_wtp):
                     target_index_pair = (wtp_idx, wtp_idx+ne_eojeol_size)
                     break
@@ -885,7 +888,8 @@ def make_eojeol_datasets_npy(
             temp_word_tokens_pos_pair_list.insert(0, ["[CLS]", ["[CLS]"]])
             temp_word_tokens_pos_pair_list.append(["[SEP]", ["[SEP]"]])
             debug_pos_tag_ids = [[pos_ids2tag[x] for x in pos_tag_item] for pos_tag_item in pos_tag_ids]
-            for wtpp, la, ls, pti, ej_b in zip(temp_word_tokens_pos_pair_list, labels_ids, LS_ids, debug_pos_tag_ids, eojeol_boundary_list):
+            for wtpp, la, ls, pti, ej_b in zip(temp_word_tokens_pos_pair_list, labels_ids, LS_ids, debug_pos_tag_ids,
+                                               eojeol_boundary_list):
                 print(wtpp[0], ne_ids2tag[la], ls_ids2tag[ls], pti, wtpp[1], ej_b)
 
             input()
