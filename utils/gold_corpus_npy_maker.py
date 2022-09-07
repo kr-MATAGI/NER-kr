@@ -654,8 +654,8 @@ def make_eojeol_datasets_npy(
         tokenizer = ElectraTokenizer.from_pretrained(tokenizer_name)
     for proc_idx, src_item in enumerate(src_list):
         # Test
-        if "29·미국·사진" not in src_item.text:
-            continue
+        # if "29·미국·사진" not in src_item.text:
+        #     continue
         # if "전창수(42) 두산타워 마케팅팀 차장" not in src_item.text:
         #     continue
         # if '샌드위치→역(逆)샌드위치→신(新)샌드위치….' not in src_item.text:
@@ -673,9 +673,9 @@ def make_eojeol_datasets_npy(
         word_tokens_pos_pair_list: List[Tuple[str, List[str], List[str]]] = []
         separation_giho = ["「", "」", "…", "〔", "〕", "(", ")",
                            "\"", "…", "...", "→", "_", "|", "〈", "〉",
-                           "?", ".", "!", "<", ">", "ㆍ", "•", "《", "》",
+                           "?", "!", "<", ">", "ㆍ", "•", "《", "》",
                            "[", "]", "ㅡ", "+", "“", "”", ";", "·",
-                           "‘", "’", "″", "″", "'", "'"]
+                           "‘", "’", "″", "″", "'", "'"] #, "."]
         for word_idx, word_item in enumerate(src_item.word_list):
             target_word_id = word_item.id
             target_morp_list = [x for x in src_item.morp_list if x.word_id == target_word_id]
@@ -1397,7 +1397,7 @@ if "__main__" == __name__:
     #                    src_list=all_sent_list, max_len=128, is_use_dict=False, debug_mode=False, save_model_dir="roberta")
 
     make_eojeol_datasets_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator", ex_dictionary=hash_dict,
-                             src_list=all_sent_list, max_len=128, debug_mode=True, is_use_dict=False,
+                             src_list=all_sent_list, max_len=128, debug_mode=False, is_use_dict=False,
                              save_model_dir="eojeol_electra")
 
     # make_eojeol_and_wordpiece_labels_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",
