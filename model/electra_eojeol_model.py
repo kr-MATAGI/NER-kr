@@ -24,7 +24,7 @@ class Electra_Eojeol_Model(ElectraPreTrainedModel):
         self.max_eojeol_len = 50
 
         # for encoder
-        self.d_model_size = config.hidden_size + (self.pos_embed_out_dim * 4)  # [768 + 128 * 4] = 1280
+        self.d_model_size = config.hidden_size + (self.pos_embed_out_dim * 5)  # [768 + 128 * 5] = 1408
         self.enc_config = Enc_Config(config.vocab_size)
         self.enc_config.num_heads = 8
         self.enc_config.hidden_size = self.d_model_size
@@ -38,6 +38,7 @@ class Electra_Eojeol_Model(ElectraPreTrainedModel):
         self.eojeol_pos_embedding_2 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
         self.eojeol_pos_embedding_3 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
         self.eojeol_pos_embedding_4 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
+        self.eojeol_pos_embedding_5 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
 
         # One-Hot Embed
         self.one_hot_embedding = nn.Embedding(self.max_seq_len, self.max_eojeol_len)
@@ -117,14 +118,17 @@ class Electra_Eojeol_Model(ElectraPreTrainedModel):
         eojeol_pos_2 = pos_ids[:, :, 1]
         eojeol_pos_3 = pos_ids[:, :, 2]
         eojeol_pos_4 = pos_ids[:, :, 3]
+        eojeol_pos_5 = pos_ids[:, :, 4]
 
         #
         eojeol_pos_1 = self.eojeol_pos_embedding_1(eojeol_pos_1) # [batch_size, eojeol_max_len, pos_embed]
         eojeol_pos_2 = self.eojeol_pos_embedding_2(eojeol_pos_2)
         eojeol_pos_3 = self.eojeol_pos_embedding_3(eojeol_pos_3)
         eojeol_pos_4 = self.eojeol_pos_embedding_4(eojeol_pos_4)
+        eojeol_pos_5 = self.eojeol_pos_embedding_5(eojeol_pos_5)
         
-        concat_eojeol_pos_embed = torch.concat([eojeol_pos_1, eojeol_pos_2, eojeol_pos_3, eojeol_pos_4], dim=-1)
+        concat_eojeol_pos_embed = torch.concat([eojeol_pos_1, eojeol_pos_2,
+                                                eojeol_pos_3, eojeol_pos_4, eojeol_pos_5], dim=-1)
         
         # [batch_size, max_eojeol_len, hidd_size + (pos_embed * 3)]
         matmul_out_embed = torch.concat([matmul_out_embed, concat_eojeol_pos_embed], dim=-1)
