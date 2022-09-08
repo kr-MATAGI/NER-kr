@@ -664,8 +664,8 @@ def make_eojeol_datasets_npy(
         #     continue
         # if "P 불투르(Vulture) 인사위원회 위원장은" not in src_item.text:
         #     continue
-        if "넙치·굴비·홍어·톳·꼬시래기·굴·홍합" not in src_item.text:
-            continue
+        # if "넙치·굴비·홍어·톳·꼬시래기·굴·홍합" not in src_item.text:
+        #     continue
 
         if 0 == (proc_idx % 1000):
             print(f"{proc_idx} Processing... {src_item.text}")
