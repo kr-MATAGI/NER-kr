@@ -649,7 +649,7 @@ def make_eojeol_datasets_npy(
     ls_ids2tag = {v: k for k, v in LS_Tag.items()}
 
     if "bert" in tokenizer_name:
-        tokenizer_name = AutoTokenizer.from_pretrained(tokenizer_name)
+        tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
     else:
         tokenizer = ElectraTokenizer.from_pretrained(tokenizer_name)
     for proc_idx, src_item in enumerate(src_list):
