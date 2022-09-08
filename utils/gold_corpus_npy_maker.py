@@ -664,6 +664,8 @@ def make_eojeol_datasets_npy(
         #     continue
         # if "P 불투르(Vulture) 인사위원회 위원장은" not in src_item.text:
         #     continue
+        if "넙치·굴비·홍어·톳·꼬시래기·굴·홍합" not in src_item.text:
+            continue
 
         if 0 == (proc_idx % 1000):
             print(f"{proc_idx} Processing... {src_item.text}")
@@ -890,8 +892,9 @@ def make_eojeol_datasets_npy(
             debug_pos_tag_ids = [[pos_ids2tag[x] for x in pos_tag_item] for pos_tag_item in pos_tag_ids]
             for wtpp, la, ls, pti, ej_b in zip(temp_word_tokens_pos_pair_list, labels_ids, LS_ids, debug_pos_tag_ids,
                                                eojeol_boundary_list):
+                # pos_array = np.array(pti)
+                # if (4 < np.where(pos_array != 'O')[0].size) and (2 <= np.where(pos_array == 'NNP')[0].size):
                 print(wtpp[0], ne_ids2tag[la], ls_ids2tag[ls], pti, wtpp[1], ej_b)
-
             input()
 
     # save npy_dict
