@@ -58,14 +58,17 @@ NIKL_POS_TAG = {
     42: "NA", 43: "NF", 44: "NV", # 분석불능범주, 명사추정범주, 용언추정범주
     45: "NAP", # 개인정보를 가린거
 
+    # Concat NNG & NNP
+    46: "CONCAT_NN"
+
     # POS Combination
-    46: "NNP+NNP", # NNP + NNP
-    47: "NNG+NNG", # NNG + NNG
-    48: "EP+EC", # EP + EC
-    49: "EP+ETM", # EP + ETM
-    50: "SN+NNB", # SN + NNB
-    51: "SN+NR", # SN + NR
-    52: "SN+SW", # SN + SW
+    # 46: "NNP+NNP", # NNP + NNP
+    # 47: "NNG+NNG", # NNG + NNG
+    # 48: "EP+EC", # EP + EC
+    # 49: "EP+ETM", # EP + ETM
+    # 50: "SN+NNB", # SN + NNB
+    # 51: "SN+NR", # SN + NR
+    # 52: "SN+SW", # SN + SW
 
     # 상태성/동작성 명사
     # 53: "STATUS_NN",

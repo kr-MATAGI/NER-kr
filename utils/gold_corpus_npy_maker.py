@@ -904,9 +904,46 @@ def make_eojeol_datasets_npy(
 def convert_pos_tag_to_combi_tag(src_pos: List[int]):
 #==============================================================
     conv_pos_tok2ids = {v: k for k, v in NIKL_POS_TAG.items()}
-
-    # convert
     ret_pos_list = []
+
+    for eojeol_pos in src_pos:
+        add_idx = 0
+        new_eojeol_pos =[0 for _ in range(len(eojeol_pos))]
+        check_used = [False for _ in range(len(eojeol_pos))]
+
+        for curr_idx, curr_pos_item in enumerate(eojeol_pos):
+            is_add = True
+
+            # skip process
+            if check_used[curr_idx]:
+                continue
+            elif curr_idx == (len(eojeol_pos) - 1):
+                new_eojeol_pos[add_idx] = curr_pos_item
+                continue
+
+            # Check - 명사 품사가 얼마나 연결되어 있는지
+            noun_count = 0
+            for nn_idx in range(curr_idx, len(eojeol_pos)):
+                if (conv_pos_tok2ids["NNP"] == eojeol_pos[nn_idx]) or (conv_pos_tok2ids["NNG"] == eojeol_pos[nn_idx]):
+                    noun_count += 1
+                else:
+                    continue
+
+            if 2 > noun_count:
+                # 현재 품사 정보 그대로 이용
+                new_eojeol_pos[add_idx] = curr_pos_item
+                check_used[add_idx] = True
+                add_idx += 1
+            else:
+                # 2개 이상의 명사일 경우, 합쳐서 표현(제약?)
+                new_eojeol_pos[add_idx] = conv_pos_tok2ids["CONCAT_NN"]
+                for ch_idx in range(noun_count):
+                    check_used[curr_idx+ch_idx] = True
+                add_idx += 1
+        ret_pos_list.append(new_eojeol_pos)
+
+    '''
+    # convert
     for eojeol_pos in src_pos:
         add_idx = 0
         new_eojeol_pos = [0 for _ in range(len(eojeol_pos))]
@@ -959,6 +996,7 @@ def convert_pos_tag_to_combi_tag(src_pos: List[int]):
         ret_pos_list.append(new_eojeol_pos)
     #     print(eojeol_pos, " -> ", new_eojeol_pos)
     # input()
+    '''
 
     return ret_pos_list
 
