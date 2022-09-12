@@ -94,7 +94,7 @@ def make_wordpiece_ne_pos_pkl(src_file_path: str):
     # end, src_list loop
 
     # save
-    with open("../corpus/pkl/NIKL_wordpiece_ne_3pos.pkl", mode="wb") as save_file:
+    with open("../corpus/pkl/NIKL_wordpiece_ne_10pos.pkl", mode="wb") as save_file:
         pickle.dump(src_list, save_file)
         print(f"SAVE FILE SIZE: {len(src_list)}")
 

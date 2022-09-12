@@ -46,7 +46,7 @@ class Electra_Eojeol_Model(ElectraPreTrainedModel):
         self.encoder = Trans_Encoder(self.enc_config)
 
         # Classifier
-        self.linear = nn.Linear(self.d_model_size, config.num_labels)
+        self.linear = nn.Linear(self.d_model_size + config.hidden_size, config.num_labels)
 
         # CRF
         # self.crf = CRF(num_tags=config.num_labels, batch_first=True)
@@ -127,7 +127,7 @@ class Electra_Eojeol_Model(ElectraPreTrainedModel):
         concat_eojeol_pos_embed = torch.concat([eojeol_pos_1, eojeol_pos_2,
                                                 eojeol_pos_3, eojeol_pos_4], dim=-1)
         
-        # [batch_size, max_eojeol_len, hidd_size + (pos_embed * 3)]
+        # [batch_size, max_eojeol_len, hidd_size + (pos_embed * 4)]
         matmul_out_embed = torch.concat([matmul_out_embed, concat_eojeol_pos_embed], dim=-1)
 
         for batch_idx in range(batch_size):
@@ -158,19 +158,21 @@ class Electra_Eojeol_Model(ElectraPreTrainedModel):
                                        token_type_ids=token_type_ids,
                                        attention_mask=attention_mask)
 
-        el_last_hidden = electra_outputs.last_hidden_state
+        el_last_hidden = electra_outputs.last_hidden_state # [batch, token_seq_len, hidden]
 
-        # one-hot embed : [batch_size, max_seq_len, max_eojeol_len]
+        # one-hot embed : [batch_size, max_seq_len, max_eojeol_len] -> [64, 128, 50]
         one_hot_embed = self._make_ont_hot_embeddig(last_hidden=el_last_hidden,
                                                     eojeol_ids=eojeol_ids)
 
         # matmul one_hot @ plm outputs
         one_hot_embed_t = one_hot_embed.transpose(1, 2)
+        # eojeol_tensor = [64, 50, hidden + pos * 4]
         eojeol_tensor, eojeol_attention_mask = self._make_eojeol_tensor(last_hidden=el_last_hidden,
                                                                         pos_ids=pos_tag_ids,
                                                                         eojeol_ids=eojeol_ids,
                                                                         one_hot_embed=one_hot_embed_t,
                                                                         max_eojeol_len=self.max_eojeol_len)
+
         # eojeol_origin_attn = copy.deepcopy(eojeol_attention_mask)
         eojeol_attention_mask = eojeol_attention_mask.unsqueeze(1).unsqueeze(2) # [64, 1, 1, max_eojeol_len]
         eojeol_attention_mask = eojeol_attention_mask.to(dtype=next(self.parameters()).dtype) # fp16 compatibility
@@ -178,16 +180,18 @@ class Electra_Eojeol_Model(ElectraPreTrainedModel):
 
         # Transformer Encoder
         enc_outputs = self.encoder(eojeol_tensor, eojeol_attention_mask)
-        enc_outputs = enc_outputs[-1]
+        enc_outputs = enc_outputs[-1] # [batch, eojeol_len, hidden + pos * 4]
 
         # Revert Eojeol 2 Wordpiece Tokens
-        enc_outputs = one_hot_embed @ enc_outputs
+        revert_token_outputs = one_hot_embed @ enc_outputs # [batch, token_seq_len, hidden + pos * 4]
+        # final concat = [batch, token_seq_len, hidden + (pos*4) + hidden]
+        revert_token_outputs = torch.concat([revert_token_outputs, el_last_hidden], dim=-1)
 
         # Dropout
-        enc_outputs = self.dropout(enc_outputs)
+        revert_token_outputs = self.dropout(revert_token_outputs)
 
         # Classifier
-        logits = self.linear(enc_outputs)  # [batch_size, seq_len, num_labels]
+        logits = self.linear(revert_token_outputs)  # [batch_size, seq_len, num_labels]
 
         # Get Loss
         loss = None
