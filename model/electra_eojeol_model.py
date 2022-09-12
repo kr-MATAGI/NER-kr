@@ -148,7 +148,7 @@ class Electra_Eojeol_Model(ElectraPreTrainedModel):
     #===================================
     def forward(
             self,
-            input_ids, attention_mask, token_type_ids, token_seq_len=None, # Unit: Token
+            input_ids, attention_mask, token_type_ids, # Unit: Token
             labels=None, pos_tag_ids=None, eojeol_ids=None # Unit: Eojeol
     ):
     #===================================
@@ -165,11 +165,11 @@ class Electra_Eojeol_Model(ElectraPreTrainedModel):
                                                     eojeol_ids=eojeol_ids)
 
         # matmul one_hot @ plm outputs
-        one_hot_embed = one_hot_embed.transpose(1, 2)
+        one_hot_embed_t = one_hot_embed.transpose(1, 2)
         eojeol_tensor, eojeol_attention_mask = self._make_eojeol_tensor(last_hidden=el_last_hidden,
                                                                         pos_ids=pos_tag_ids,
                                                                         eojeol_ids=eojeol_ids,
-                                                                        one_hot_embed=one_hot_embed,
+                                                                        one_hot_embed=one_hot_embed_t,
                                                                         max_eojeol_len=self.max_eojeol_len)
         # eojeol_origin_attn = copy.deepcopy(eojeol_attention_mask)
         eojeol_attention_mask = eojeol_attention_mask.unsqueeze(1).unsqueeze(2) # [64, 1, 1, max_eojeol_len]
@@ -179,6 +179,9 @@ class Electra_Eojeol_Model(ElectraPreTrainedModel):
         # Transformer Encoder
         enc_outputs = self.encoder(eojeol_tensor, eojeol_attention_mask)
         enc_outputs = enc_outputs[-1]
+
+        # Revert Eojeol 2 Wordpiece Tokens
+        enc_outputs = one_hot_embed @ enc_outputs
 
         # Dropout
         enc_outputs = self.dropout(enc_outputs)

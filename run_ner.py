@@ -67,7 +67,7 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
                 "attention_mask": batch["attention_mask"].to(args.device),
                 "token_type_ids": batch["token_type_ids"].to(args.device),
                 "labels": batch["labels"].to(args.device),
-                "token_seq_len": batch["token_seq_len"].to(args.device),
+                #"token_seq_len": batch["token_seq_len"].to(args.device),
                 "pos_tag_ids": batch["pos_tag_ids"].to(args.device),
                 "eojeol_ids": batch["eojeol_ids"].to(args.device),
                 # "ls_ids": batch["ls_ids"].to(args.device)
@@ -215,7 +215,7 @@ def train(args, model, train_dataset, dev_dataset):
                 "attention_mask": batch["attention_mask"].to(args.device),
                 "token_type_ids": batch["token_type_ids"].to(args.device),
                 "labels": batch["labels"].to(args.device),
-                "token_seq_len": batch["token_seq_len"].to(args.device),
+                #"token_seq_len": batch["token_seq_len"].to(args.device),
                 "pos_tag_ids": batch["pos_tag_ids"].to(args.device),
                 "eojeol_ids": batch["eojeol_ids"].to(args.device),
                 # "ls_ids": batch["ls_ids"].to(args.device)
@@ -354,39 +354,39 @@ def main():
     model.to(args.device)
 
     # load train/dev/test npy
-    train_npy, train_token_seq_len, train_pos_tag, train_labels, train_eojeol_ids, train_ls_ids = \
+    train_npy, train_pos_tag, train_labels, train_eojeol_ids = \
         load_corpus_npy_datasets(args.train_npy, mode="train")
-    dev_npy, dev_token_seq_len, dev_pos_tag, dev_labels, dev_eojeol_ids, dev_ls_ids = \
+    dev_npy, dev_pos_tag, dev_labels, dev_eojeol_ids = \
         load_corpus_npy_datasets(args.dev_npy, mode="dev")
-    test_npy, test_token_seq_len, test_pos_tag, test_labels, test_eojeol_ids, test_ls_ids = \
+    test_npy, test_pos_tag, test_labels, test_eojeol_ids = \
         load_corpus_npy_datasets(args.test_npy, mode="test")
 
-    print(f"train.shape - dataset: {train_npy.shape}, token_seq_len: {train_token_seq_len.shape}, "
+    print(f"train.shape - dataset: {train_npy.shape}, "
           f"pos_tag: {train_pos_tag.shape}, labels: {train_labels.shape}, eojeol_ids: {train_eojeol_ids.shape}")
-    print(f"dev.shape - dataset: {dev_npy.shape}, token_seq_len: {dev_token_seq_len.shape}, "
+    print(f"dev.shape - dataset: {dev_npy.shape}, "
           f"pos_tag: {dev_pos_tag.shape}, labels: {dev_labels.shape}, eojeol_ids: {dev_eojeol_ids.shape}")
-    print(f"test.shape - dataset: {test_npy.shape}, token_seq_len: {test_token_seq_len.shape}, "
+    print(f"test.shape - dataset: {test_npy.shape},"
           f"pos_tag: {test_pos_tag.shape}, labels: {test_labels.shape}, eojeol_ids: {test_eojeol_ids.shape}")
     #print(f"entitty_ids - train: {train_entity_ids.shape}, dev: {dev_entity_ids.shape}, test: {test_entity_ids.shape}")
-    print(f"ls_ids - train: {train_ls_ids.shape}, dev: {dev_ls_ids.shape}, test: {test_ls_ids.shape}")
+    #print(f"ls_ids - train: {train_ls_ids.shape}, dev: {dev_ls_ids.shape}, test: {test_ls_ids.shape}")
 
     # make train/dev/test dataset
     if (5 == g_user_select) or (9 == g_user_select):
         train_dataset = NER_Eojeol_Datasets(token_data=train_npy, labels=train_labels,
-                                            pos_tag_ids=train_pos_tag, token_seq_len=train_token_seq_len,
-                                            eojeol_ids=train_eojeol_ids, ls_ids=train_ls_ids)
+                                            pos_tag_ids=train_pos_tag,
+                                            eojeol_ids=train_eojeol_ids)
         dev_dataset = NER_Eojeol_Datasets(token_data=dev_npy, labels=dev_labels,
-                                          pos_tag_ids=dev_pos_tag, token_seq_len=dev_token_seq_len,
-                                          eojeol_ids=dev_eojeol_ids, ls_ids=dev_ls_ids)
+                                          pos_tag_ids=dev_pos_tag,
+                                          eojeol_ids=dev_eojeol_ids)
         test_dataset = NER_Eojeol_Datasets(token_data=test_npy, labels=test_labels,
-                                           pos_tag_ids=test_pos_tag, token_seq_len=test_token_seq_len,
-                                           eojeol_ids=test_eojeol_ids, ls_ids=test_ls_ids)
+                                           pos_tag_ids=test_pos_tag,
+                                           eojeol_ids=test_eojeol_ids)
     else:
-        train_dataset = NER_POS_Dataset(data=train_npy, labels=train_labels, toekn_seq_len=train_token_seq_len,
+        train_dataset = NER_POS_Dataset(data=train_npy, labels=train_labels,
                                         pos_tag_ids=train_pos_tag, eojeol_ids=train_eojeol_ids)
-        dev_dataset = NER_POS_Dataset(data=dev_npy, labels=dev_labels, toekn_seq_len=dev_token_seq_len,
+        dev_dataset = NER_POS_Dataset(data=dev_npy, labels=dev_labels,
                                       pos_tag_ids=dev_pos_tag, eojeol_ids=dev_eojeol_ids)
-        test_dataset = NER_POS_Dataset(data=test_npy, labels=test_labels, toekn_seq_len=test_token_seq_len,
+        test_dataset = NER_POS_Dataset(data=test_npy, labels=test_labels,
                                        pos_tag_ids=test_pos_tag, eojeol_ids=test_eojeol_ids)
 
     if args.do_train:
