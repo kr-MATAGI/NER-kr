@@ -9,13 +9,10 @@ class ELECTRA_POS_LSTM(ElectraPreTrainedModel):
 #==============================================================
     def __init__(self, config):
         super(ELECTRA_POS_LSTM, self).__init__(config)
-        self.max_seq_len = 128 #config.max_seq_len
-        self.max_eojeol_len = 48
-
+        self.max_seq_len = config.max_seq_len
         self.num_labels = config.num_labels
         self.num_pos_labels = config.num_pos_labels
-        self.pos_embed_out_dim = 100
-        self.entity_embed_out_dim = 128
+        self.pos_embed_out_dim = 128
 
         self.dropout_rate = 0.1
 
@@ -34,12 +31,6 @@ class ELECTRA_POS_LSTM(ElectraPreTrainedModel):
         '''
         self.electra = ElectraModel.from_pretrained("monologg/koelectra-base-v3-discriminator", config=config)
 
-        # eojeol
-        # self.eojeol_embedding = nn.Embedding(self.max_seq_len, self.max_eojeol_len)
-
-        # entity
-        # self.entity_embedding = nn.Embedding(self.max_seq_len, self.entity_embed_out_dim)
-
         self.lstm_dim_size = config.hidden_size + (self.pos_embed_out_dim * 3)# + self.max_eojeol_len# + self.entity_embed_out_dim
         self.lstm = nn.LSTM(input_size=self.lstm_dim_size, hidden_size=self.lstm_dim_size,
                             num_layers=1, batch_first=True, dropout=self.dropout_rate)
@@ -51,8 +42,7 @@ class ELECTRA_POS_LSTM(ElectraPreTrainedModel):
     #===================================
     def forward(self,
                 input_ids, token_type_ids, attention_mask,
-                token_seq_len=None, labels=None, pos_tag_ids=None,
-                eojeol_ids=None, entity_ids=None
+                labels=None, pos_tag_ids=None,
     ):
     #===================================
         # pos embedding
