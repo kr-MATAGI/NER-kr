@@ -1,7 +1,7 @@
 {
   "task": "custom",
   "data_dir": "data",
-  "ckpt_dir": "ckpt-electra-eojeol-embed-revert-token-no-pos",
+  "ckpt_dir": "ckpt-electra-eojeol-embed-revert-token-lstm-more-hidden",
   "train_npy": "./corpus/npy/eojeol2wp_electra/train.npy",
   "dev_npy": "./corpus/npy/eojeol2wp_electra/dev.npy",
   "test_npy": "./corpus/npy/eojeol2wp_electra/test.npy",
@@ -22,7 +22,7 @@
   "no_cuda": false,
   "model_type": "monologg/koelectra-base-v3-discriminator",
   "model_name_or_path": "monologg/koelectra-base-v3-discriminator",
-  "output_dir": "electra-eojeol-embed-revert-token-no-pos",
+  "output_dir": "electra-eojeol-embed-revert-token-lstm-more-hidden",
   "seed": 42,
   "train_batch_size": 64,
   "eval_batch_size": 128,

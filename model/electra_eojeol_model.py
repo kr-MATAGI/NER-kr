@@ -48,11 +48,11 @@ class Electra_Eojeol_Model(ElectraPreTrainedModel):
         self.encoder = Trans_Encoder(self.enc_config)
 
         # LSTM
-        self.lstm = nn.LSTM(input_size=self.d_model_size + config.hidden_size, hidden_size=(config.hidden_size // 2),
+        self.lstm = nn.LSTM(input_size=self.d_model_size + config.hidden_size, hidden_size=(self.d_model_size + config.hidden_size) // 2,
                             num_layers=1, batch_first=True, bidirectional=True)
 
         # Classifier
-        self.linear = nn.Linear(config.hidden_size, config.num_labels)
+        self.linear = nn.Linear(self.d_model_size + config.hidden_size, config.num_labels)
 
         # CRF
         # self.crf = CRF(num_tags=config.num_labels, batch_first=True)

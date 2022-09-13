@@ -665,9 +665,11 @@ def make_eojeol_datasets_npy(
                 normal_pair = (word_item.form, normal_word_tokens, target_morp_list)
                 word_tokens_pos_pair_list.append(normal_pair)
 
-
         # 명사파생 접미사, 보조사, 주격조사
         # 뒤에서 부터 읽는다.
+        for wtp_item in word_tokens_pos_pair_list:
+            for wtp_mp_item in reversed(wtp_item[-1]):
+                if ("XSN" == wtp_mp_item.label) or ():
 
 
 
