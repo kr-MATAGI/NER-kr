@@ -607,6 +607,8 @@ def make_eojeol_datasets_npy(
         #     continue
         # if "넙치·굴비·홍어·톳·꼬시래기·굴·홍합" not in src_item.text:
         #     continue
+        # if "연준 의장이" not in src_item.text:
+        #     continue
 
         if 0 == (proc_idx % 1000):
             print(f"{proc_idx} Processing... {src_item.text}")
@@ -662,6 +664,12 @@ def make_eojeol_datasets_npy(
                 normal_word_tokens = tokenizer.tokenize(word_item.form)
                 normal_pair = (word_item.form, normal_word_tokens, target_morp_list)
                 word_tokens_pos_pair_list.append(normal_pair)
+
+
+        # 명사파생 접미사, 보조사, 주격조사
+        # 뒤에서 부터 읽는다.
+
+
 
         # Text Tokens
         text_tokens = []
@@ -1387,7 +1395,7 @@ if "__main__" == __name__:
         all_sent_list = pickle.load(pkl_file)
         print(f"[make_gold_corpus_npy][__main__] all_sent_list size: {len(all_sent_list)}")
     all_sent_list = conv_TTA_ne_category(all_sent_list)
-    # all_sent_list = conv_NIKL_pos_giho_category(all_sent_list, is_status_nn=False, is_verb_nn=False)
+    all_sent_list = conv_NIKL_pos_giho_category(all_sent_list, is_status_nn=False, is_verb_nn=False)
 
     # make npy
     is_use_external_dict = False
@@ -1405,8 +1413,7 @@ if "__main__" == __name__:
     #                    max_pos_nums=10)
 
     make_eojeol_datasets_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",
-                             src_list=all_sent_list, max_len=128, debug_mode=False, is_use_dict=False,
-                             save_model_dir="eojeol_electra")
+                             src_list=all_sent_list, max_len=128, debug_mode=True, save_model_dir="eojeol_electra")
 
     # make_eojeol_and_wordpiece_labels_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",
     #                                      src_list=all_sent_list, max_len=128, debug_mode=False,
