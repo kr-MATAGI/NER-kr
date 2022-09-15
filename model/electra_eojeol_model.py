@@ -48,12 +48,12 @@ class Electra_Eojeol_Model(ElectraPreTrainedModel):
         self.encoder = Trans_Encoder(self.enc_config)
 
         # LSTM
-        self.lstm = nn.LSTM(input_size=self.d_model_size + config.hidden_size,
-                            hidden_size=self.d_model_size + config.hidden_size,
-                            num_layers=1, batch_first=True)
+        # self.lstm = nn.LSTM(input_size=self.d_model_size + config.hidden_size,
+        #                     hidden_size=self.d_model_size + config.hidden_size,
+        #                     num_layers=1, batch_first=True)
 
         # Classifier
-        self.linear = nn.Linear(self.d_model_size + config.hidden_size, config.num_labels)
+        self.linear = nn.Linear(self.d_model_size, config.num_labels)
 
         # CRF
         # self.crf = CRF(num_tags=config.num_labels, batch_first=True)
@@ -190,18 +190,18 @@ class Electra_Eojeol_Model(ElectraPreTrainedModel):
         enc_outputs = enc_outputs[-1] # [batch, eojeol_len, hidden + pos * 4]
 
         # Revert Eojeol 2 Wordpiece Tokens
-        revert_token_outputs = one_hot_embed @ enc_outputs # [batch, token_seq_len, hidden + pos * 4]
         # final concat = [batch, token_seq_len, hidden + (pos*4) + hidden]
-        revert_token_outputs = torch.concat([revert_token_outputs, el_last_hidden], dim=-1)
+        # revert_token_outputs = one_hot_embed @ enc_outputs # [batch, token_seq_len, hidden + pos * 4]
+        # revert_token_outputs = torch.concat([revert_token_outputs, el_last_hidden], dim=-1)
 
         # Dropout
-        revert_token_outputs = self.dropout(revert_token_outputs)
+        enc_outputs = self.dropout(enc_outputs)
 
         # LSTM
-        lstm_out, _ = self.lstm(revert_token_outputs)
+        # lstm_out, _ = self.lstm(revert_token_outputs)
 
         # Classifier
-        logits = self.linear(lstm_out)  # [batch_size, seq_len, num_labels]
+        logits = self.linear(enc_outputs)  # [batch_size, seq_len, num_labels]
 
         # Get Loss
         loss = None
