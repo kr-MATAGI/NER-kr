@@ -69,7 +69,7 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
                 "labels": batch["labels"].to(args.device),
                 #"token_seq_len": batch["token_seq_len"].to(args.device),
                 "pos_tag_ids": batch["pos_tag_ids"].to(args.device),
-                # "eojeol_ids": batch["eojeol_ids"].to(args.device),
+                "eojeol_ids": batch["eojeol_ids"].to(args.device),
                 # "ls_ids": batch["ls_ids"].to(args.device)
                 # "entity_ids": batch["entity_ids"].to(args.device)
             }
@@ -217,7 +217,7 @@ def train(args, model, train_dataset, dev_dataset):
                 "labels": batch["labels"].to(args.device),
                 #"token_seq_len": batch["token_seq_len"].to(args.device),
                 "pos_tag_ids": batch["pos_tag_ids"].to(args.device),
-                # "eojeol_ids": batch["eojeol_ids"].to(args.device),
+                "eojeol_ids": batch["eojeol_ids"].to(args.device),
                 # "ls_ids": batch["ls_ids"].to(args.device)
                 # "entity_ids": batch["entity_ids"].to(args.device)
             }
