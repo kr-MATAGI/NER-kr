@@ -27,6 +27,9 @@ def predict_eojeol_validation_set(model_path: str = "", datasets_path: str = "",
     total_data_size = dev_npy_np.shape[0]
     ne_ids_to_tag = {v: k for k, v in ETRI_TAG.items()}
     pos_ids_to_tag = {k: v for k, v in NIKL_POS_TAG.items()}
+
+    total_count = 0
+    wrong_count = 0
     for data_idx in range(total_data_size):
         inputs = {
             "input_ids": torch.LongTensor([dev_npy_np[data_idx, :, 0]]),
@@ -64,13 +67,28 @@ def predict_eojeol_validation_set(model_path: str = "", datasets_path: str = "",
             row_list.append([text[p_idx], conv_label, conv_preds, conv_pos])
         pd_df = pd.DataFrame(row_list, columns=columns)
 
-        print("text\tlabel\tpreds\tPOS")
+        is_wrong_predict = False
+        total_count += 1
         for df_idx, df_item in pd_df.iterrows():
             if 0 >= len(df_item["text"]):
                 break
-            print(df_item["text"], df_item["labels"], df_item["preds"], df_item["pos"])
+            if df_item["labels"] != df_item["preds"]:
+                if not is_wrong_predict:
+                    wrong_count += 1
+                is_wrong_predict = True
+            # print(df_item["text"], df_item["labels"], df_item["preds"], df_item["pos"])
 
-        # stop
+        print(f"total_count: {total_count}, wrong_count: {wrong_count}")
+        if not is_wrong_predict:
+            continue
+        else:
+            print("text\tlabel\tpreds\tPOS")
+            for df_idx, df_item in pd_df.iterrows():
+                if 0 >= len(df_item["text"]):
+                    break
+                print(df_item["text"], df_item["labels"], df_item["preds"], df_item["pos"])
+
+        # Stop
         input()
 
 #===========================================================================
@@ -92,6 +110,9 @@ def predict_wordpiece_validation_set(model_path: str = "", datasets_path: str = 
     total_data_size = dev_npy_np.shape[0]
     ne_ids_to_tag = {v: k for k, v in ETRI_TAG.items()}
     pos_ids_to_tag = {k: v for k, v in NIKL_POS_TAG.items()}
+
+    total_count = 0
+    wrong_count = 0
     for data_idx in range(total_data_size):
         inputs = {
             "input_ids": torch.LongTensor([dev_npy_np[data_idx, :, 0]]),
@@ -118,11 +139,26 @@ def predict_wordpiece_validation_set(model_path: str = "", datasets_path: str = 
             row_list.append([tokens[p_idx], conv_label, conv_preds, conv_pos])
         pd_df = pd.DataFrame(row_list, columns=columns)
 
-        print("text\tlabel\tpreds\tPOS")
+        is_wrong_predict = False
+        total_count += 1
         for df_idx, df_item in pd_df.iterrows():
             if "[PAD]" == df_item["text"]:
                 break
-            print(df_item["text"], df_item["labels"], df_item["preds"], df_item["pos"])
+            if df_item["labels"] != df_item["preds"]:
+                if not is_wrong_predict:
+                    wrong_count += 1
+                is_wrong_predict = True
+            # print(df_item["text"], df_item["labels"], df_item["preds"], df_item["pos"])
+
+        print(f"total_count: {total_count}, wrong_count: {wrong_count}")
+        if not is_wrong_predict:
+            continue
+        else:
+            print("text\tlabel\tpreds\tPOS")
+            for df_idx, df_item in pd_df.iterrows():
+                if "[PAD]" == df_item["text"]:
+                    break
+                print(df_item["text"], df_item["labels"], df_item["preds"], df_item["pos"])
 
         # Stop
         input()

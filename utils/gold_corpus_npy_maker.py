@@ -709,13 +709,6 @@ def make_eojeol_datasets_npy(
                 new_back_pair = (back_str, back_tokens, back_item)
                 new_word_tokens_pos_pair_list.append(new_front_pair)
                 new_word_tokens_pos_pair_list.append(new_back_pair)
-                # TEST
-                # print("SP", split_idx)
-                # print("front: ", front_str, front_tokens, front_item)
-                # print("back: ", back_str, back_tokens, back_item)
-                # print("new_front", new_front_pair)
-                # print("new_back", new_back_pair)
-                # input()
             else:
                 new_word_tokens_pos_pair_list.append(wtp_item)
         word_tokens_pos_pair_list = new_word_tokens_pos_pair_list
@@ -1137,21 +1130,17 @@ def make_eojeol_and_wordpiece_labels_npy(
     else:
         tokenizer = ElectraTokenizer.from_pretrained(tokenizer_name)
 
-    for proc_idx, src_item in enumerate(src_list):
-        # Test
-        # if "29·미국·사진" not in src_item.text:
-        #     continue
-        # if "전창수(42) 두산타워 마케팅팀 차장" not in src_item.text:
-        #     continue
-        # if '샌드위치→역(逆)샌드위치→신(新)샌드위치….' not in src_item.text:
-        #     continue
-        # if "그동안 각 언론사와 후보 진영이 실시한 여론조사에서도 홍준표·원희룡·나경원 후보가 '3강'을 형성하며 엎치락뒤치락해 왔다." not in src_item.text:
-        #     continue
-        # if "P 불투르(Vulture) 인사위원회 위원장은" not in src_item.text:
-        #     continue
-        # if "넙치·굴비·홍어·톳·꼬시래기·굴·홍합" not in src_item.text:
-        #     continue
+    # Test sentences
+    test_str_list = [
+        "29·미국·사진", "전창수(42) 두산타워 마케팅팀 차장", "샌드위치→역(逆)샌드위치→신(新)샌드위치….",
+        "홍준표·원희룡·나경원 후보가 '3강'을 형성하며 엎치락뒤치락해 왔다.", "P 불투르(Vulture) 인사위원회 위원장은",
+        "넙치·굴비·홍어·톳·꼬시래기·굴·홍합", "연준 의장이", "황병서 북한군 총정치국장이 올해 10월 4일",
+        "영업익 4482억 ‘깜짝’… LG전자 ‘부활의 노래’", "LG 우규민-삼성 웹스터(대구)",
+        "‘김종영 그 절대를 향한’ 전시회", "재산증가액이 3억5000만원이다.", "‘진실·화해를 위한 과거사 정리위원회’",
+        "용의자들은 25일 아침 9시께",
+    ]
 
+    for proc_idx, src_item in enumerate(src_list):
         if 0 == (proc_idx % 1000):
             print(f"{proc_idx} Processing... {src_item.text}")
 
@@ -1162,7 +1151,7 @@ def make_eojeol_and_wordpiece_labels_npy(
                            "\"", "…", "...", "→", "_", "|", "〈", "〉",
                            "?", "!", "<", ">", "ㆍ", "•", "《", "》",
                            "[", "]", "ㅡ", "+", "“", "”", ";", "·",
-                           "‘", "’", "″", "″", "'", "'"]  # , "."]
+                           "‘", "’", "″", "″", "'", "'", "-", "~"]  # , "."]
 
         for word_idx, word_item in enumerate(src_item.word_list):
             target_word_id = word_item.id
@@ -1207,13 +1196,56 @@ def make_eojeol_and_wordpiece_labels_npy(
                 normal_word_tokens = tokenizer.tokenize(word_item.form)
                 normal_pair = (word_item.form, normal_word_tokens, target_morp_list)
                 word_tokens_pos_pair_list.append(normal_pair)
+
+        # 명사파생 접미사, 보조사, 주격조사
+        # 뒤에서 부터 읽는다.
+        '''
+            XSN : 명사파생 접미사 (-> 학생'들'의, 선생'님')
+            JX : 보조사 (-> 이사장'은')
+            JC : 접속 조사 (-> 국무 장관'과')
+            JKS : 주격 조사 (-> 위원장'이')
+            JKC : 보격 조사 (-> 106주년'이')
+            JKG  : 관형격 조사 (-> 미군'의')
+            JKO : 목적격 조사 (-> 러시아의(관형격) 손'을')
+            JKB : 부사격 조사 (-> 7월'에')
+        '''
+
+        new_word_tokens_pos_pair_list: List[Tuple[str, List[str], List[str]]] = []
+        # VCP -> 긍정지정사
+        target_josa = ["XSN", "JX", "JC", "JKS", "JKC", "JKG", "JKO", "JKB", "VCP"]
+        target_nn = ["NNG", "NNP", "NNB"]
+        for wtp_item in word_tokens_pos_pair_list:
+            split_idx = -1
+            for mp_idx, wtp_mp_item in enumerate(reversed(wtp_item[-1])):
+                if wtp_mp_item.label in target_josa:
+                    split_idx = len(wtp_item[-1]) - mp_idx - 1
+            if -1 != split_idx and 0 != split_idx:
+                front_item = wtp_item[-1][:split_idx]
+                if front_item[-1].label not in target_nn:
+                    continue
+                back_item = wtp_item[-1][split_idx:]
+
+                # wtp_tokens = [t.replace("##", "") for t in wtp_item[1]]
+                front_str = "".join([x.form for x in front_item])
+                front_tokens = tokenizer.tokenize(front_str)
+                back_str = wtp_item[0].replace(front_str, "")
+                back_tokens = tokenizer.tokenize(back_str)
+
+                new_front_pair = (front_str, front_tokens, front_item)
+                new_back_pair = (back_str, back_tokens, back_item)
+                new_word_tokens_pos_pair_list.append(new_front_pair)
+                new_word_tokens_pos_pair_list.append(new_back_pair)
+            else:
+                new_word_tokens_pos_pair_list.append(wtp_item)
+        word_tokens_pos_pair_list = new_word_tokens_pos_pair_list
+
         # Text Tokens
         text_tokens = []
         for wtp_item in word_tokens_pos_pair_list:
             text_tokens.extend(wtp_item[1])
 
         # NE
-        labels = ["O"] * len(text_tokens)
+        labels = [ETRI_TAG["O"]] * len(text_tokens)
         start_idx = 0
         for ne_item in src_item.ne_list:
             is_find = False
@@ -1228,9 +1260,9 @@ def make_eojeol_and_wordpiece_labels_npy(
                         # BIO Tagging
                         for bio_idx in range(s_idx, s_idx + word_cnt):
                             if bio_idx == s_idx:
-                                labels[bio_idx] = "B-" + ne_item.type
+                                labels[bio_idx] = ETRI_TAG["B-" + ne_item.type]
                             else:
-                                labels[bio_idx] = "I-" + ne_item.type
+                                labels[bio_idx] = ETRI_TAG["I-" + ne_item.type]
 
                         is_find = True
                         start_idx = s_idx + word_cnt
@@ -1256,25 +1288,25 @@ def make_eojeol_and_wordpiece_labels_npy(
         # 토큰 단위
         valid_token_len = 0
         text_tokens.insert(0, "[CLS]")
-        labels.insert(0, "O")
+        labels.insert(0, ETRI_TAG["O"])
         if max_len <= len(text_tokens):
             text_tokens = text_tokens[:max_len-1]
             labels = labels[:max_len - 1]
             text_tokens.append("[SEP]")
-            labels.append("O")
+            labels.append(ETRI_TAG["O"])
 
             valid_token_len = max_len
         else:
             text_tokens.append("[SEP]")
-            labels.append("O")
+            labels.append(ETRI_TAG["O"])
 
             valid_token_len = len(text_tokens)
             text_tokens += ["[PAD]"] * (max_len - valid_token_len)
-            labels += ["O"] * (max_len - valid_token_len)
+            labels += [ETRI_TAG["O"]] * (max_len - valid_token_len)
+
         attention_mask = ([1] * valid_token_len) + ([0] * (max_len - valid_token_len))
         token_type_ids = [0] * max_len
         input_ids = tokenizer.convert_tokens_to_ids(text_tokens)
-        labels = [ETRI_TAG[x] for x in labels]
         
         # 어절 단위
         pos_tag_ids.insert(0, [pos_tag2ids["O"]] * 10)  # [CLS]
@@ -1465,10 +1497,10 @@ if "__main__" == __name__:
     #                    src_list=all_sent_list, max_len=128, debug_mode=False, save_model_dir="electra",
     #                    max_pos_nums=10)
 
-    make_eojeol_datasets_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",
-                             src_list=all_sent_list, max_len=128, debug_mode=False,
-                             save_model_dir="eojeol_electra")
+    # make_eojeol_datasets_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",
+    #                          src_list=all_sent_list, max_len=128, debug_mode=False,
+    #                          save_model_dir="eojeol_electra")
 
-    # make_eojeol_and_wordpiece_labels_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",
-    #                                      src_list=all_sent_list, max_len=128, debug_mode=False,
-    #                                      save_model_dir="eojeol2wp_electra")
+    make_eojeol_and_wordpiece_labels_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",
+                                         src_list=all_sent_list, max_len=128, debug_mode=False,
+                                         save_model_dir="eojeol2wp_electra")
