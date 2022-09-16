@@ -595,28 +595,27 @@ def make_eojeol_datasets_npy(
         tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
     else:
         tokenizer = ElectraTokenizer.from_pretrained(tokenizer_name)
+
+    # Test sentences
+    test_str_list = [
+        "29·미국·사진", "전창수(42) 두산타워 마케팅팀 차장", "샌드위치→역(逆)샌드위치→신(新)샌드위치….",
+        "홍준표·원희룡·나경원 후보가 '3강'을 형성하며 엎치락뒤치락해 왔다.", "P 불투르(Vulture) 인사위원회 위원장은",
+        "넙치·굴비·홍어·톳·꼬시래기·굴·홍합", "연준 의장이", "황병서 북한군 총정치국장이 올해 10월 4일",
+        "영업익 4482억 ‘깜짝’… LG전자 ‘부활의 노래’", "LG 우규민-삼성 웹스터(대구)",
+        "‘김종영 그 절대를 향한’ 전시회", "재산증가액이 3억5000만원이다.", "‘진실·화해를 위한 과거사 정리위원회’",
+        "용의자들은 25일 아침 9시께",
+    ]
+    # test_str_list = ["P 불투르(Vulture) 인사위원회 위원장은"]
+
     for proc_idx, src_item in enumerate(src_list):
         # Test
-        # if "29·미국·사진" not in src_item.text:
-        #     continue
-        # if "전창수(42) 두산타워 마케팅팀 차장" not in src_item.text:
-        #     continue
-        # if '샌드위치→역(逆)샌드위치→신(新)샌드위치….' not in src_item.text:
-        #     continue
-        # if "그동안 각 언론사와 후보 진영이 실시한 여론조사에서도 홍준표·원희룡·나경원 후보가 '3강'을 형성하며 엎치락뒤치락해 왔다." not in src_item.text:
-        #     continue
-        # if "P 불투르(Vulture) 인사위원회 위원장은" not in src_item.text:
-        #     continue
-        # if "넙치·굴비·홍어·톳·꼬시래기·굴·홍합" not in src_item.text:
-        #     continue
-        # if "연준 의장이" not in src_item.text:
-        #     continue
-        # if "황병서 북한군 총정치국장이 올해 10월 4일" not in src_item.text:
-        #     continue
-        # if "영업익 4482억 ‘깜짝’… LG전자 ‘부활의 노래’" not in src_item.text:
-        #     continue
-        if "LG 우규민-삼성 웹스터(대구)" not in src_item.text:
-            continue
+        if debug_mode:
+            is_test_str = False
+            for test_str in test_str_list:
+                if test_str in src_item.text:
+                    is_test_str = True
+            if not is_test_str:
+                continue
 
         if 0 == (proc_idx % 1000):
             print(f"{proc_idx} Processing... {src_item.text}")
@@ -628,7 +627,7 @@ def make_eojeol_datasets_npy(
                            "\"", "…", "...", "→", "_", "|", "〈", "〉",
                            "?", "!", "<", ">", "ㆍ", "•", "《", "》",
                            "[", "]", "ㅡ", "+", "“", "”", ";", "·",
-                           "‘", "’", "″", "″", "'", "'"] #, "."]
+                           "‘", "’", "″", "″", "'", "'", "-", "~"] #, "."]
         for word_idx, word_item in enumerate(src_item.word_list):
             target_word_id = word_item.id
             target_morp_list = [x for x in src_item.morp_list if x.word_id == target_word_id]
@@ -686,7 +685,8 @@ def make_eojeol_datasets_npy(
             JKB : 부사격 조사 (-> 7월'에')
         '''
         new_word_tokens_pos_pair_list: List[Tuple[str, List[str], List[str]]] = []
-        target_josa = ["XSN", "JX", "JC", "JKS", "JKC", "JKG", "JKO", "JKB"]
+        # VCP -> 긍정지정사
+        target_josa = ["XSN", "JX", "JC", "JKS", "JKC", "JKG", "JKO", "JKB", "VCP"]
         target_nn = ["NNG", "NNP", "NNB"]
         for wtp_item in word_tokens_pos_pair_list:
             split_idx = -1
@@ -731,26 +731,30 @@ def make_eojeol_datasets_npy(
         LS_ids = [LS_Tag["S"]] * wtp_pair_len
         b_check_use_eojeol = [False for _ in range(wtp_pair_len)]
         for ne_idx, ne_item in enumerate(src_item.ne_list):
-            ne_item_split_eojeol = ne_item.text.split(" ")
-            ne_eojeol_size = len(ne_item_split_eojeol)
+            ne_item_char_list = list(ne_item.text.replace(" ", ""))
             target_index_pair = () # (begin, end)
+            is_stop = False
             for wtp_idx, wtp_item in enumerate(word_tokens_pos_pair_list):
                 if b_check_use_eojeol[wtp_idx]:
                     continue
-
-                concat_wtp = [x[0] for x in word_tokens_pos_pair_list[wtp_idx:wtp_idx+ne_eojeol_size]]
-                if " ".join(ne_item_split_eojeol) in " ".join(concat_wtp):
-                    target_index_pair = (wtp_idx, wtp_idx+ne_eojeol_size)
+                if is_stop:
                     break
-            if 0 >= len(target_index_pair):
-                continue
-            for bio_idx in range(target_index_pair[0], target_index_pair[1]):
-                b_check_use_eojeol[bio_idx] = True
-                if bio_idx == target_index_pair[0]:
-                    labels_ids[bio_idx] = ETRI_TAG["B-" + ne_item.type]
-                else:
-                    labels_ids[bio_idx] = ETRI_TAG["I-" + ne_item.type]
-                    LS_ids[bio_idx] = LS_Tag["L"]
+                for wtp_end_idx in range(1, wtp_pair_len-wtp_idx):
+                    concat_wtp = [x[0] for x in word_tokens_pos_pair_list[wtp_idx:wtp_idx+wtp_end_idx]]
+                    if "".join(ne_item_char_list) == "".join(concat_wtp):
+                        target_index_pair = (wtp_idx, wtp_idx+wtp_end_idx)
+                        is_stop = True
+                        break
+
+                if 0 >= len(target_index_pair):
+                    continue
+                for bio_idx in range(target_index_pair[0], target_index_pair[1]):
+                    b_check_use_eojeol[bio_idx] = True
+                    if bio_idx == target_index_pair[0]:
+                        labels_ids[bio_idx] = ETRI_TAG["B-" + ne_item.type]
+                    else:
+                        labels_ids[bio_idx] = ETRI_TAG["I-" + ne_item.type]
+                        LS_ids[bio_idx] = LS_Tag["L"]
 
         # POS
         pos_tag_ids = [] # [ [POS] * 10 ]
@@ -1457,12 +1461,13 @@ if "__main__" == __name__:
         bert : klue/bert-base
         roberta : klue/roberta-base
     '''
-    make_wordpiece_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",
-                       src_list=all_sent_list, max_len=128, debug_mode=False, save_model_dir="electra",
-                       max_pos_nums=10)
+    # make_wordpiece_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",
+    #                    src_list=all_sent_list, max_len=128, debug_mode=False, save_model_dir="electra",
+    #                    max_pos_nums=10)
 
-    # make_eojeol_datasets_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",
-    #                          src_list=all_sent_list, max_len=128, debug_mode=True, save_model_dir="eojeol_electra")
+    make_eojeol_datasets_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",
+                             src_list=all_sent_list, max_len=128, debug_mode=False,
+                             save_model_dir="eojeol_electra")
 
     # make_eojeol_and_wordpiece_labels_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",
     #                                      src_list=all_sent_list, max_len=128, debug_mode=False,

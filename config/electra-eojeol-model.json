@@ -1,7 +1,7 @@
 {
   "task": "custom",
   "data_dir": "data",
-  "ckpt_dir": "ckpt-electra-eojeol-embed-split-josa",
+  "ckpt_dir": "ckpt-electra-eojeol-embed-split-jx-xsn-fix-labeling",
   "train_npy": "./corpus/npy/eojeol_electra/train.npy",
   "dev_npy": "./corpus/npy/eojeol_electra/dev.npy",
   "test_npy": "./corpus/npy/eojeol_electra/test.npy",
@@ -22,12 +22,12 @@
   "no_cuda": false,
   "model_type": "monologg/koelectra-base-v3-discriminator",
   "model_name_or_path": "monologg/koelectra-base-v3-discriminator",
-  "output_dir": "electra-eojeol-embed-split-josa",
+  "output_dir": "electra-eojeol-embed-split-jx-xsn-fix-labeling",
   "seed": 42,
-  "train_batch_size": 32,
+  "train_batch_size": 64,
   "eval_batch_size": 128,
-  "logging_steps": 16415,
-  "save_steps": 3283,
+  "logging_steps": 8210,
+  "save_steps": 1642,
   "learning_rate": 5e-5,
   "n_gpu": 1
 }

@@ -31,6 +31,7 @@ LS_Tag = {
 '''
 
 # 47개
+# http://incredible.ai/nlp/2016/12/28/NLP/
 NIKL_POS_TAG = {
     0: "O", # None
     1: "NNG", 2: "NNP", 3: "NNB", # 일반명사, 고유명사, 의존명사
