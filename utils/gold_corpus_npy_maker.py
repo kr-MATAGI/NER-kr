@@ -627,7 +627,7 @@ def make_eojeol_datasets_npy(
                            "\"", "…", "...", "→", "_", "|", "〈", "〉",
                            "?", "!", "<", ">", "ㆍ", "•", "《", "》",
                            "[", "]", "ㅡ", "+", "“", "”", ";", "·",
-                           "‘", "’", "″", "″", "'", "'", "-", "~"] #, "."]
+                           "‘", "’", "″", "″", "'", "'", "-", "~", ",", "."]
         for word_idx, word_item in enumerate(src_item.word_list):
             target_word_id = word_item.id
             target_morp_list = [x for x in src_item.morp_list if x.word_id == target_word_id]
