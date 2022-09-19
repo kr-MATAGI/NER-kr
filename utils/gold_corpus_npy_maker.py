@@ -609,10 +609,7 @@ def make_eojeol_datasets_npy(
         "금리설계형의 경우 변동금리(6개월 변동 코픽스 연동형)는"
     ]
     # test_str_list = [
-    #     "해외50여 개국에서 5500회 이상 공연하며 사물놀이",
-    #     "REDD는 열대우림 등 산림자원을 보호하는 개도국이나",
-    #     "2010년 12월부터 이미 가중 처벌을 시행하는 어린이 보호구역의 교통사고 발생 건수는",
-    #     "금리설계형의 경우 변동금리(6개월 변동 코픽스 연동형)는"
+    #     "재산증가액이 3억5000만원이다."
     # ]
 
     for proc_idx, src_item in enumerate(src_list):
@@ -631,15 +628,18 @@ def make_eojeol_datasets_npy(
         # make (word, token, pos) pair
         # [(word, [tokens], [POS])]
         word_tokens_pos_pair_list: List[Tuple[str, List[str], List[str]]] = []
-        separation_giho = ["「", "」", "…", "〔", "〕", "(", ")",
-                           "\"", "…", "...", "→", "_", "|", "〈", "〉",
-                           "?", "!", "<", ">", "ㆍ", "•", "《", "》",
-                           "[", "]", "ㅡ", "+", "“", "”", ";", "·",
-                           "‘", "’", "″", "″", "'", "'", "-", "~", ",", "."]
+        # separation_giho = ["「", "」", "…", "〔", "〕", "(", ")",
+        #                    "\"", "…", "...", "→", "_", "|", "〈", "〉",
+        #                    "?", "!", "<", ">", "ㆍ", "•", "《", "》",
+        #                    "[", "]", "ㅡ", "+", "“", "”", ";", "·",
+        #                    "‘", "’", "″", "″", "'", "'", "-", "~", ",", "."]
+        split_giho_label = [
+            "SF", "SP", "SS", "SE", "SO", "SW"
+        ]
         for word_idx, word_item in enumerate(src_item.word_list):
             target_word_id = word_item.id
             target_morp_list = [x for x in src_item.morp_list if x.word_id == target_word_id]
-            sp_pos_list = [x for x in target_morp_list if x.form in separation_giho]
+            sp_pos_list = [x for x in target_morp_list if x.label in split_giho_label]
 
             if 0 < len(sp_pos_list):
                 word_ch_list = []
@@ -694,7 +694,8 @@ def make_eojeol_datasets_npy(
         '''
         new_word_tokens_pos_pair_list: List[Tuple[str, List[str], List[str]]] = []
         # VCP -> 긍정지정사
-        target_josa = ["XSN", "JX", "JC", "JKS", "JKC", "JKG", "JKO", "JKB", "VCP"]
+        # target_josa = ["XSN", "JX", "JC", "JKS", "JKC", "JKG", "JKO", "JKB", "VCP"]
+        target_josa = ["VCP"]
         target_nn = ["NNG", "NNP", "NNB", "SW"] # 기호 추가
         for wtp_item in word_tokens_pos_pair_list:
             split_idx = -1
@@ -722,7 +723,7 @@ def make_eojeol_datasets_npy(
                 new_word_tokens_pos_pair_list.append(wtp_item)
 
         # 전/후 비교를 위해 주석처리
-        # word_tokens_pos_pair_list = new_word_tokens_pos_pair_list
+        word_tokens_pos_pair_list = new_word_tokens_pos_pair_list
 
         # Text Tokens
         text_tokens = []
@@ -744,8 +745,10 @@ def make_eojeol_datasets_npy(
                 if is_stop:
                     break
                 for wtp_end_idx in range(1, wtp_pair_len-wtp_idx):
-                    concat_wtp = [x[0] for x in word_tokens_pos_pair_list[wtp_idx:wtp_idx+wtp_end_idx]]
-                    if "".join(concat_wtp) in "".join(ne_item_char_list):
+                    concat_wtp = [x[0] for x in word_tokens_pos_pair_list[wtp_idx:wtp_idx+wtp_end_idx] if 0 < len(x[0])]
+                    if "".join(ne_item_char_list) in "".join(concat_wtp):
+                        if ne_item_char_list[0] != concat_wtp[0][0]:
+                            break
                         target_index_pair = (wtp_idx, wtp_idx+wtp_end_idx)
                         is_stop = True
                         break
@@ -1792,13 +1795,13 @@ if "__main__" == __name__:
     #                    src_list=all_sent_list, max_len=128, debug_mode=False, save_model_dir="electra",
     #                    max_pos_nums=10)
 
-    # make_eojeol_datasets_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",
-    #                          src_list=all_sent_list, max_len=128, debug_mode=False,
-    #                          save_model_dir="eojeol_electra")
+    make_eojeol_datasets_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",
+                             src_list=all_sent_list, max_len=128, debug_mode=False,
+                             save_model_dir="eojeol_vcp_electra")
 
-    make_not_split_jx_eojeol_datasets_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",
-                                          src_list=all_sent_list, max_len=128, debug_mode=False,
-                                          save_model_dir="eojeol_not_split_electra")
+    # make_not_split_jx_eojeol_datasets_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",
+    #                                       src_list=all_sent_list, max_len=128, debug_mode=False,
+    #                                       save_model_dir="eojeol_not_split_electra")
 
     # make_eojeol_and_wordpiece_labels_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",
     #                                      src_list=all_sent_list, max_len=128, debug_mode=False,
