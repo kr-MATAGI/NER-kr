@@ -11,8 +11,10 @@ from model.electra_lstm_crf import ELECTRA_POS_LSTM
 from utils.tag_def import ETRI_TAG, NIKL_POS_TAG
 
 #===========================================================================
-def predict_eojeol_validation_set(model_path: str = "", datasets_path: str = "", model_name: str = "",
-                                  compare_mode: bool = False):
+def predict_eojeol_validation_set(
+        model_path: str = "", datasets_path: str = "",
+        model_name: str = "", compare_mode: bool = False
+):
 #===========================================================================
     # load model
     tokenizer = ElectraTokenizer.from_pretrained(model_name)
