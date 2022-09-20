@@ -91,15 +91,15 @@ def predict_eojeol_validation_set(model_path: str = "", datasets_path: str = "",
                     # print(df_item["text"], df_item["labels"], df_item["preds"], df_item["pos"])
 
                 print(f"total_count: {total_count}, wrong_count: {wrong_count}")
-                if (not is_wrong_predict): #and 0 >= len(target_text):
-                    continue
-                else:
-                    print(" ".join(text))
-                    print("text\tlabel\tpreds\tPOS")
-                    for df_idx, df_item in pd_df.iterrows():
-                        if 0 >= len(df_item["text"]):
-                            break
-                        print(df_item["text"], df_item["labels"], df_item["preds"], df_item["pos"])
+                # if (not is_wrong_predict): #and 0 >= len(target_text):
+                #     continue
+                # else:
+                print(" ".join(text))
+                print("text\tlabel\tpreds\tPOS")
+                for df_idx, df_item in pd_df.iterrows():
+                    if 0 >= len(df_item["text"]):
+                        break
+                    print(df_item["text"], df_item["labels"], df_item["preds"], df_item["pos"])
 
                 # Stop
                 if not compare_mode:
@@ -190,8 +190,8 @@ def predict_wordpiece_validation_set(model_path: str = "", datasets_path: str = 
 
 ### MAIN
 if "__main__" == __name__:
-    model_path = "./eojeol_model/model"
-    datasets_path = "./eojeol_model/npy"
+    model_path = "./old_eojeol_model/model"
+    datasets_path = "./old_eojeol_model/npy"
     model_name = "monologg/koelectra-base-v3-discriminator"
 
     # Eojeol Validation Set

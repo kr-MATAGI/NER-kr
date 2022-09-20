@@ -606,11 +606,11 @@ def make_eojeol_datasets_npy(
         "용의자들은 25일 아침 9시께", "해외50여 개국에서 5500회 이상 공연하며 사물놀이",
         "REDD는 열대우림 등 산림자원을 보호하는 개도국이나",
         "2010년 12월부터 이미 가중 처벌을 시행하는 어린이 보호구역의 교통사고 발생 건수는",
-        "금리설계형의 경우 변동금리(6개월 변동 코픽스 연동형)는"
+        "금리설계형의 경우 변동금리(6개월 변동 코픽스 연동형)는", "현재 중국의 공항은 400여 개다."
     ]
-    # test_str_list = [
-    #     "재산증가액이 3억5000만원이다."
-    # ]
+    test_str_list = [
+        "현재 중국의 공항은 400여 개다."
+    ]
 
     for proc_idx, src_item in enumerate(src_list):
         # Test
@@ -694,8 +694,8 @@ def make_eojeol_datasets_npy(
         '''
         new_word_tokens_pos_pair_list: List[Tuple[str, List[str], List[str]]] = []
         # VCP -> 긍정지정사
-        # target_josa = ["XSN", "JX", "JC", "JKS", "JKC", "JKG", "JKO", "JKB", "VCP"]
-        target_josa = ["VCP"]
+        target_josa = ["XSN", "JX", "JC", "JKS", "JKC", "JKG", "JKO", "JKB", "VCP"]
+        # target_josa = ["VCP"]
         target_nn = ["NNG", "NNP", "NNB", "SW"] # 기호 추가
         for wtp_item in word_tokens_pos_pair_list:
             split_idx = -1
@@ -1797,7 +1797,7 @@ if "__main__" == __name__:
 
     make_eojeol_datasets_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",
                              src_list=all_sent_list, max_len=128, debug_mode=False,
-                             save_model_dir="eojeol_vcp_electra")
+                             save_model_dir="eojeol_electra")
 
     # make_not_split_jx_eojeol_datasets_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",
     #                                       src_list=all_sent_list, max_len=128, debug_mode=False,
