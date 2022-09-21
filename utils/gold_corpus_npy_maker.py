@@ -739,30 +739,28 @@ def make_eojeol_datasets_npy(
         LS_ids = [LS_Tag["S"]] * wtp_pair_len
         b_check_use_eojeol = [False for _ in range(wtp_pair_len)]
         for ne_idx, ne_item in enumerate(src_item.ne_list):
-            ne_item_char_list = list(ne_item.text.replace(" ", ""))
-            target_index_pair = () # (begin, end)
-            is_stop = False
+            ne_char_list = list(ne_item.text.replace(" ", ""))
+            concat_wtp_list = []
             for wtp_idx, wtp_item in enumerate(word_tokens_pos_pair_list):
                 if b_check_use_eojeol[wtp_idx]:
                     continue
-                if is_stop:
-                    break
-                for wtp_end_idx in range(1, wtp_pair_len-wtp_idx):
-                    concat_wtp = [x[0] for x in word_tokens_pos_pair_list[wtp_idx:wtp_idx+wtp_end_idx] if 0 < len(x[0])]
-                    if "".join(ne_item_char_list) == "".join(concat_wtp):
-                        target_index_pair = (wtp_idx, wtp_idx+wtp_end_idx)
-                        is_stop = True
-                        break
+                for sub_idx in range(wtp_idx + 1, len(word_tokens_pos_pair_list)):
+                    concat_wtp = [x[0] for x in word_tokens_pos_pair_list[wtp_idx:sub_idx]]
+                    concat_wtp_list.append(("".join(concat_wtp), (wtp_idx, sub_idx)))
+            concat_wtp_list = [x for x in concat_wtp_list if "".join(ne_char_list) in x[0]]
+            concat_wtp_list.sort(key=lambda x: len(x[0]))
+            # print("".join(ne_char_list), concat_wtp_list)
+            if 0 >= len(concat_wtp_list):
+                continue
+            target_index_pair = concat_wtp_list[0][1]
 
-                if 0 >= len(target_index_pair):
-                    continue
-                for bio_idx in range(target_index_pair[0], target_index_pair[1]):
-                    b_check_use_eojeol[bio_idx] = True
-                    if bio_idx == target_index_pair[0]:
-                        labels_ids[bio_idx] = ETRI_TAG["B-" + ne_item.type]
-                    else:
-                        labels_ids[bio_idx] = ETRI_TAG["I-" + ne_item.type]
-                        LS_ids[bio_idx] = LS_Tag["L"]
+            for bio_idx in range(target_index_pair[0], target_index_pair[1]):
+                b_check_use_eojeol[bio_idx] = True
+                if bio_idx == target_index_pair[0]:
+                    labels_ids[bio_idx] = ETRI_TAG["B-" + ne_item.type]
+                else:
+                    labels_ids[bio_idx] = ETRI_TAG["I-" + ne_item.type]
+                    LS_ids[bio_idx] = LS_Tag["L"]
 
         # POS
         pos_tag_ids = [] # [ [POS] * 10 ]
@@ -1837,13 +1835,13 @@ if "__main__" == __name__:
     #                    src_list=all_sent_list, max_len=128, debug_mode=False, save_model_dir="electra",
     #                    max_pos_nums=10)
 
-    # make_eojeol_datasets_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",
-    #                          src_list=all_sent_list, max_len=128, debug_mode=False,
-    #                          save_model_dir="eojeol_electra")
+    make_eojeol_datasets_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",
+                             src_list=all_sent_list, max_len=128, debug_mode=False,
+                             save_model_dir="eojeol_electra")
 
-    make_not_split_jx_eojeol_datasets_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",
-                                          src_list=all_sent_list, max_len=128, debug_mode=False,
-                                          save_model_dir="eojeol_vcp_electra", split_vcp=False)
+    # make_not_split_jx_eojeol_datasets_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",
+    #                                       src_list=all_sent_list, max_len=128, debug_mode=False,
+    #                                       save_model_dir="eojeol_vcp_electra", split_vcp=False)
 
     # make_eojeol_and_wordpiece_labels_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",
     #                                      src_list=all_sent_list, max_len=128, debug_mode=False,
