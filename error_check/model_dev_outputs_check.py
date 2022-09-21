@@ -192,8 +192,8 @@ def predict_wordpiece_validation_set(model_path: str = "", datasets_path: str = 
 
 ### MAIN
 if "__main__" == __name__:
-    model_path = "./eojeol_model/model"
-    datasets_path = "./eojeol_model/npy"
+    model_path = "./old_eojeol_model/model"
+    datasets_path = "./old_eojeol_model/npy"
     model_name = "monologg/koelectra-base-v3-discriminator"
 
     # Eojeol Validation Set

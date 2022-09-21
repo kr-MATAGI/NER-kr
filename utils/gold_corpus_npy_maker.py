@@ -1606,42 +1606,41 @@ def make_not_split_jx_eojeol_datasets_npy(
             JKO : 목적격 조사 (-> 러시아의(관형격) 손'을')
             JKB : 부사격 조사 (-> 7월'에')
         '''
-        new_word_tokens_pos_pair_list: List[Tuple[str, List[str], List[str]]] = []
-        # VCP -> 긍정지정사
-        # target_josa = ["XSN", "JX", "JC", "JKS", "JKC", "JKG", "JKO", "JKB", "VCP"]
-        target_josa = ["VCP"]
-        target_nn = ["NNG", "NNP", "NNB", "SW"]  # 기호 추가, XSN은 VCP만 분리할때
-        for wtp_item in word_tokens_pos_pair_list:
-            split_idx = -1
-            for mp_idx, wtp_mp_item in enumerate(reversed(wtp_item[-1])):
-                if wtp_mp_item.label in target_josa:
-                    split_idx = len(wtp_item[-1]) - mp_idx - 1
-            if -1 != split_idx and 0 != split_idx:
-                front_item = wtp_item[-1][:split_idx]
-                front_item_nn_list = [x for x in front_item if x.label in target_nn]
+        if split_vcp:
+            new_word_tokens_pos_pair_list: List[Tuple[str, List[str], List[str]]] = []
+            # VCP -> 긍정지정사
+            # target_josa = ["XSN", "JX", "JC", "JKS", "JKC", "JKG", "JKO", "JKB", "VCP"]
+            target_josa = ["VCP"]
+            target_nn = ["NNG", "NNP", "NNB", "SW"]  # 기호 추가, XSN은 VCP만 분리할때
+            for wtp_item in word_tokens_pos_pair_list:
+                split_idx = -1
+                for mp_idx, wtp_mp_item in enumerate(reversed(wtp_item[-1])):
+                    if wtp_mp_item.label in target_josa:
+                        split_idx = len(wtp_item[-1]) - mp_idx - 1
+                if -1 != split_idx and 0 != split_idx:
+                    front_item = wtp_item[-1][:split_idx]
+                    front_item_nn_list = [x for x in front_item if x.label in target_nn]
 
-                # if front_item[-1].label not in target_nn:
-                if 0 >= len(front_item_nn_list):
+                    # if front_item[-1].label not in target_nn:
+                    if 0 >= len(front_item_nn_list):
+                        new_word_tokens_pos_pair_list.append(wtp_item)
+                        continue
+                    back_item = wtp_item[-1][split_idx:]
+
+                    # wtp_tokens = [t.replace("##", "") for t in wtp_item[1]]
+                    front_str = "".join([x.form for x in front_item])
+                    front_tokens = tokenizer.tokenize(front_str)
+                    back_str = wtp_item[0].replace(front_str, "")
+                    back_tokens = tokenizer.tokenize(back_str)
+
+                    new_front_pair = (front_str, front_tokens, front_item)
+                    new_back_pair = (back_str, back_tokens, back_item)
+                    new_word_tokens_pos_pair_list.append(new_front_pair)
+                    new_word_tokens_pos_pair_list.append(new_back_pair)
+                else:
                     new_word_tokens_pos_pair_list.append(wtp_item)
-                    continue
-                back_item = wtp_item[-1][split_idx:]
-
-                # wtp_tokens = [t.replace("##", "") for t in wtp_item[1]]
-                front_str = "".join([x.form for x in front_item])
-                front_tokens = tokenizer.tokenize(front_str)
-                back_str = wtp_item[0].replace(front_str, "")
-                back_tokens = tokenizer.tokenize(back_str)
-
-                new_front_pair = (front_str, front_tokens, front_item)
-                new_back_pair = (back_str, back_tokens, back_item)
-                new_word_tokens_pos_pair_list.append(new_front_pair)
-                new_word_tokens_pos_pair_list.append(new_back_pair)
-            else:
-                new_word_tokens_pos_pair_list.append(wtp_item)
-
-        # 전/후 비교를 위해 주석처리
-        word_tokens_pos_pair_list = new_word_tokens_pos_pair_list
-
+            # 전/후 비교를 위해 주석처리
+            word_tokens_pos_pair_list = new_word_tokens_pos_pair_list
 
         # Text Tokens
         text_tokens = []
@@ -1838,13 +1837,13 @@ if "__main__" == __name__:
     #                    src_list=all_sent_list, max_len=128, debug_mode=False, save_model_dir="electra",
     #                    max_pos_nums=10)
 
-    make_eojeol_datasets_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",
-                             src_list=all_sent_list, max_len=128, debug_mode=False,
-                             save_model_dir="eojeol_electra")
+    # make_eojeol_datasets_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",
+    #                          src_list=all_sent_list, max_len=128, debug_mode=False,
+    #                          save_model_dir="eojeol_electra")
 
-    # make_not_split_jx_eojeol_datasets_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",
-    #                                       src_list=all_sent_list, max_len=128, debug_mode=False,
-    #                                       save_model_dir="eojeol_vcp_electra")
+    make_not_split_jx_eojeol_datasets_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",
+                                          src_list=all_sent_list, max_len=128, debug_mode=False,
+                                          save_model_dir="eojeol_vcp_electra", split_vcp=False)
 
     # make_eojeol_and_wordpiece_labels_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",
     #                                      src_list=all_sent_list, max_len=128, debug_mode=False,
