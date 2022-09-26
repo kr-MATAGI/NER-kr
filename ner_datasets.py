@@ -60,7 +60,7 @@ class NER_Eojeol_Datasets(Dataset):
         self.token_type_ids = token_data[:][:, :, 2]
         #self.token_seq_len = token_seq_len
 
-        # unit: eojeol
+        # unit: split_vcp
         self.labels = labels
         self.pos_tag_ids = pos_tag_ids
         self.eojeol_ids = eojeol_ids

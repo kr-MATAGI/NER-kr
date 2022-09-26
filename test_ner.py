@@ -54,7 +54,7 @@ if "__main__" == __name__:
         user_input = str(input())
         target_tokens = [tokenizer(user_input, padding='max_length', truncation=True, max_length=128)["input_ids"]]
 
-        # eojeol
+        # split_vcp
         eojeol_word = user_input.split(" ")
         eojeol_word.insert(0, "[CLS]")
         eojeol_word.append("[SEP]")
@@ -85,7 +85,7 @@ if "__main__" == __name__:
             labels = total_labels_data[data_idx, :]
 
             print("TEXT: ", text)
-            columns = ["eojeol", "label", "preds"]
+            columns = ["split_vcp", "label", "preds"]
             rows_list = []
             for eoj, p, l in zip(eojeol_word, preds, labels):
                 conv_preds = ids_to_tag[p]
@@ -93,7 +93,7 @@ if "__main__" == __name__:
                 rows_list.append([eoj, conv_preds, conv_label])
             pd_df = pd.DataFrame(rows_list, columns=columns)
 
-            print("eojeol\tpreds\tlabel")
+            print("split_vcp\tpreds\tlabel")
             for df_idx, df_item in pd_df.iterrows():
-                print(df_item["eojeol"], df_item["preds"], df_item["label"])
+                print(df_item["split_vcp"], df_item["preds"], df_item["label"])
             break

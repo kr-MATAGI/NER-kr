@@ -34,3 +34,7 @@ old_version/Utils/KorLex_api
 # Data Check
 data_check/model
 data_check/train_model
+
+# Case / Error Check
+error_check/extract_data
+pattern_check/results

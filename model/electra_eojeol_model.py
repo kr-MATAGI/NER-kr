@@ -144,7 +144,7 @@ class Electra_Eojeol_Model(ElectraPreTrainedModel):
                     break
                 valid_eojeol_cnt += 1
 
-            # end, eojeol loop
+            # end, split_vcp loop
             eojeol_attention_mask = torch.zeros(max_eojeol_len)
             for i in range(valid_eojeol_cnt):
                 eojeol_attention_mask[i] = 1
