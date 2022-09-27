@@ -134,21 +134,7 @@ def predict_eojeol_validation_set(
 
         print(f"total_count: {total_count}, wrong_count: {wrong_count}, vcp_eojeol_count: {vcp_count}")
         print(f"total_eojeol_count: {total_eojeol_count}, total_ne_count: {total_ne_count}, diff_ne_count: {diff_ne_count}")
-<<<<<<< HEAD
-        # if not is_wrong_predict:
-        #     continue
-        # else:
-        #     print(" ".join(text))
-        #     print("text\tlabel\tpreds\tPOS")
-        #     for df_idx, df_item in pd_df.iterrows():
-        #         if 0 >= len(df_item["text"]):
-        #             break
-        #         print(df_item["text"], df_item["labels"], df_item["preds"], df_item["pos"])
 
-        # Stop
-        # if not search_mode:
-        #     input()
-=======
         if not is_wrong_predict:
             continue
         else:
@@ -162,7 +148,7 @@ def predict_eojeol_validation_set(
         # Stop
         # if not search_mode:
             input()
->>>>>>> 27a6e2a7483a1a4f1e815567521ddfb1c56f737e
+
     # Write Error
     print(f"erorr_idx_size: {len(error_idx_list)}")
     save_path = "./split_vcp_eojeol_error_idx.pkl"

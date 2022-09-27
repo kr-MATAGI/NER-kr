@@ -228,7 +228,8 @@ def divide_by_category(root_dir: str = ""):
                 write_file.write(
                     str(err_info[0]) + "\t" + err_info[1] + "\t" + err_info[2] + "\t" + err_info[3] + "\n")
 
-def compare(f)
+def compare(f):
+
 
 ### MAIN ###
 if "__main__" == __name__:
