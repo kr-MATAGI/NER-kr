@@ -70,7 +70,7 @@ class ELECTRA_POS_LSTM(ElectraPreTrainedModel):
         pos_embed_2 = self.pos_embedding_2(pos_tag_2)  # [batch_size, seq_len, pos_tag_embed]
         pos_embed_3 = self.pos_embedding_3(pos_tag_3)  # [batch_size, seq_len, pos_tag_embed]
 
-        # eojeol
+        # split_vcp
         # eojeol_embed = self.eojeol_embedding(eojeol_ids)
 
         # entity

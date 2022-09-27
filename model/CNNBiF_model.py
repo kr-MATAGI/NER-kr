@@ -117,7 +117,7 @@ class ELECTRA_CNNBiF_Model(ElectraPreTrainedModel):
                     break
                 valid_eojeol_cnt += 1
 
-            # end, eojeol loop
+            # end, split_vcp loop
             eojeol_attention_mask = torch.zeros(max_eojeol_len)
             for i in range(valid_eojeol_cnt):
                 eojeol_attention_mask[i] = 1
@@ -137,7 +137,7 @@ class ELECTRA_CNNBiF_Model(ElectraPreTrainedModel):
                                        attention_mask=attention_mask)
         electra_last_hidden = electra_outputs.last_hidden_state
 
-        # eojeol embed : [batch_size, max_seq_len, max_eojeol_len]
+        # split_vcp embed : [batch_size, max_seq_len, max_eojeol_len]
         eojeol_boundary_embed = self._make_one_hot_embedding(last_hidden=electra_last_hidden, eojeol_ids=eojeol_ids)
 
         # matmul
@@ -187,7 +187,7 @@ class ELECTRA_CNNBiF_Model(ElectraPreTrainedModel):
 
         # CNNBiF
         cnn_bi_f_outputs = self.cnn_bi_f(eojeol_tensor) # [batch, kernel, hidden-1]
-        cnn_bi_f_outputs = self.ls_classifier(cnn_bi_f_outputs) # [batch, eojeol, 2]
+        cnn_bi_f_outputs = self.ls_classifier(cnn_bi_f_outputs) # [batch, split_vcp, 2]
 
         # Get Loss
         ls_loss = None

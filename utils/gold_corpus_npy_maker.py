@@ -565,7 +565,7 @@ def make_pos_tag_npy(tokenizer_name: str, src_list: List[Sentence], max_len: int
 #==============================================================
 def make_eojeol_datasets_npy(
         tokenizer_name: str, src_list: List[Sentence],
-        max_len: int=128, eojeol_max_len: int=50, debug_mode: bool=False,
+        max_len: int = 128, eojeol_max_len: int = 50, debug_mode: bool = False,
         save_model_dir: str = None
 ):
 #==============================================================
@@ -772,7 +772,7 @@ def make_eojeol_datasets_npy(
                 cur_pos_tag[add_idx] = pos_tag2ids[wtp_morp_item.label]
             pos_tag_ids.append(cur_pos_tag)
 
-        # eojeol boundary
+        # split_vcp boundary
         eojeol_boundary_list: List[int] = []
         for wtp_ids, wtp_item in enumerate(word_tokens_pos_pair_list):
             token_size = len(wtp_item[1])
@@ -880,7 +880,7 @@ def make_eojeol_datasets_npy(
             print(f"{word_tokens_pos_pair_list}")
             print(f"NE: {src_item.ne_list}")
             print(f"Morp: {src_item.morp_list}")
-            print(f"eojeol boundary: {eojeol_boundary_list}")
+            print(f"split_vcp boundary: {eojeol_boundary_list}")
             # [(word, [tokens], (begin, end))]
             temp_word_tokens_pos_pair_list = copy.deepcopy(word_tokens_pos_pair_list)
             temp_word_tokens_pos_pair_list.insert(0, ["[CLS]", ["[CLS]"]])
@@ -929,6 +929,13 @@ def convert_pos_tag_to_combi_tag(src_pos: List[int]):
             diff_len = len(new_eojeol_pos)
         new_eojeol_pos += [0] * (10 - diff_len)
         ret_pos_list.append(new_eojeol_pos)
+        # pos_ids2tag = {k: v for k, v in NIKL_POS_TAG.items()}
+        # before_conv = [pos_ids2tag[x] for x in eojeol_pos]
+        # after_conv = [pos_ids2tag[x] for x in new_eojeol_pos]
+        # if before_conv != after_conv:
+        #     print("==============\nBEFORE: ", before_conv, "\n")
+        #     print("AFTER: ", after_conv, "\n==============\n")
+
     '''
     # convert
     for eojeol_pos in src_pos:
@@ -1343,7 +1350,7 @@ def make_eojeol_and_wordpiece_labels_npy(
         npy_dict["input_ids"].append(input_ids)
         npy_dict["attention_mask"].append(attention_mask)
         npy_dict["token_type_ids"].append(token_type_ids)
-        #npy_dict["token_seq_len"].append(valid_eojeol_len)  # eojeol !
+        #npy_dict["token_seq_len"].append(valid_eojeol_len)  # split_vcp !
         npy_dict["labels"].append(labels)
 
         # convert pos tags
@@ -1684,7 +1691,7 @@ def make_not_split_jx_eojeol_datasets_npy(
                 cur_pos_tag[add_idx] = pos_tag2ids[wtp_morp_item.label]
             pos_tag_ids.append(cur_pos_tag)
 
-        # eojeol boundary
+        # split_vcp boundary
         eojeol_boundary_list: List[int] = []
         for wtp_ids, wtp_item in enumerate(word_tokens_pos_pair_list):
             token_size = len(wtp_item[1])
@@ -1792,7 +1799,7 @@ def make_not_split_jx_eojeol_datasets_npy(
             print(f"{word_tokens_pos_pair_list}")
             print(f"NE: {src_item.ne_list}")
             print(f"Morp: {src_item.morp_list}")
-            print(f"eojeol boundary: {eojeol_boundary_list}")
+            print(f"split_vcp boundary: {eojeol_boundary_list}")
             # [(word, [tokens], (begin, end))]
             temp_word_tokens_pos_pair_list = copy.deepcopy(word_tokens_pos_pair_list)
             temp_word_tokens_pos_pair_list.insert(0, ["[CLS]", ["[CLS]"]])
@@ -1841,7 +1848,7 @@ if "__main__" == __name__:
 
     # make_not_split_jx_eojeol_datasets_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",
     #                                       src_list=all_sent_list, max_len=128, debug_mode=False,
-    #                                       save_model_dir="eojeol_vcp_electra", split_vcp=False)
+    #                                       save_model_dir="eojeol_not_split_electra", split_vcp=False)
 
     # make_eojeol_and_wordpiece_labels_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",
     #                                      src_list=all_sent_list, max_len=128, debug_mode=False,
