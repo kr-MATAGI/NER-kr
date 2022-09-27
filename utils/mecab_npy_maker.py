@@ -22,7 +22,6 @@ from transformers import AutoTokenizer, ElectraTokenizer
 ## Structured
 @dataclass
 class Tok_Pos:
-    eojeol_idx: int = -1
     tokens: List[str] = field(default=list)
     pos: List[str] = field(default=list)
     ne: str = "O"
@@ -30,6 +29,7 @@ class Tok_Pos:
 @dataclass
 class Mecab_Item:
     word: str = ""
+    ne: str = "O"
     tok_pos_list: List[Tok_Pos] = field(default=list)
 
 ## Global
@@ -70,14 +70,12 @@ def tokenize_mecab_pair(mecab_pair_list, tokenizer):
     # [ (word, [(word, [pos,...]), ...] ]
     # -> [ (word, [(tokens, [pos,...]), ...] ]
 
-    # except_giho = ["SF", "SE", "SSO", "SSC", "SC", "SY"]
     tokenized_mecab_list = []
     for m_idx, mecab_pair in enumerate(mecab_pair_list):
         new_pos_pair_list = []
         for m_pos_idx, m_pos_pair in enumerate(mecab_pair[1]):
             tokenized_word = tokenizer.tokenize(m_pos_pair[0])
-            new_pos_pair_list.append(Tok_Pos(eojeol_idx=m_idx,
-                                             tokens=tokenized_word,
+            new_pos_pair_list.append(Tok_Pos(tokens=tokenized_word,
                                              pos=m_pos_pair[1]))
         tokenized_mecab_list.append(Mecab_Item(word=mecab_pair[0], tok_pos_list=new_pos_pair_list))
 
@@ -127,7 +125,8 @@ def make_mecab_eojeol_npy(
         "용의자들은 25일 아침 9시께", "해외50여 개국에서 5500회 이상 공연하며 사물놀이",
         "REDD는 열대우림 등 산림자원을 보호하는 개도국이나",
         "2010년 12월부터 이미 가중 처벌을 시행하는 어린이 보호구역의 교통사고 발생 건수는",
-        "금리설계형의 경우 변동금리(6개월 변동 코픽스 연동형)는", "현재 중국의 공항은 400여 개다."
+        "금리설계형의 경우 변동금리(6개월 변동 코픽스 연동형)는", "현재 중국의 공항은 400여 개다.",
+        "'중국 편'이라고 믿었던 박 대통령에게"
     ]
 
     for proc_idx, src_item in enumerate(src_list):
@@ -149,12 +148,56 @@ def make_mecab_eojeol_npy(
         mecab_word_pair = convert_mecab_pos(src_item.word_list)
         mecab_item_list = tokenize_mecab_pair(mecab_word_pair, tokenizer)
 
-        tok_pos_item_list = []
+        split_giho = ["SF", "SE", "SSO", "SSC", "SC", "SY"]
+        new_mecab_item_list: List[Mecab_Item] = []
         for mecab_item in mecab_item_list:
+            temp_save_tok_pos = []
+            for tok_pos in mecab_item.tok_pos_list:
+                if tok_pos.pos[0] in split_giho:
+                    if 0 < len(temp_save_tok_pos):
+                        concat_word = "".join(["".join(x.tokens).replace("##", "") for x in temp_save_tok_pos])
+                        new_mecab_item = Mecab_Item(word=concat_word,
+                                                    tok_pos_list=temp_save_tok_pos)
+                        new_mecab_item_list.append(copy.deepcopy(new_mecab_item))
+                        temp_save_tok_pos.clear()
+                        if 0 < len(tok_pos.tokens):
+                            new_mecab_item_list.append(copy.deepcopy(Mecab_Item(word=tok_pos.tokens[0],
+                                                                                tok_pos_list=[tok_pos])))
+                else:
+                    temp_save_tok_pos.append(tok_pos)
+            if 0 < len(temp_save_tok_pos):
+                concat_word = "".join(["".join(x.tokens).replace("##", "") for x in temp_save_tok_pos])
+                new_mecab_item_list.append(copy.deepcopy(Mecab_Item(word=concat_word,
+                                                                    tok_pos_list=temp_save_tok_pos)))
+
+        tok_pos_item_list = []
+        for mecab_item in new_mecab_item_list:
             tok_pos_item_list.extend(mecab_item.tok_pos_list)
 
-        # NE
-        print(tok_pos_item_list)
+        # NE - 어절 단위
+        b_check_use = [False for _ in range(len(tok_pos_item_list))]
+        for ne_idx, ne_item in enumerate(extract_ne_list):
+            ne_char_list = list(ne_item.text.replace(" ", ""))
+            concat_item_list = []
+            for mec_idx, mecab_item in enumerate(new_mecab_item_list):
+                if b_check_use[mec_idx]:
+                    continue
+                for sub_idx in range(mec_idx + 1, len(new_mecab_item_list)):
+                    concat_word = ["".join(x.word).replace("##", "") for x in new_mecab_item_list[mec_idx:sub_idx]]
+                    concat_item_list.append(("".join(concat_word), (mec_idx, sub_idx)))
+            concat_item_list = [x for x in concat_item_list if "".join(ne_char_list) in x[0]]
+            concat_item_list.sort(key=lambda x: len(x[0]))
+            if 0 >= len(concat_item_list):
+                continue
+            target_idx_pair = concat_item_list[0][1]
+            for bio_idx in range(target_idx_pair[0], target_idx_pair[1]):
+                b_check_use[bio_idx] = True
+                if bio_idx == target_idx_pair[0]:
+                    new_mecab_item_list[bio_idx].ne = "B-" + ne_item.type
+                else:
+                    new_mecab_item_list[bio_idx].ne = "I-" + ne_item.type
+
+        # NE - 토큰 단위
         b_check_use = [False for _ in range(len(tok_pos_item_list))]
         for ne_idx, ne_item in enumerate(extract_ne_list):
             ne_char_list = list(ne_item.text.replace(" ", ""))
@@ -178,17 +221,204 @@ def make_mecab_eojeol_npy(
                 else:
                     tok_pos_item_list[bio_idx].ne = "I-" + ne_item.type
 
-        # PRINT
-        print(tok_pos_item_list)
-
         text_tokens = []
+        label_ids = []
         pos_ids = []
         for tp_idx, tok_pos in enumerate(tok_pos_item_list):
-            tok_pos
-            if
-        print(text_tokens)
+            for ft_idx, flat_tok in enumerate(tok_pos.tokens):
+                text_tokens.append(flat_tok)
 
-        input()
+        for mec_idx, new_mecab_item in enumerate(new_mecab_item_list):
+            label_ids.append(ETRI_TAG[new_mecab_item.ne])
+            conv_pos = []
+            for mecab_item in new_mecab_item.tok_pos_list:
+                filter_pos = [x if "UNKNOWN" != x and "NA" != x and "UNA" != x and "VSV" != x else "O" for x in mecab_item.pos]
+                conv_pos.extend([pos_tag2ids[x] for x in filter_pos])
+            if 10 > len(conv_pos):
+                diff_len = (10 - len(conv_pos))
+                conv_pos += [pos_tag2ids["O"]] * diff_len
+            pos_ids.append(conv_pos)
+
+        # Eojeol Boundary
+        eojeol_ids: List[int] = []
+        for mecab_item in new_mecab_item_list:
+            token_size = 0
+            for tok_pos_item in mecab_item.tok_pos_list:
+                token_size += len(tok_pos_item.tokens)
+            eojeol_ids.append(token_size)
+
+        # 토큰 단위
+        valid_token_len = 0
+        text_tokens.insert(0, "[CLS]")
+        if token_max_len <= len(text_tokens):
+            text_tokens = text_tokens[:token_max_len-1]
+            text_tokens.append("[SEP]")
+
+            valid_token_len = token_max_len
+        else:
+            text_tokens.append("[SEP]")
+
+            valid_token_len = len(text_tokens)
+            text_tokens += ["[PAD]"] * (token_max_len - valid_token_len)
+
+        input_ids = tokenizer.convert_tokens_to_ids(text_tokens)
+        attention_mask = ([1] * valid_token_len) + ([0] * (token_max_len - valid_token_len))
+        token_type_ids = [0] * token_max_len
+
+        # 어절 단위
+        valid_eojeol_len = 0
+        pos_ids.insert(0, [pos_tag2ids["O"]] * 10) # [CLS]
+        if eojeol_max_len <= len(pos_ids):
+            pos_ids = pos_ids[:eojeol_max_len-1]
+            pos_ids.append([pos_tag2ids["O"]] * 10) # [SEP]
+        else:
+            pos_ids_size = len(pos_ids)
+            for _ in range(eojeol_max_len - pos_ids_size):
+                pos_ids.append([pos_tag2ids["O"]] * 10)
+
+        # label_ids
+        label_ids.insert(0, ETRI_TAG["O"])
+        if eojeol_max_len <= len(label_ids):
+            label_ids = label_ids[:eojeol_max_len-1]
+            label_ids.append(ETRI_TAG["O"])
+            valid_eojeol_len = eojeol_max_len
+        else:
+            label_ids_size = len(label_ids)
+            valid_eojeol_len = label_ids_size
+            for _ in range(eojeol_max_len - label_ids_size):
+                label_ids.append(ETRI_TAG["O"])
+
+        # eojeol_ids
+        eojeol_ids.insert(0, 1) # [CLS]
+        if eojeol_max_len <= len(eojeol_ids):
+            eojeol_ids = eojeol_ids[:eojeol_max_len-1]
+            eojeol_ids.append(1) # [SEP]
+        else:
+            eojeol_ids_size = len(eojeol_ids)
+            eojeol_ids += [0] * (eojeol_max_len - eojeol_ids_size)
+
+        # Check Size
+        assert len(input_ids) == token_max_len, f"{len(input_ids)} + {input_ids}"
+        assert len(attention_mask) == token_max_len, f"{len(attention_mask)} + {attention_mask}"
+        assert len(token_type_ids) == token_max_len, f"{len(token_type_ids)} + {token_type_ids}"
+        assert len(label_ids) == eojeol_max_len, f"{len(label_ids)} + {label_ids}"
+        assert len(pos_ids) == eojeol_max_len, f"{len(pos_ids)} + {pos_ids}"
+        assert len(eojeol_ids) == eojeol_max_len, f"{len(eojeol_ids)} + {eojeol_ids}"
+
+        npy_dict["input_ids"].append(input_ids)
+        npy_dict["attention_mask"].append(attention_mask)
+        npy_dict["token_type_ids"].append(token_type_ids)
+        npy_dict["labels"].append(label_ids)
+
+        # convert tag
+        pos_ids = convert_pos_tag_to_combi_tag(pos_ids, use_nikl=False)
+        npy_dict["pos_tag_ids"].append(pos_ids)
+        npy_dict["eojeol_ids"].append(eojeol_ids)
+
+        # debug_mode
+        if debug_mode:
+            print(src_item.text)
+            print("Text Tokens: \n", text_tokens)
+            print("new_mecab_item_list: \n", new_mecab_item_list)
+            print("NE List: \n", src_item.ne_list)
+            debug_pos_tag_ids = [[pos_ids2tag[x] for x in pos_tag_item] for pos_tag_item in pos_ids]
+            for mecab_item, ne_lab, pos, ej_id in zip(new_mecab_item_list, label_ids[1:], debug_pos_tag_ids[1:], eojeol_ids[1:]):
+                conv_tokens = [x.tokens for x in mecab_item.tok_pos_list]
+                print(conv_tokens, ne_ids2tag[ne_lab], pos, ej_id)
+            input()
+
+    save_mecab_npy(npy_dict, len(src_list), save_dir=save_model_dir)
+
+
+#==========================================================================================
+def save_mecab_npy(npy_dict: Dict[str, List], src_list_len, save_dir: str = None):
+#==========================================================================================
+    npy_dict["input_ids"] = np.array(npy_dict["input_ids"])
+    npy_dict["attention_mask"] = np.array(npy_dict["attention_mask"])
+    npy_dict["token_type_ids"] = np.array(npy_dict["token_type_ids"])
+    npy_dict["labels"] = np.array(npy_dict["labels"])
+    npy_dict["pos_tag_ids"] = np.array(npy_dict["pos_tag_ids"])
+    npy_dict["eojeol_ids"] = np.array(npy_dict["eojeol_ids"])
+
+    # wordpiece 토큰 단위
+    print(f"Unit: Tokens")
+    print(f"input_ids.shape: {npy_dict['input_ids'].shape}")
+    print(f"attention_mask.shape: {npy_dict['attention_mask'].shape}")
+    print(f"token_type_ids.shape: {npy_dict['token_type_ids'].shape}")
+
+    # 어절 단위
+    print(f"Unit: Eojoel")
+    print(f"labels.shape: {npy_dict['labels'].shape}")
+    print(f"pos_tag_ids.shape: {npy_dict['pos_tag_ids'].shape}")
+    print(f"eojeol_ids.shape: {npy_dict['eojeol_ids'].shape}")
+
+    # train/dev/test 분할
+    split_size = int(src_list_len * 0.1)
+    train_size = split_size * 7
+    valid_size = train_size + split_size
+
+    # Train
+    train_np = [npy_dict["input_ids"][:train_size],
+                npy_dict["attention_mask"][:train_size],
+                npy_dict["token_type_ids"][:train_size]]
+    train_np = np.stack(train_np, axis=-1)
+    train_labels_np = npy_dict["labels"][:train_size]
+    train_pos_tag_np = npy_dict["pos_tag_ids"][:train_size]
+    train_eojeol_ids_np = npy_dict["eojeol_ids"][:train_size]
+    print(f"train_np.shape: {train_np.shape}")
+    print(f"train_labels_np.shape: {train_labels_np.shape}")
+    print(f"train_pos_tag_ids_np.shape: {train_pos_tag_np.shape}")
+    print(f"train_eojeol_ids_np.shape: {train_eojeol_ids_np.shape}")
+
+    # Dev
+    dev_np = [npy_dict["input_ids"][train_size:valid_size],
+              npy_dict["attention_mask"][train_size:valid_size],
+              npy_dict["token_type_ids"][train_size:valid_size]]
+    dev_np = np.stack(dev_np, axis=-1)
+    dev_labels_np = npy_dict["labels"][train_size:valid_size]
+    dev_pos_tag_np = npy_dict["pos_tag_ids"][train_size:valid_size]
+    dev_eojeol_ids_np = npy_dict["eojeol_ids"][train_size:valid_size]
+    print(f"dev_np.shape: {dev_np.shape}")
+    print(f"dev_labels_np.shape: {dev_labels_np.shape}")
+    print(f"dev_pos_tag_ids_np.shape: {dev_pos_tag_np.shape}")
+    print(f"dev_eojeol_ids_np.shape: {dev_eojeol_ids_np.shape}")
+
+
+    # Test
+    test_np = [npy_dict["input_ids"][valid_size:],
+               npy_dict["attention_mask"][valid_size:],
+               npy_dict["token_type_ids"][valid_size:]]
+    test_np = np.stack(test_np, axis=-1)
+    test_labels_np = npy_dict["labels"][valid_size:]
+    test_pos_tag_np = npy_dict["pos_tag_ids"][valid_size:]
+    test_eojeol_ids_np = npy_dict["eojeol_ids"][valid_size:]
+    print(f"test_np.shape: {test_np.shape}")
+    print(f"test_labels_np.shape: {test_labels_np.shape}")
+    print(f"test_pos_tag_ids_np.shape: {test_pos_tag_np.shape}")
+    print(f"test_eojeol_ids_np.shape: {test_eojeol_ids_np.shape}")
+
+    root_path = "../corpus/npy/" + save_dir
+    # save input_ids, attention_mask, token_type_ids
+    np.save(root_path+"/train", train_np)
+    np.save(root_path+"/dev", dev_np)
+    np.save(root_path+"/test", test_np)
+
+    # save labels
+    np.save(root_path+"/train_labels", train_labels_np)
+    np.save(root_path+"/dev_labels", dev_labels_np)
+    np.save(root_path+"/test_labels", test_labels_np)
+
+    # save pos_tag_ids
+    np.save(root_path + "/train_pos_tag", train_pos_tag_np)
+    np.save(root_path + "/dev_pos_tag", dev_pos_tag_np)
+    np.save(root_path + "/test_pos_tag", test_pos_tag_np)
+
+    # save eojeol_ids
+    np.save(root_path+"/train_eojeol_ids", train_eojeol_ids_np)
+    np.save(root_path+"/dev_eojeol_ids", dev_eojeol_ids_np)
+    np.save(root_path+"/test_eojeol_ids", test_eojeol_ids_np)
+
+    print(f"[make_gold_corpus_npy][save_eojeol_npy_dict] Complete - Save all npy files !")
 
 ### MAIN ###
 if "__main__" == __name__:

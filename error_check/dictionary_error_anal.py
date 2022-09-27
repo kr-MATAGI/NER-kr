@@ -114,7 +114,7 @@ def make_error_dictionary(
 
     # Write
     for key in error_dict.keys():
-        with open(save_dir_path+"/"+key+".txt", mode="w") as write_file:
+        with open(save_dir_path+"/"+key+".txt", mode="w", encoding="utf-8") as write_file:
             err_info_list = error_dict[key]
             for err_info in err_info_list:
                 write_file.write(str(err_info[0])+"\t"+err_info[1]+"\t"+err_info[2]+"\t"+err_info[3]+"\n")
@@ -213,7 +213,7 @@ def divide_by_category(root_dir: str = ""):
         pos = file.replace(".txt", "")
 
         print(file_path)
-        with open(file_path, mode="r") as read_file:
+        with open(file_path, mode="r", encoding="utf-8") as read_file:
             for r_line in read_file.readlines():
                 item = r_line.replace("\n", "").split("\t")
                 if item[2] not in res_dict.keys():
@@ -222,8 +222,9 @@ def divide_by_category(root_dir: str = ""):
                     res_dict[item[2]].append((item[0], item[1], item[-1], pos))
 
     # Write
+    save_dir_path = "./dir_err_results_by_ne"
     for key in res_dict.keys():
-        with open(save_dir_path + "/" + key + ".txt", mode="w") as write_file:
+        with open(save_dir_path + "/" + key + ".txt", mode="w", encoding="utf-8") as write_file:
             err_info_list = res_dict[key]
             for err_info in err_info_list:
                 write_file.write(
@@ -344,11 +345,13 @@ if "__main__" == __name__:
 
     # ranking_by_read_file(save_dir_path)
     #
-    # divide_by_category(root_dir=save_dir_path)
+
+    save_dir_path = "./dic_err_results"
+    divide_by_category(root_dir=save_dir_path)
     #
     ne_err_results_save_path = "./dir_err_results_by_ne"
-    search_outputs_by_data_idx(model_path=model_path, model_name=model_name,
-                               datasets_path=datasets_path, save_dir_path=ne_err_results_save_path)
+    # search_outputs_by_data_idx(model_path=model_path, model_name=model_name,
+    #                            datasets_path=datasets_path, save_dir_path=ne_err_results_save_path)
 
     # compare_josa_split_results(model_path=model_path, model_name=model_name,
     #                            datasets_path=datasets_path,

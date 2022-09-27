@@ -4,8 +4,7 @@ import random
 import numpy as np
 import pickle
 
-from tag_def import ETRI_TAG, LS_Tag
-from tag_def import NIKL_POS_TAG
+from tag_def import ETRI_TAG, LS_Tag, NIKL_POS_TAG, MECAB_POS_TAG
 
 from typing import List, Dict, Tuple
 from data_def import Sentence, NE, Morp
@@ -901,9 +900,12 @@ def make_eojeol_datasets_npy(
     save_eojeol_npy_dict(npy_dict, len(src_list), save_dir=save_model_dir)
 
 #==============================================================
-def convert_pos_tag_to_combi_tag(src_pos: List[int]):
+def convert_pos_tag_to_combi_tag(src_pos: List[int], use_nikl: bool = True):
 #==============================================================
-    conv_pos_tok2ids = {v: k for k, v in NIKL_POS_TAG.items()}
+    if use_nikl:
+        conv_pos_tok2ids = {v: k for k, v in NIKL_POS_TAG.items()}
+    else:
+        conv_pos_tok2ids = {v: k for k, v in MECAB_POS_TAG.items()}
     ret_pos_list = []
 
     for eojeol_pos in src_pos:
@@ -1012,13 +1014,13 @@ def save_eojeol_npy_dict(npy_dict: Dict[str, List], src_list_len, save_dir: str 
 
     # wordpiece 토큰 단위
     print(f"Unit: Tokens")
+    print(f"input_ids.shape: {npy_dict['input_ids'].shape}")
     print(f"attention_mask.shape: {npy_dict['attention_mask'].shape}")
     print(f"token_type_ids.shape: {npy_dict['token_type_ids'].shape}")
     #print(f"seq_len.shape: {npy_dict['token_seq_len'].shape}")
 
     # 어절 단위
     print(f"Unit: Eojoel")
-    print(f"input_ids.shape: {npy_dict['input_ids'].shape}")
     print(f"labels.shape: {npy_dict['labels'].shape}")
     print(f"pos_tag_ids.shape: {npy_dict['pos_tag_ids'].shape}")
     print(f"eojeol_ids.shape: {npy_dict['eojeol_ids'].shape}")
@@ -1855,7 +1857,7 @@ if "__main__" == __name__:
 
     make_not_split_jx_eojeol_datasets_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",
                                           src_list=all_sent_list, max_len=128, debug_mode=False,
-                                          save_model_dir="eojeol_not_split_electra", split_vcp=False)
+                                          save_model_dir="eojeol_vcp_electra", split_vcp=True)
 
     # make_eojeol_and_wordpiece_labels_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",
     #                                      src_list=all_sent_list, max_len=128, debug_mode=False,
