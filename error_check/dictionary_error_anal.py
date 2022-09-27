@@ -8,6 +8,7 @@ from collections import deque, defaultdict
 from typing import List
 
 import sys
+
 sys.path.append("C:/Users/MATAGI/Desktop/Git/NER_Private")
 from transformers import ElectraTokenizer
 from model.electra_eojeol_model import Electra_Eojeol_Model
@@ -126,7 +127,7 @@ def make_error_dictionary(
 #===========================================================================
 def search_outputs_by_data_idx(
         model_path: str = "", datasets_path: str = "",
-        model_name: str = ""
+        model_name: str = "", save_dir_path: str = ""
 ):
 #===========================================================================
     # Load model
@@ -213,7 +214,7 @@ def divide_by_category(root_dir: str = ""):
 
         print(file_path)
         with open(file_path, mode="r") as read_file:
-            for r_line in  read_file.readlines():
+            for r_line in read_file.readlines():
                 item = r_line.replace("\n", "").split("\t")
                 if item[2] not in res_dict.keys():
                     res_dict[item[2]] = [(item[0], item[1], item[-1], pos)]
@@ -222,21 +223,120 @@ def divide_by_category(root_dir: str = ""):
 
     # Write
     for key in res_dict.keys():
-        with open("./dir_err_results_by_ne" + "/" + key + ".txt", mode="w") as write_file:
+        with open(save_dir_path + "/" + key + ".txt", mode="w") as write_file:
             err_info_list = res_dict[key]
             for err_info in err_info_list:
                 write_file.write(
                     str(err_info[0]) + "\t" + err_info[1] + "\t" + err_info[2] + "\t" + err_info[3] + "\n")
 
-def compare(f):
+#===========================================================================
+def compare_josa_split_results(
+        model_path: str = "", datasets_path: str = "",
+        model_name: str = "", error_dir_path: str = ""
+):
+#===========================================================================
+    # Load Model
+    tokenizer = ElectraTokenizer.from_pretrained(model_name)
+    model = Electra_Eojeol_Model.from_pretrained(model_path)
+
+    # Load Datasets
+    datasets_dict = load_dataset_by_path(datasets_path=datasets_path)
+
+    model.eval()
+    total_data_size = datasets_dict["dev_npy"].shape[0]
+    ne_ids_to_tag = {v: k for k, v in ETRI_TAG.items()}
+    pos_ids_to_tag = {k: v for k, v in NIKL_POS_TAG.items()}
+
+    # Count Info
+    total_err_count = 0
+    josa_err_count = 0
+    fixed_error_count = 0
+    fixed_ne_dict = {}
+
+    target_josa = ["JX", "JC", "JKS", "JKC", "JKG", "JKO", "JKB"] # XSN, VCP
+    target_files = os.listdir(error_dir_path)
+    for file_name in target_files:
+        file_path = error_dir_path + "/" + file_name
+        bio_tag = file_name.replace(".txt", "")
+
+        with open(file_path, mode="r") as read_file:
+            for read_line in read_file.readlines():
+                total_err_count += 1
+
+                line_item = read_line.replace("\n", "").split("\t")
+                target_idx = int(line_item[0])
+                target_text = line_item[1]
+                target_preds = line_item[2]
+                target_pos = line_item[3]
+
+                is_target = [x for x in target_josa if x in target_pos]
+                if 0 < len(is_target):
+                    josa_err_count += 1
+                    is_target_str = "+".join(is_target)
+                    if is_target_str not in fixed_ne_dict.keys():
+                        fixed_ne_dict[is_target_str] = []
+
+                    print(line_item)
+                    inputs = {
+                        "input_ids": torch.LongTensor([datasets_dict["dev_npy"][target_idx, :, 0]]),
+                        "attention_mask": torch.LongTensor([datasets_dict["dev_npy"][target_idx, :, 1]]),
+                        "token_type_ids": torch.LongTensor([datasets_dict["dev_npy"][target_idx, :, 2]]),
+                        "labels": torch.LongTensor([datasets_dict["labels"][target_idx, :]]),
+                        "eojeol_ids": torch.LongTensor([datasets_dict["eojeol_ids"][target_idx, :]]),
+                        "pos_tag_ids": torch.LongTensor([datasets_dict["pos_tag"][target_idx, :]])
+                    }
+                    # Model
+                    outputs = model(**inputs)
+                    logits = outputs.logits.detach().cpu().numpy()
+
+                    # Make Eojeol
+                    text: List[str] = []
+                    eojeol_ids = datasets_dict["eojeol_ids"][target_idx, :]
+                    merge_idx = 0
+                    for eojeol_cnt in eojeol_ids:
+                        if 0 >= eojeol_cnt:
+                            break
+                        eojeol_tokens = datasets_dict["dev_npy"][target_idx, :, 0][merge_idx:merge_idx + eojeol_cnt]
+                        merge_idx += eojeol_cnt
+                        conv_eojeol_tokens = tokenizer.decode(eojeol_tokens)
+                        text.append(conv_eojeol_tokens)
+
+                    preds = np.array(logits)[0]
+                    preds = np.argmax(preds, axis=1)
+                    labels = datasets_dict["labels"][target_idx, :]
+                    # pos_ids = datasets_dict["pos_tag"][target_idx, :]
+                    candi_list = []
+                    for p_idx in range(len(text)):
+                        conv_label = ne_ids_to_tag[labels[p_idx]]
+                        conv_preds = ne_ids_to_tag[preds[p_idx]]
+                        # conv_pos = [pos_ids_to_tag[x] for x in pos_ids[p_idx]]
+                        if text[p_idx] in target_text:
+                            candi_list.append((text[p_idx], conv_label, conv_preds))
+                    candi_list = [x for x in candi_list if x[1] == bio_tag]
+                    if 0 >= len(candi_list):
+                        continue
+                    candi_list = sorted(candi_list, key=lambda x: len(x[0]), reverse=True)
+                    if (candi_list[0][1] == bio_tag) and \
+                            (candi_list[0][1] == candi_list[0][2]):
+                        fixed_error_count += 1
+                        fixed_ne_dict[is_target_str].append((target_idx, candi_list[0][0], candi_list[0][1],
+                                                             candi_list[0][2], target_text, target_preds))
+    print(fixed_ne_dict)
+    print(total_err_count)
+    print(josa_err_count)
+    print(fixed_error_count)
+
+    # Save fixed_ne_dict
+    with open("./fixed_ne_dict.pkl", "wb") as write_pkl:
+        pickle.dump(fixed_ne_dict, write_pkl)
 
 
 ### MAIN ###
 if "__main__" == __name__:
     # model_path = "./old_eojeol_model/model"
     # datasets_path = "./old_eojeol_model/npy"
-    model_path = "./eojeol_model/model"
-    datasets_path = "./eojeol_model/npy"
+    model_path = "./old_eojeol_model/model"
+    datasets_path = "./old_eojeol_model/npy"
     model_name = "monologg/koelectra-base-v3-discriminator"
     save_dir_path = "./dic_err_results"
     # make_error_dictionary(model_path=model_path, model_name=model_name,
@@ -246,7 +346,10 @@ if "__main__" == __name__:
     #
     # divide_by_category(root_dir=save_dir_path)
     #
+    ne_err_results_save_path = "./dir_err_results_by_ne"
     search_outputs_by_data_idx(model_path=model_path, model_name=model_name,
-                               datasets_path=datasets_path)
+                               datasets_path=datasets_path, save_dir_path=ne_err_results_save_path)
 
-
+    # compare_josa_split_results(model_path=model_path, model_name=model_name,
+    #                            datasets_path=datasets_path,
+    #                            error_dir_path=ne_err_results_save_path)

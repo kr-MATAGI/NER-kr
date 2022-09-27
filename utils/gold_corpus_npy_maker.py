@@ -606,11 +606,12 @@ def make_eojeol_datasets_npy(
         "용의자들은 25일 아침 9시께", "해외50여 개국에서 5500회 이상 공연하며 사물놀이",
         "REDD는 열대우림 등 산림자원을 보호하는 개도국이나",
         "2010년 12월부터 이미 가중 처벌을 시행하는 어린이 보호구역의 교통사고 발생 건수는",
-        "금리설계형의 경우 변동금리(6개월 변동 코픽스 연동형)는", "현재 중국의 공항은 400여 개다."
+        "금리설계형의 경우 변동금리(6개월 변동 코픽스 연동형)는", "현재 중국의 공항은 400여 개다.",
+        "'중국 편'이라고 믿었던 박 대통령에게"
     ]
-    # test_str_list = [
-    #     "지난해 3월 현재 카타르 수도 도하의 여성 교도소 수감자의"
-    # ]
+    test_str_list = [
+        "'중국 편'이라고 믿었던 박 대통령에게"
+    ]
 
     for proc_idx, src_item in enumerate(src_list):
         # Test
@@ -761,6 +762,9 @@ def make_eojeol_datasets_npy(
                 else:
                     labels_ids[bio_idx] = ETRI_TAG["I-" + ne_item.type]
                     LS_ids[bio_idx] = LS_Tag["L"]
+
+            for use_idx in range(target_index_pair[1]):
+                b_check_use_eojeol[use_idx] = True
 
         # POS
         pos_tag_ids = [] # [ [POS] * 10 ]
@@ -1525,9 +1529,10 @@ def make_not_split_jx_eojeol_datasets_npy(
         "REDD는 열대우림 등 산림자원을 보호하는 개도국이나",
         "2010년 12월부터 이미 가중 처벌을 시행하는 어린이 보호구역의 교통사고 발생 건수는",
         "금리설계형의 경우 변동금리(6개월 변동 코픽스 연동형)는", "지난해 3월 현재 카타르 수도 도하의 여성 교도소 수감자의"
+        "'중국 편'이라고 믿었던 박 대통령에게"
     ]
     # test_str_list = [
-    #     "지난해 3월 현재 카타르 수도 도하의 여성 교도소 수감자의"
+    #     "'중국 편'이라고 믿었던 박 대통령에게",
     # ]
 
     for proc_idx, src_item in enumerate(src_list):
@@ -1674,12 +1679,14 @@ def make_not_split_jx_eojeol_datasets_npy(
             target_index_pair = concat_wtp_list[0][1]
 
             for bio_idx in range(target_index_pair[0], target_index_pair[1]):
-                b_check_use_eojeol[bio_idx] = True
                 if bio_idx == target_index_pair[0]:
                     labels_ids[bio_idx] = ETRI_TAG["B-" + ne_item.type]
                 else:
                     labels_ids[bio_idx] = ETRI_TAG["I-" + ne_item.type]
                     LS_ids[bio_idx] = LS_Tag["L"]
+
+            for use_idx in range(target_index_pair[1]):
+                b_check_use_eojeol[use_idx] = True
 
         # POS
         pos_tag_ids = [] # [ [POS] * 10 ]
@@ -1843,18 +1850,12 @@ if "__main__" == __name__:
     #                    max_pos_nums=10)
 
     # make_eojeol_datasets_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",
-    #                          src_list=all_sent_list, max_len=128, debug_mode=False,
+    #                          src_list=all_sent_list, max_len=128, debug_mode=True,
     #                          save_model_dir="eojeol_electra")
 
-<<<<<<< HEAD
-    # make_not_split_jx_eojeol_datasets_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",
-    #                                       src_list=all_sent_list, max_len=128, debug_mode=False,
-    #                                       save_model_dir="eojeol_not_split_electra", split_vcp=False)
-=======
     make_not_split_jx_eojeol_datasets_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",
                                           src_list=all_sent_list, max_len=128, debug_mode=False,
                                           save_model_dir="eojeol_not_split_electra", split_vcp=False)
->>>>>>> 27a6e2a7483a1a4f1e815567521ddfb1c56f737e
 
     # make_eojeol_and_wordpiece_labels_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",
     #                                      src_list=all_sent_list, max_len=128, debug_mode=False,
