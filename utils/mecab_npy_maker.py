@@ -237,6 +237,8 @@ def make_mecab_eojeol_npy(
             if 10 > len(conv_pos):
                 diff_len = (10 - len(conv_pos))
                 conv_pos += [pos_tag2ids["O"]] * diff_len
+            if 10 < len(conv_pos):
+                conv_pos = conv_pos[:10]
             pos_ids.append(conv_pos)
 
         # Eojeol Boundary
@@ -315,6 +317,10 @@ def make_mecab_eojeol_npy(
         npy_dict["pos_tag_ids"].append(pos_ids)
         npy_dict["eojeol_ids"].append(eojeol_ids)
 
+        debug_pos_tag_ids = np.array(pos_ids)
+        if "int32" != debug_pos_tag_ids.dtype:
+            print(debug_pos_tag_ids)
+            input()
         # debug_mode
         if debug_mode:
             print(src_item.text)

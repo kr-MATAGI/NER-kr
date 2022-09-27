@@ -900,7 +900,7 @@ def make_eojeol_datasets_npy(
     save_eojeol_npy_dict(npy_dict, len(src_list), save_dir=save_model_dir)
 
 #==============================================================
-def convert_pos_tag_to_combi_tag(src_pos: List[int], use_nikl: bool = True):
+def convert_pos_tag_to_combi_tag(src_pos: List[List[int]], use_nikl: bool = True):
 #==============================================================
     if use_nikl:
         conv_pos_tok2ids = {v: k for k, v in NIKL_POS_TAG.items()}
