@@ -1842,13 +1842,19 @@ if "__main__" == __name__:
     #                    src_list=all_sent_list, max_len=128, debug_mode=False, save_model_dir="electra",
     #                    max_pos_nums=10)
 
-    make_eojeol_datasets_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",
-                             src_list=all_sent_list, max_len=128, debug_mode=False,
-                             save_model_dir="eojeol_electra")
+    # make_eojeol_datasets_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",
+    #                          src_list=all_sent_list, max_len=128, debug_mode=False,
+    #                          save_model_dir="eojeol_electra")
 
+<<<<<<< HEAD
     # make_not_split_jx_eojeol_datasets_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",
     #                                       src_list=all_sent_list, max_len=128, debug_mode=False,
     #                                       save_model_dir="eojeol_not_split_electra", split_vcp=False)
+=======
+    make_not_split_jx_eojeol_datasets_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",
+                                          src_list=all_sent_list, max_len=128, debug_mode=False,
+                                          save_model_dir="eojeol_not_split_electra", split_vcp=False)
+>>>>>>> 27a6e2a7483a1a4f1e815567521ddfb1c56f737e
 
     # make_eojeol_and_wordpiece_labels_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",
     #                                      src_list=all_sent_list, max_len=128, debug_mode=False,
