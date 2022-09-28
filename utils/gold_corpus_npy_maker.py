@@ -1621,8 +1621,8 @@ def make_not_split_jx_eojeol_datasets_npy(
         if split_vcp:
             new_word_tokens_pos_pair_list: List[Tuple[str, List[str], List[str]]] = []
             # VCP -> 긍정지정사
-            # target_josa = ["XSN", "JX", "JC", "JKS", "JKC", "JKG", "JKO", "JKB", "VCP"]
-            target_josa = ["VCP"]
+            target_josa = ["XSN", "JX", "JC", "JKS", "JKC", "JKG", "JKO", "JKB", "VCP"]
+            # target_josa = ["VCP"]
             target_nn = ["NNG", "NNP", "NNB", "SW"]  # 기호 추가, XSN은 VCP만 분리할때
             for wtp_item in word_tokens_pos_pair_list:
                 split_idx = -1

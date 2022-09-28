@@ -142,7 +142,7 @@ def make_mecab_eojeol_npy(
         if 0 == (proc_idx % 1000):
             print(f"{proc_idx} Processing... {src_item.text}")
 
-        # 매캡을 쓰면 모두의 말뭉치 morp의 word_id 정보는 사용할 수 있음
+        # 매캡을 쓰면 모두의 말뭉치 morp의 word_id 정보는 사용할 수 없음
         extract_ne_list = src_item.ne_list
         # [ word, [(word, pos)] ]
         mecab_word_pair = convert_mecab_pos(src_item.word_list)
@@ -169,6 +169,45 @@ def make_mecab_eojeol_npy(
                 concat_word = "".join(["".join(x.tokens).replace("##", "") for x in temp_save_tok_pos])
                 new_mecab_item_list.append(copy.deepcopy(Mecab_Item(word=concat_word,
                                                                     tok_pos_list=temp_save_tok_pos)))
+        # if josa_split:
+        if josa_split:
+            split_josa_mecab_item_list: List[Mecab_Item] = []
+            split_target_morp = ["JKS", "JKC", "JKG", "JKO", "JKB", "JKV", "JKQ", "JX", "JC"]
+            target_nn = ["NNG", "NNP", "NNB"]
+            for mecab_item in new_mecab_item_list:
+                split_idx = - 1
+                for tp_idx, tp_item in enumerate(reversed(mecab_item.tok_pos_list)):
+                    filter_morp_list = [tp_i for tp_i in tp_item.pos if tp_i in split_target_morp]
+                    if 0 < len(filter_morp_list):
+                        split_idx = len(mecab_item.tok_pos_list) - tp_idx - 1
+
+                if -1 != split_idx and 0 != split_idx:
+                    front_item = mecab_item.tok_pos_list[:split_idx]
+                    front_item_pos_list = []
+                    for f_item in front_item:
+                        for f_p in f_item.pos:
+                            front_item_pos_list.append(f_p)
+
+                    front_item_nn_list = [tp_i for tp_i in front_item_pos_list if tp_i in target_nn]
+                    if 0 >= len(front_item_nn_list) or front_item_nn_list[-1] not in target_nn:
+                        split_josa_mecab_item_list.append(mecab_item)
+                        continue
+                    back_item = mecab_item.tok_pos_list[split_idx:]
+
+                    front_tokens = []
+                    for f_t in front_item:
+                        front_tokens.extend(f_t.tokens)
+                    front_str = "".join(front_tokens).replace("##", "")
+                    split_josa_mecab_item_list.append(copy.deepcopy(Mecab_Item(word=front_str, tok_pos_list=front_item)))
+
+                    back_tokens = []
+                    for b_t in back_item:
+                        back_tokens.extend(b_t.tokens)
+                    back_str = "".join(back_tokens).replace("##", "")
+                    split_josa_mecab_item_list.append(copy.deepcopy(Mecab_Item(word=back_str, tok_pos_list=back_item)))
+                else:
+                    split_josa_mecab_item_list.append(mecab_item)
+            new_mecab_item_list = split_josa_mecab_item_list
 
         tok_pos_item_list = []
         for mecab_item in new_mecab_item_list:
@@ -197,29 +236,29 @@ def make_mecab_eojeol_npy(
                 else:
                     new_mecab_item_list[bio_idx].ne = "I-" + ne_item.type
 
-        # NE - 토큰 단위
-        b_check_use = [False for _ in range(len(tok_pos_item_list))]
-        for ne_idx, ne_item in enumerate(extract_ne_list):
-            ne_char_list = list(ne_item.text.replace(" ", ""))
-            concat_item_list = []
-            for mec_idx, mecab_item in enumerate(tok_pos_item_list):
-                if b_check_use[mec_idx]:
-                    continue
-                for sub_idx in range(mec_idx + 1, len(tok_pos_item_list)):
-                    concat_word = ["".join(x.tokens).replace("##", "") for x in tok_pos_item_list[mec_idx:sub_idx]]
-                    concat_item_list.append(("".join(concat_word), (mec_idx, sub_idx)))
-            concat_item_list = [x for x in concat_item_list if "".join(ne_char_list) in x[0]]
-            concat_item_list.sort(key=lambda x: len(x[0]))
-            if 0 >= len(concat_item_list):
-                continue
-            target_idx_pair = concat_item_list[0][1]
-
-            for bio_idx in range(target_idx_pair[0], target_idx_pair[1]):
-                b_check_use[bio_idx] = True
-                if bio_idx == target_idx_pair[0]:
-                    tok_pos_item_list[bio_idx].ne = "B-" + ne_item.type
-                else:
-                    tok_pos_item_list[bio_idx].ne = "I-" + ne_item.type
+        # # NE - 토큰 단위
+        # b_check_use = [False for _ in range(len(tok_pos_item_list))]
+        # for ne_idx, ne_item in enumerate(extract_ne_list):
+        #     ne_char_list = list(ne_item.text.replace(" ", ""))
+        #     concat_item_list = []
+        #     for mec_idx, mecab_item in enumerate(tok_pos_item_list):
+        #         if b_check_use[mec_idx]:
+        #             continue
+        #         for sub_idx in range(mec_idx + 1, len(tok_pos_item_list)):
+        #             concat_word = ["".join(x.tokens).replace("##", "") for x in tok_pos_item_list[mec_idx:sub_idx]]
+        #             concat_item_list.append(("".join(concat_word), (mec_idx, sub_idx)))
+        #     concat_item_list = [x for x in concat_item_list if "".join(ne_char_list) in x[0]]
+        #     concat_item_list.sort(key=lambda x: len(x[0]))
+        #     if 0 >= len(concat_item_list):
+        #         continue
+        #     target_idx_pair = concat_item_list[0][1]
+        #
+        #     for bio_idx in range(target_idx_pair[0], target_idx_pair[1]):
+        #         b_check_use[bio_idx] = True
+        #         if bio_idx == target_idx_pair[0]:
+        #             tok_pos_item_list[bio_idx].ne = "B-" + ne_item.type
+        #         else:
+        #             tok_pos_item_list[bio_idx].ne = "I-" + ne_item.type
 
         text_tokens = []
         label_ids = []
@@ -333,11 +372,10 @@ def make_mecab_eojeol_npy(
                 print(conv_tokens, ne_ids2tag[ne_lab], pos, ej_id)
             input()
 
-    save_mecab_npy(npy_dict, len(src_list), save_dir=save_model_dir)
-
+    save_mecab_eojeol_npy(npy_dict, len(src_list), save_dir=save_model_dir)
 
 #==========================================================================================
-def save_mecab_npy(npy_dict: Dict[str, List], src_list_len, save_dir: str = None):
+def save_mecab_eojeol_npy(npy_dict: Dict[str, List], src_list_len, save_dir: str = None):
 #==========================================================================================
     npy_dict["input_ids"] = np.array(npy_dict["input_ids"])
     npy_dict["attention_mask"] = np.array(npy_dict["attention_mask"])
@@ -426,6 +464,201 @@ def save_mecab_npy(npy_dict: Dict[str, List], src_list_len, save_dir: str = None
 
     print(f"[make_gold_corpus_npy][save_eojeol_npy_dict] Complete - Save all npy files !")
 
+#==========================================================================================
+def mecab_unk_count(src_path: str = ""):
+#==========================================================================================
+    print("target_path: ", src_path)
+
+    input_ids_np = np.load(src_path)
+    input_ids_np = input_ids_np[:, :, 0]
+    total_token_cnt = 0
+    unk_cnt = 0
+    for input_row in input_ids_np:
+        token_count = np.where(input_row != 0)[0]
+        token_count = len(token_count) - 2 # [CLS], [SEP]
+        total_token_cnt += token_count
+        unk_filter = np.where(input_row == 1)[0]
+        if 0 < len(unk_filter):
+            unk_cnt += len(unk_filter)
+    print(f"total_token_cnt: {total_token_cnt}, mean_token_count: {total_token_cnt/input_ids_np.shape[0]}, "
+          f"unk_cnt: {unk_cnt} / {unk_cnt/total_token_cnt*100}%")
+
+#==========================================================================================
+def make_mecab_wordpiece_npy(
+        tokenizer_name: str, src_list: List[Sentence],
+        token_max_len: int = 128, debug_mode: bool = False,
+        save_model_dir: str = None
+):
+#==========================================================================================
+    if not save_model_dir:
+        print(f"[mecab_npy_maker] Plz check save_model_dir: {save_model_dir}")
+        return
+
+    # shuffle
+    random.shuffle(src_list)
+
+    npy_dict = {
+        "input_ids": [],
+        "labels": [],
+        "attention_mask": [],
+        "token_type_ids": [],
+        "pos_tag_ids": [],
+    }
+
+    pos_tag2ids = {v: int(k) for k, v in MECAB_POS_TAG.items()}
+    pos_ids2tag = {k: v for k, v in MECAB_POS_TAG.items()}
+    ne_ids2tag = {v: k for k, v in ETRI_TAG.items()}
+
+    # Tokenizer
+    if "bert" in tokenizer_name:
+        tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
+    else:
+        tokenizer = ElectraTokenizer.from_pretrained(tokenizer_name)
+
+    # Test Sentences
+    test_str_list = [
+        "29·미국·사진", "전창수(42) 두산타워 마케팅팀 차장", "샌드위치→역(逆)샌드위치→신(新)샌드위치….",
+        "홍준표·원희룡·나경원 후보가 '3강'을 형성하며 엎치락뒤치락해 왔다.", "P 불투르(Vulture) 인사위원회 위원장은",
+        "넙치·굴비·홍어·톳·꼬시래기·굴·홍합", "연준 의장이", "황병서 북한군 총정치국장이 올해 10월 4일",
+        "영업익 4482억 ‘깜짝’… LG전자 ‘부활의 노래’", "LG 우규민-삼성 웹스터(대구)",
+        "‘김종영 그 절대를 향한’ 전시회", "재산증가액이 3억5000만원이다.", "‘진실·화해를 위한 과거사 정리위원회’",
+        "용의자들은 25일 아침 9시께", "해외50여 개국에서 5500회 이상 공연하며 사물놀이",
+        "REDD는 열대우림 등 산림자원을 보호하는 개도국이나",
+        "2010년 12월부터 이미 가중 처벌을 시행하는 어린이 보호구역의 교통사고 발생 건수는",
+        "금리설계형의 경우 변동금리(6개월 변동 코픽스 연동형)는", "현재 중국의 공항은 400여 개다.",
+        "'중국 편'이라고 믿었던 박 대통령에게"
+    ]
+
+    for proc_idx, src_item in enumerate(src_list):
+        # Test
+        if debug_mode:
+            is_test_str = False
+            for test_str in test_str_list:
+                if test_str in src_item.text:
+                    is_test_str = True
+            if not is_test_str:
+                continue
+
+        if 0 == (proc_idx % 1000):
+            print(f"{proc_idx} Processing... {src_item.text}")
+
+        # 매캡을 쓰면 모두의 말뭉치 morp의 word_id 정보는 사용할 수 없음
+        extract_ne_list = src_item.ne_list
+        # [ word, [(word, pos)] ]
+        mecab_word_pair = convert_mecab_pos(src_item.word_list)
+        mecab_item_list = tokenize_mecab_pair(mecab_word_pair, tokenizer)
+
+        tok_pos_item_list = []
+        for mecab_item in mecab_item_list:
+            tok_pos_item_list.extend(mecab_item.tok_pos_list)
+
+        # NE - 토큰 단위
+        b_check_use = [False for _ in range(len(tok_pos_item_list))]
+        for ne_idx, ne_item in enumerate(extract_ne_list):
+            ne_char_list = list(ne_item.text.replace(" ", ""))
+            concat_item_list = []
+            for mec_idx, mecab_item in enumerate(tok_pos_item_list):
+                if b_check_use[mec_idx]:
+                    continue
+                for sub_idx in range(mec_idx + 1, len(tok_pos_item_list)):
+                    concat_word = ["".join(x.tokens).replace("##", "") for x in tok_pos_item_list[mec_idx:sub_idx]]
+                    concat_item_list.append(("".join(concat_word), (mec_idx, sub_idx)))
+            concat_item_list = [x for x in concat_item_list if "".join(ne_char_list) in x[0]]
+            concat_item_list.sort(key=lambda x: len(x[0]))
+            if 0 >= len(concat_item_list):
+                continue
+            target_idx_pair = concat_item_list[0][1]
+
+            for bio_idx in range(target_idx_pair[0], target_idx_pair[1]):
+                b_check_use[bio_idx] = True
+                if bio_idx == target_idx_pair[0]:
+                    tok_pos_item_list[bio_idx].ne = "B-" + ne_item.type
+                else:
+                    tok_pos_item_list[bio_idx].ne = "I-" + ne_item.type
+
+        text_tokens = []
+        label_ids = []
+        pos_ids = []
+        for tp_idx, tok_pos in enumerate(tok_pos_item_list):
+            for ft_idx, flat_tok in enumerate(tok_pos.tokens):
+                text_tokens.append(flat_tok)
+
+        for mec_idx, mecab_item in enumerate(mecab_item_list):
+            label_ids.append(ETRI_TAG[mecab_item.ne])
+            conv_pos = []
+            for tp_item in mecab_item.tok_pos_list:
+                filter_pos = [x if "UNKNOWN" != x and "NA" != x and "UNA" != x and "VSV" != x else "O" for x in tp_item.pos]
+                conv_pos.extend([pos_tag2ids[x] for x in filter_pos])
+            if 10 > len(conv_pos):
+                diff_len = (10 - len(conv_pos))
+                conv_pos += [pos_tag2ids["O"]] * diff_len
+            if 10 < len(conv_pos):
+                conv_pos = conv_pos[:10]
+            pos_ids.append(conv_pos)
+
+        # 토큰 단위
+        valid_token_len = 0
+        text_tokens.insert(0, "[CLS]")
+        if token_max_len <= len(text_tokens):
+            text_tokens = text_tokens[:token_max_len - 1]
+            text_tokens.append("[SEP]")
+
+            valid_token_len = token_max_len
+        else:
+            text_tokens.append("[SEP]")
+
+            valid_token_len = len(text_tokens)
+            text_tokens += ["[PAD]"] * (token_max_len - valid_token_len)
+
+        input_ids = tokenizer.convert_tokens_to_ids(text_tokens)
+        attention_mask = ([1] * valid_token_len) + ([0] * (token_max_len - valid_token_len))
+        token_type_ids = [0] * token_max_len
+
+        # POS
+        pos_ids.insert(0, [pos_tag2ids["O"]] * 10)  # [CLS]
+        if token_max_len <= len(pos_ids):
+            pos_ids = pos_ids[:token_max_len-1]
+            pos_ids.append([pos_tag2ids["O"]] * 10) # [SEP]
+        else:
+            pos_ids_size = len(pos_ids)
+            for _ in range(token_max_len - pos_ids_size):
+                pos_ids.append([pos_tag2ids["O"]] * 10)
+
+        # Label
+        label_ids.insert(0, ETRI_TAG["O"])
+        if token_max_len <= len(label_ids):
+            label_ids = label_ids[:token_max_len-1]
+            label_ids.append(ETRI_TAG["O"])
+        else:
+            label_ids_size = len(label_ids)
+            for _ in range(token_max_len - label_ids_size):
+                label_ids.append(ETRI_TAG["O"])
+
+        # Check Size
+        assert len(input_ids) == token_max_len, f"{len(input_ids)} + {input_ids}"
+        assert len(attention_mask) == token_max_len, f"{len(attention_mask)} + {attention_mask}"
+        assert len(token_type_ids) == token_max_len, f"{len(token_type_ids)} + {token_type_ids}"
+        assert len(label_ids) == token_max_len, f"{len(label_ids)} + {label_ids}"
+        assert len(pos_ids) == token_max_len, f"{len(pos_ids)} + {pos_ids}"
+
+        npy_dict["input_ids"].append(input_ids)
+        npy_dict["attention_mask"].append(attention_mask)
+        npy_dict["token_type_ids"].append(token_type_ids)
+        npy_dict["labels"].append(label_ids)
+
+        # convert tag
+        pos_ids = convert_pos_tag_to_combi_tag(pos_ids, use_nikl=False)
+        npy_dict["pos_tag_ids"].append(pos_ids)
+
+#==========================================================================================
+def save_mecab_wordpiece_npy(npy_dict: Dict[str, List], src_list_len, save_dir: str = None):
+#==========================================================================================
+    npy_dict["input_ids"] = np.array(npy_dict["input_ids"])
+    npy_dict["attention_mask"] = np.array(npy_dict["attention_mask"])
+    npy_dict["token_type_ids"] = np.array(npy_dict["token_type_ids"])
+    npy_dict["labels"] = np.array(npy_dict["labels"])
+    npy_dict["pos_tag_ids"] = np.array(npy_dict["pos_tag_ids"])
+
 ### MAIN ###
 if "__main__" == __name__:
     print("[mecab_npy_maker] __main__ !")
@@ -434,10 +667,25 @@ if "__main__" == __name__:
     pkl_src_path = "../corpus/pkl/NIKL_ne_pos.pkl"
     all_sent_list = load_ne_entity_list(src_path=pkl_src_path)
 
+    train_path = "../corpus/npy/mecab_eojeol_electra/train.npy"
+    # mecab_unk_count(train_path)
+    dev_path = "../corpus/npy/mecab_eojeol_electra/dev.npy"
+    # mecab_unk_count(dev_path)
+
+    # exit()
+
     # make *.npy (use Mecab)
-    make_mecab_eojeol_npy(
-        tokenizer_name="monologg/koelectra-base-v3-discriminator",
-        src_list=all_sent_list, token_max_len=128, eojeol_max_len=50,
-        debug_mode=False, josa_split=False,
-        save_model_dir="mecab_eojeol_electra"
-    )
+    is_use_eojeol = False
+    if is_use_eojeol:
+        make_mecab_eojeol_npy(
+            tokenizer_name="monologg/koelectra-base-v3-discriminator",
+            src_list=all_sent_list, token_max_len=128, eojeol_max_len=50,
+            debug_mode=False, josa_split=True,
+            save_model_dir="mecab_split_josa_electra"
+        )
+    else:
+        make_mecab_wordpiece_npy(
+            tokenizer_name="monologg/koelectra-base-v3-discriminator",
+            src_list=all_sent_list, token_max_len=128, debug_mode=False,
+            save_model_dir="mecab_split_josa_electra"
+        )

@@ -4,6 +4,7 @@ import torch
 import pickle
 import pandas as pd
 
+from eunjeon import Mecab
 from collections import deque, defaultdict
 from typing import List
 
@@ -127,7 +128,7 @@ def make_error_dictionary(
 #===========================================================================
 def search_outputs_by_data_idx(
         model_path: str = "", datasets_path: str = "",
-        model_name: str = "", save_dir_path: str = ""
+        model_name: str = ""
 ):
 #===========================================================================
     # Load model
@@ -194,14 +195,24 @@ def ranking_by_read_file(root_dir: str = ""):
 #===========================================================================
     target_files = os.listdir(root_dir)
     res_dict = {}
+    total_errors = 0
+    target_josa = ["JX", "JC", "JKS", "JKC", "JKG", "JKO", "JKB"] # XSN, VCP
+    target_nn = ["NNG", "NNP", "CONCAT_NN"]
+    nn_josa_errors = 0
     for file in target_files:
         file_path = root_dir + "/" + file
         key = file.replace(".txt", "")
 
         print(file_path)
-        with open(file_path, mode="r") as read_file:
+        with open(file_path, mode="r", encoding="utf-8") as read_file:
             res_dict[key] = len(read_file.readlines())
+            total_errors += res_dict[key]
+            nn_cnt = [True for x in target_nn if x in key]
+            josa_cnt = [True for x in target_josa if x in key]
+            if 0 < len(nn_cnt) and 0 < len(josa_cnt):
+                nn_josa_errors += res_dict[key]
     print(sorted(res_dict.items(), key=lambda x: x[1], reverse=True))
+    print(f"total_errors: {total_errors}, nn_josa_errors: {nn_josa_errors}")
 
 #===========================================================================
 def divide_by_category(root_dir: str = ""):
@@ -239,6 +250,7 @@ def compare_josa_split_results(
     # Load Model
     tokenizer = ElectraTokenizer.from_pretrained(model_name)
     model = Electra_Eojeol_Model.from_pretrained(model_path)
+    mecab = Mecab()
 
     # Load Datasets
     datasets_dict = load_dataset_by_path(datasets_path=datasets_path)
@@ -260,13 +272,21 @@ def compare_josa_split_results(
         file_path = error_dir_path + "/" + file_name
         bio_tag = file_name.replace(".txt", "")
 
-        with open(file_path, mode="r") as read_file:
+        with open(file_path, mode="r", encoding="utf-8") as read_file:
             for read_line in read_file.readlines():
                 total_err_count += 1
 
                 line_item = read_line.replace("\n", "").split("\t")
                 target_idx = int(line_item[0])
+
+                # For Debug by idx
+                # if target_idx != 1212:
+                #     continue
+
                 target_text = line_item[1]
+                mecab_text = mecab.pos(target_text)
+                mecab_text = [x[0] for x in mecab_text if x[1] not in target_josa]
+                target_text = "".join(mecab_text)
                 target_preds = line_item[2]
                 target_pos = line_item[3]
 
@@ -277,7 +297,7 @@ def compare_josa_split_results(
                     if is_target_str not in fixed_ne_dict.keys():
                         fixed_ne_dict[is_target_str] = []
 
-                    print(line_item)
+                    print(line_item, "target: ", target_text)
                     inputs = {
                         "input_ids": torch.LongTensor([datasets_dict["dev_npy"][target_idx, :, 0]]),
                         "attention_mask": torch.LongTensor([datasets_dict["dev_npy"][target_idx, :, 1]]),
@@ -313,15 +333,17 @@ def compare_josa_split_results(
                         # conv_pos = [pos_ids_to_tag[x] for x in pos_ids[p_idx]]
                         if text[p_idx] in target_text:
                             candi_list.append((text[p_idx], conv_label, conv_preds))
-                    candi_list = [x for x in candi_list if x[1] == bio_tag]
+                    # candi_list = [x for x in candi_list if x[1] == bio_tag]
                     if 0 >= len(candi_list):
                         continue
                     candi_list = sorted(candi_list, key=lambda x: len(x[0]), reverse=True)
-                    if (candi_list[0][1] == bio_tag) and \
-                            (candi_list[0][1] == candi_list[0][2]):
+                    print(candi_list)
+                    # input()
+                    if candi_list[0][1] == candi_list[0][2] and candi_list[0][1] != target_preds: #and (candi_list[0][1] == bio_tag)
                         fixed_error_count += 1
+                        # candi_list[0][0] : text, candi_list[0][1] : label, candi_list[0][2] : preds
                         fixed_ne_dict[is_target_str].append((target_idx, candi_list[0][0], candi_list[0][1],
-                                                             candi_list[0][2], target_text, target_preds))
+                                                             candi_list[0][2], line_item[1], target_preds))
     print(fixed_ne_dict)
     print(total_err_count)
     print(josa_err_count)
@@ -336,22 +358,22 @@ def compare_josa_split_results(
 if "__main__" == __name__:
     # model_path = "./old_eojeol_model/model"
     # datasets_path = "./old_eojeol_model/npy"
-    model_path = "./old_eojeol_model/model"
-    datasets_path = "./old_eojeol_model/npy"
+    model_path = "./eojeol_model/model"
+    datasets_path = "./eojeol_model/npy"
     model_name = "monologg/koelectra-base-v3-discriminator"
     save_dir_path = "./dic_err_results"
     # make_error_dictionary(model_path=model_path, model_name=model_name,
     #                       datasets_path=datasets_path, save_dir_path=save_dir_path)
 
     # ranking_by_read_file(save_dir_path)
-    #
+    # exit()
 
     save_dir_path = "./dic_err_results"
-    divide_by_category(root_dir=save_dir_path)
+    # divide_by_category(root_dir=save_dir_path)
     #
     ne_err_results_save_path = "./dir_err_results_by_ne"
-    # search_outputs_by_data_idx(model_path=model_path, model_name=model_name,
-    #                            datasets_path=datasets_path, save_dir_path=ne_err_results_save_path)
+    search_outputs_by_data_idx(model_path=model_path, model_name=model_name,
+                               datasets_path=datasets_path)
 
     # compare_josa_split_results(model_path=model_path, model_name=model_name,
     #                            datasets_path=datasets_path,
