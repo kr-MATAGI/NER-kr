@@ -438,6 +438,30 @@ def search_ne_boundary_error(
     print(f"NE Boundary Error Cnt: {ne_boundary_err_cnt}")
 
 
+
+#===========================================================================
+def check_XSN_josa_errors(error_results_path, target_pos):
+#===========================================================================
+    err_path_list = os.listdir(error_results_path)
+
+    total_err_cnt = 0
+    target_err_cnt = 0
+    filter_list = []
+    for err_path in err_path_list:
+        pos_combi = err_path.replace(".txt", "")
+        full_path = error_results_path + "/" + err_path
+
+        with open(full_path, mode="r", encoding="utf-8") as pos_file:
+            read_lines = pos_file.readlines()
+            total_err_cnt += len(read_lines)
+            if target_pos in pos_combi:
+                target_err_cnt += len(read_lines)
+                filter_list.append(pos_combi)
+    print(filter_list)
+    print(f"total_err_cnt: {total_err_cnt}, target_err_cnt: {target_err_cnt}")
+
+
+
 ### MAIN ###
 if "__main__" == __name__:
     # model_path = "./old_eojeol_model/model"
@@ -454,7 +478,7 @@ if "__main__" == __name__:
 
     save_dir_path = "./dic_err_results"
     # divide_by_category(root_dir=save_dir_path)
-    #
+
     ne_err_results_save_path = "./dir_err_results_by_ne"
     # search_outputs_by_data_idx(model_path=model_path, model_name=model_name,
     #                            datasets_path=datasets_path)
@@ -463,6 +487,9 @@ if "__main__" == __name__:
     #                            datasets_path=datasets_path,
     #                            error_dir_path=ne_err_results_save_path)
 
-    search_ne_boundary_error(model_path=model_path, model_name=model_name,
-                             datasets_path=datasets_path,
-                             error_dir_path=ne_err_results_save_path)
+    # search_ne_boundary_error(model_path=model_path, model_name=model_name,
+    #                          datasets_path=datasets_path,
+    #                          error_dir_path=ne_err_results_save_path)
+
+    check_XSN_josa_errors(error_results_path="./dic_err_results",
+                          target_pos="+J")

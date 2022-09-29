@@ -4,7 +4,6 @@ import torch.nn as nn
 
 from typing import Tuple
 
-from numpy import number
 from transformers import ElectraModel, ElectraPreTrainedModel
 from transformers.modeling_outputs import TokenClassifierOutput
 
