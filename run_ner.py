@@ -322,7 +322,7 @@ def main():
         config_file_path = "./config/roberta-lstm-crf.json"
     elif 6 == g_user_select:
         config_file_path = "./config/electra-lstm-crf.json"
-        g_use_crf = False
+        # g_use_crf = False
     elif 7 == g_user_select:
         config_file_path = "./config/electra-eojeol-model.json"
         g_use_crf = False

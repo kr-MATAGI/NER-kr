@@ -694,9 +694,9 @@ def make_eojeol_datasets_npy(
         '''
         new_word_tokens_pos_pair_list: List[Tuple[str, List[str], List[str]]] = []
         # VCP -> 긍정지정사
-        target_josa = ["XSN", "JX", "JC", "JKS", "JKC", "JKG", "JKO", "JKB", "VCP"]
+        target_josa = ["XSN", "JX", "JC", "JKS", "JKC", "JKG", "JKO", "JKB"] # "VCP"
         # target_josa = ["VCP"]
-        target_nn = ["NNG", "NNP", "NNB", "SW"] # 기호 추가, XSN은 VCP만 분리할때
+        target_nn = ["NNG", "NNP", "NNB"] #"SW" # 기호 추가, XSN은 VCP만 분리할때
         for wtp_item in word_tokens_pos_pair_list:
             split_idx = -1
             for mp_idx, wtp_mp_item in enumerate(reversed(wtp_item[-1])):
@@ -1851,13 +1851,13 @@ if "__main__" == __name__:
     #                    src_list=all_sent_list, max_len=128, debug_mode=False, save_model_dir="electra",
     #                    max_pos_nums=10)
 
-    # make_eojeol_datasets_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",
-    #                          src_list=all_sent_list, max_len=128, debug_mode=True,
-    #                          save_model_dir="eojeol_electra")
+    make_eojeol_datasets_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",
+                             src_list=all_sent_list, max_len=128, debug_mode=False,
+                             save_model_dir="eojeol_electra")
 
-    make_not_split_jx_eojeol_datasets_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",
-                                          src_list=all_sent_list, max_len=128, debug_mode=False,
-                                          save_model_dir="eojeol_vcp_electra", split_vcp=True)
+    # make_not_split_jx_eojeol_datasets_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",
+    #                                       src_list=all_sent_list, max_len=128, debug_mode=False,
+    #                                       save_model_dir="eojeol_vcp_electra", split_vcp=True)
 
     # make_eojeol_and_wordpiece_labels_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",
     #                                      src_list=all_sent_list, max_len=128, debug_mode=False,

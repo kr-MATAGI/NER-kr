@@ -57,7 +57,7 @@ class ELECTRA_POS_LSTM(ElectraPreTrainedModel):
     #===================================
     def forward(self,
                 input_ids, token_type_ids, attention_mask,
-                labels=None, pos_tag_ids=None,
+                labels=None, pos_tag_ids=None, eojeol_ids=None
     ):
     #===================================
         # pos embedding
