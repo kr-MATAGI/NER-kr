@@ -73,7 +73,7 @@ def load_corpus_npy_datasets(src_path: str, mode: str="train"):
     # ls_ids = np.load(root_path + "_ls_ids.npy")
     #entity_ids = np.load(root_path + "_entity_ids.npy")
 
-    return dataset_npy, pos_tag_npy, labels_npy, labels_npy, eojeol_ids, #ls_ids, entity_ids
+    return dataset_npy, pos_tag_npy, labels_npy, eojeol_ids, #ls_ids, entity_ids
 
 #===============================================================
 def init_logger():
