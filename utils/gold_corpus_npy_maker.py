@@ -608,9 +608,9 @@ def make_eojeol_datasets_npy(
         "금리설계형의 경우 변동금리(6개월 변동 코픽스 연동형)는", "현재 중국의 공항은 400여 개다.",
         "'중국 편'이라고 믿었던 박 대통령에게"
     ]
-    test_str_list = [
-        "'중국 편'이라고 믿었던 박 대통령에게"
-    ]
+    # test_str_list = [
+    #     "'중국 편'이라고 믿었던 박 대통령에게"
+    # ]
 
     for proc_idx, src_item in enumerate(src_list):
         # Test

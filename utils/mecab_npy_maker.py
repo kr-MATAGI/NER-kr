@@ -5,6 +5,8 @@ import pickle
 
 from dataclasses import dataclass, field
 from collections import deque
+
+import torch.cuda
 from eunjeon import Mecab
 
 from tag_def import ETRI_TAG, NIKL_POS_TAG, MECAB_POS_TAG
@@ -465,7 +467,7 @@ def save_mecab_eojeol_npy(npy_dict: Dict[str, List], src_list_len, save_dir: str
     print(f"[make_gold_corpus_npy][save_eojeol_npy_dict] Complete - Save all npy files !")
 
 #==========================================================================================
-def mecab_unk_count(src_path: str = ""):
+def mecab_token_unk_count(src_path: str = ""):
 #==========================================================================================
     print("target_path: ", src_path)
 
@@ -484,10 +486,46 @@ def mecab_unk_count(src_path: str = ""):
           f"unk_cnt: {unk_cnt} / {unk_cnt/total_token_cnt*100}%")
 
 #==========================================================================================
+def mecab_pos_unk_count(src_sent_list: str = ""):
+#==========================================================================================
+    print(f"[mecab_pos_unk_count] src_sent_list.len: {len(src_sent_list)}")
+
+    mecab = Mecab()
+    mecab_tag_sets = [v for k, v in MECAB_POS_TAG.items()]
+    print(f"mecab_pos_tag_sets: {mecab_tag_sets}")
+
+    random.shuffle(src_sent_list)
+
+    train_dev_size = int(len(src_sent_list) * 0.8)
+    print(f"train_dev_size: {train_dev_size}")
+    src_sent_list = src_sent_list[:train_dev_size]
+    total_morp_cnt = 0
+    total_pos_cnt = 0
+    total_unk_pos_cnt = 0
+    unk_pos_dict = {}
+    for src_sent in src_sent_list:
+        mecab_res = mecab.pos(src_sent.text)
+        for word, pos in mecab_res:
+            total_morp_cnt += 1
+
+            split_pos = pos.split("+")
+            total_pos_cnt += len(split_pos)
+            for sp_p in split_pos:
+                if sp_p not in mecab_tag_sets:
+                    total_unk_pos_cnt += 1
+                    if sp_p not in unk_pos_dict.keys():
+                        unk_pos_dict[sp_p] = [word]
+                    else:
+                        unk_pos_dict[sp_p].append(word)
+    print(f"Complete - total_morp_cnt: {total_morp_cnt}, total_pos_cnt: {total_pos_cnt}, "
+          f"total_unk_pos_cnt: {total_unk_pos_cnt}, unk_pos/morp: {total_unk_pos_cnt/total_morp_cnt * 100}")
+    print(unk_pos_dict)
+
+#==========================================================================================
 def make_mecab_wordpiece_npy(
         tokenizer_name: str, src_list: List[Sentence],
         token_max_len: int = 128, debug_mode: bool = False,
-        save_model_dir: str = None, token_unit: str = "morp"
+        save_model_dir: str = None
 ):
 #==========================================================================================
     # Mecab 분석을 Wordpiece 토큰으로 한것
@@ -548,10 +586,8 @@ def make_mecab_wordpiece_npy(
         extract_ne_list = src_item.ne_list
         # [ word, [(word, pos)] ]
         mecab_word_pair = convert_mecab_pos(src_item.word_list)
-        if "morp" == token_unit:
-            mecab_item_list = tokenize_mecab_pair_unit_pos(mecab_word_pair, tokenizer)
-        else:
-            mecab_item_list = tokenize_mecab_pair_unit_word(mecab_word_pair, tokenizer)
+        mecab_item_list = tokenize_mecab_pair_unit_pos(mecab_word_pair, tokenizer)
+
 
         tok_pos_item_list = []
         for mecab_item in mecab_item_list:
@@ -754,12 +790,15 @@ if "__main__" == __name__:
     pkl_src_path = "../corpus/pkl/NIKL_ne_pos.pkl"
     all_sent_list = load_ne_entity_list(src_path=pkl_src_path)
 
+    # Mecab 기준으로 Token 나눴을 때,
     train_path = "../corpus/npy/mecab_eojeol_electra/train.npy"
     # mecab_unk_count(train_path)
     dev_path = "../corpus/npy/mecab_eojeol_electra/dev.npy"
     # mecab_unk_count(dev_path)
 
-    # exit()
+    mecab_pos_unk_count(all_sent_list)
+
+    exit()
 
     # make *.npy (use Mecab)
     is_use_eojeol = False
