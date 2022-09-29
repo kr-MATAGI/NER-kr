@@ -466,8 +466,8 @@ def check_XSN_josa_errors(error_results_path, target_pos):
 if "__main__" == __name__:
     # model_path = "./old_eojeol_model/model"
     # datasets_path = "./old_eojeol_model/npy"
-    model_path = "./eojeol_model/model"
-    datasets_path = "./eojeol_model/npy"
+    model_path = "./old_eojeol_model/model"
+    datasets_path = "./old_eojeol_model/npy"
     model_name = "monologg/koelectra-base-v3-discriminator"
     save_dir_path = "./dic_err_results"
     # make_error_dictionary(model_path=model_path, model_name=model_name,
@@ -480,8 +480,8 @@ if "__main__" == __name__:
     # divide_by_category(root_dir=save_dir_path)
 
     ne_err_results_save_path = "./dir_err_results_by_ne"
-    # search_outputs_by_data_idx(model_path=model_path, model_name=model_name,
-    #                            datasets_path=datasets_path)
+    search_outputs_by_data_idx(model_path=model_path, model_name=model_name,
+                               datasets_path=datasets_path)
 
     # compare_josa_split_results(model_path=model_path, model_name=model_name,
     #                            datasets_path=datasets_path,
@@ -491,5 +491,5 @@ if "__main__" == __name__:
     #                          datasets_path=datasets_path,
     #                          error_dir_path=ne_err_results_save_path)
 
-    check_XSN_josa_errors(error_results_path="./dic_err_results",
-                          target_pos="+J")
+    # check_XSN_josa_errors(error_results_path="./dic_err_results",
+    #                       target_pos="+J")
