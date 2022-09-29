@@ -606,11 +606,11 @@ def make_eojeol_datasets_npy(
         "REDD는 열대우림 등 산림자원을 보호하는 개도국이나",
         "2010년 12월부터 이미 가중 처벌을 시행하는 어린이 보호구역의 교통사고 발생 건수는",
         "금리설계형의 경우 변동금리(6개월 변동 코픽스 연동형)는", "현재 중국의 공항은 400여 개다.",
-        "'중국 편'이라고 믿었던 박 대통령에게"
+        "'중국 편'이라고 믿었던 박 대통령에게", "2001년 한·미 주둔군지위협정(소파·SOFA)"
     ]
-    # test_str_list = [
-    #     "'중국 편'이라고 믿었던 박 대통령에게"
-    # ]
+    test_str_list = [
+        "2001년 한·미 주둔군지위협정(소파·SOFA)"
+    ]
 
     for proc_idx, src_item in enumerate(src_list):
         # Test
@@ -762,8 +762,8 @@ def make_eojeol_datasets_npy(
                     labels_ids[bio_idx] = ETRI_TAG["I-" + ne_item.type]
                     LS_ids[bio_idx] = LS_Tag["L"]
 
-            for use_idx in range(target_index_pair[1]):
-                b_check_use_eojeol[use_idx] = True
+            # for use_idx in range(target_index_pair[1]):
+            #     b_check_use_eojeol[use_idx] = True
 
         # POS
         pos_tag_ids = [] # [ [POS] * 10 ]

@@ -199,6 +199,7 @@ def ranking_by_read_file(root_dir: str = ""):
     target_josa = ["JX", "JC", "JKS", "JKC", "JKG", "JKO", "JKB"] # XSN, VCP
     target_nn = ["NNG", "NNP", "CONCAT_NN"]
     nn_josa_errors = 0
+    nn_vcp_errors = 0
     for file in target_files:
         file_path = root_dir + "/" + file
         key = file.replace(".txt", "")
@@ -211,8 +212,10 @@ def ranking_by_read_file(root_dir: str = ""):
             josa_cnt = [True for x in target_josa if x in key]
             if 0 < len(nn_cnt) and 0 < len(josa_cnt):
                 nn_josa_errors += res_dict[key]
+            if 0 < len(nn_cnt) and "VCP" in key:
+                nn_vcp_errors += res_dict[key]
     print(sorted(res_dict.items(), key=lambda x: x[1], reverse=True))
-    print(f"total_errors: {total_errors}, nn_josa_errors: {nn_josa_errors}")
+    print(f"total_errors: {total_errors}, nn_josa_errors: {nn_josa_errors}, nn_vcp_errors: {nn_vcp_errors}")
 
 #===========================================================================
 def divide_by_category(root_dir: str = ""):
@@ -353,6 +356,87 @@ def compare_josa_split_results(
     with open("./fixed_ne_dict.pkl", "wb") as write_pkl:
         pickle.dump(fixed_ne_dict, write_pkl)
 
+#===========================================================================
+def search_ne_boundary_error(
+    model_path: str = "", datasets_path: str = "",
+    model_name: str = "", error_dir_path: str = ""
+):
+#===========================================================================
+    # Load model
+    tokenizer = ElectraTokenizer.from_pretrained(model_name)
+    model = Electra_Eojeol_Model.from_pretrained(model_path)
+
+    # Load Datasets
+    datasets_dict = load_dataset_by_path(datasets_path=datasets_path)
+
+    model.eval()
+    total_data_size = datasets_dict["dev_npy"].shape[0]
+    ne_ids_to_tag = {v: k for k, v in ETRI_TAG.items()}
+    pos_ids_to_tag = {k: v for k, v in NIKL_POS_TAG.items()}
+
+    ne_boundary_err_cnt = 0
+    for data_idx in range(total_data_size):
+        if 0 == (data_idx % 100):
+            print(f"{data_idx} is processing...")
+
+        inputs = {
+            "input_ids": torch.LongTensor([datasets_dict["dev_npy"][data_idx, :, 0]]),
+            "attention_mask": torch.LongTensor([datasets_dict["dev_npy"][data_idx, :, 1]]),
+            "token_type_ids": torch.LongTensor([datasets_dict["dev_npy"][data_idx, :, 2]]),
+            "labels": torch.LongTensor([datasets_dict["labels"][data_idx, :]]),
+            "eojeol_ids": torch.LongTensor([datasets_dict["eojeol_ids"][data_idx, :]]),
+            "pos_tag_ids": torch.LongTensor([datasets_dict["pos_tag"][data_idx, :]])
+        }
+
+        # Make Eojeol
+        text: List[str] = []
+        eojeol_ids = datasets_dict["eojeol_ids"][data_idx, :]
+        merge_idx = 0
+        for eojeol_cnt in eojeol_ids:
+            if 0 >= eojeol_cnt:
+                break
+            eojeol_tokens = datasets_dict["dev_npy"][data_idx, :, 0][merge_idx:merge_idx + eojeol_cnt]
+            merge_idx += eojeol_cnt
+            conv_eojeol_tokens = tokenizer.decode(eojeol_tokens)
+            text.append(conv_eojeol_tokens)
+
+        # Model
+        outputs = model(**inputs)
+        logits = outputs.logits.detach().cpu().numpy()
+
+        preds = np.array(logits)[0]
+        preds = np.argmax(preds, axis=1)
+        labels = datasets_dict["labels"][data_idx, :]
+
+        # 몇 개가 오류인지
+        conv_preds = [ne_ids_to_tag[x] for x in preds]
+        conv_labels = [ne_ids_to_tag[x] for x in labels]
+
+        entities_true = defaultdict(set)
+        entities_pred = defaultdict(set)
+        for type_name, start, end in get_entities(conv_labels):
+            entities_true[type_name].add((start, end))
+        for type_name, start, end in get_entities(conv_preds):
+            entities_pred[type_name].add((start, end))
+        target_names = sorted(set(entities_true.keys()))  # | set(entities_pred.keys()))
+
+        for true_item_key, true_item_value in entities_true.items():
+            if true_item_key in entities_pred.keys():
+                pred_values = list(entities_pred[true_item_key])
+                pred_values_idx_limit = len(pred_values) - 1
+                for se_idx, s_e_pair in enumerate(true_item_value):
+                    if se_idx > pred_values_idx_limit:
+                        break
+                    true_start = s_e_pair[0]
+                    true_end = s_e_pair[1]
+
+                    pred_start = pred_values[se_idx][0]
+                    pred_end = pred_values[se_idx][1]
+                    if true_start != pred_start or true_end != pred_end:
+                        ne_boundary_err_cnt += 1
+                    print(true_start, pred_start, ":", true_end, pred_end, "=", ne_boundary_err_cnt)
+    print(f"NE Boundary Error Cnt: {ne_boundary_err_cnt}")
+
 
 ### MAIN ###
 if "__main__" == __name__:
@@ -372,9 +456,13 @@ if "__main__" == __name__:
     # divide_by_category(root_dir=save_dir_path)
     #
     ne_err_results_save_path = "./dir_err_results_by_ne"
-    search_outputs_by_data_idx(model_path=model_path, model_name=model_name,
-                               datasets_path=datasets_path)
+    # search_outputs_by_data_idx(model_path=model_path, model_name=model_name,
+    #                            datasets_path=datasets_path)
 
     # compare_josa_split_results(model_path=model_path, model_name=model_name,
     #                            datasets_path=datasets_path,
     #                            error_dir_path=ne_err_results_save_path)
+
+    search_ne_boundary_error(model_path=model_path, model_name=model_name,
+                             datasets_path=datasets_path,
+                             error_dir_path=ne_err_results_save_path)

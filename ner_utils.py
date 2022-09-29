@@ -193,7 +193,7 @@ def load_ner_config_and_model(user_select: int, args, tag_dict):
                                                num_labels=len(tag_dict.keys()),
                                                id2label={str(i): label for i, label in enumerate(tag_dict.keys())},
                                                label2id={label: i for i, label in enumerate(tag_dict.keys())})
-        config.num_pos_labels = 49 # NIKL
+        config.num_pos_labels = len(NIKL_POS_TAG.keys()) # NIKL
         config.max_seq_len = 128
         config.max_eojeol_len = 50
 

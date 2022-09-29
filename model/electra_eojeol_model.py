@@ -56,7 +56,7 @@ class Electra_Eojeol_Model(ElectraPreTrainedModel):
         self.linear = nn.Linear(self.d_model_size, config.num_labels)
 
         # CRF
-        # self.crf = CRF(num_tags=config.num_labels, batch_first=True)
+        self.crf = CRF(num_tags=config.num_labels, batch_first=True)
 
         # Initialize weights and apply final processing
         self.post_init()
@@ -180,7 +180,7 @@ class Electra_Eojeol_Model(ElectraPreTrainedModel):
                                                                         one_hot_embed=one_hot_embed_t,
                                                                         max_eojeol_len=self.max_eojeol_len)
 
-        # eojeol_origin_attn = copy.deepcopy(eojeol_attention_mask)
+        eojeol_origin_attn = copy.deepcopy(eojeol_attention_mask)
         eojeol_attention_mask = eojeol_attention_mask.unsqueeze(1).unsqueeze(2) # [64, 1, 1, max_eojeol_len]
         eojeol_attention_mask = eojeol_attention_mask.to(dtype=next(self.parameters()).dtype) # fp16 compatibility
         eojeol_attention_mask = (1.0 - eojeol_attention_mask) * -10000.0
@@ -204,21 +204,21 @@ class Electra_Eojeol_Model(ElectraPreTrainedModel):
         logits = self.linear(enc_outputs)  # [batch_size, seq_len, num_labels]
 
         # Get Loss
-        loss = None
-        if labels is not None:
-            loss_fct = nn.CrossEntropyLoss()
-            loss = loss_fct(logits.view(-1, self.config.num_labels), labels.view(-1))
-
-        return TokenClassifierOutput(
-            loss=loss,
-            logits=logits
-        )
+        # loss = None
+        # if labels is not None:
+        #     loss_fct = nn.CrossEntropyLoss()
+        #     loss = loss_fct(logits.view(-1, self.config.num_labels), labels.view(-1))
+        #
+        # return TokenClassifierOutput(
+        #     loss=loss,
+        #     logits=logits
+        # )
 
         # CRF
-        # if labels is not None:
-        #     log_likelihood, sequence_of_tags = self.crf(emissions=logits, tags=labels, reduction="mean", mask=eojeol_origin_attn.bool()),\
-        #                                        self.crf.decode(logits, mask=eojeol_origin_attn.bool())
-        #     return log_likelihood, sequence_of_tags
-        # else:
-        #     sequence_of_tags = self.crf.decode(logits)
-        #     return sequence_of_tags
+        if labels is not None:
+            log_likelihood, sequence_of_tags = self.crf(emissions=logits, tags=labels, reduction="mean", mask=eojeol_origin_attn.bool()),\
+                                               self.crf.decode(logits, mask=eojeol_origin_attn.bool())
+            return log_likelihood, sequence_of_tags
+        else:
+            sequence_of_tags = self.crf.decode(logits)
+            return sequence_of_tags

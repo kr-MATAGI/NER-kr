@@ -57,6 +57,7 @@ def convert_mecab_pos(src_word_list: List[Word]):
 
     # ret_word_pair : (word, (word, pos))
     ret_word_pair_list = []
+
     for word_idx, word_item in enumerate(src_word_list):
         res_list = mecab.pos(word_item.form)
         new_res_list = []
@@ -796,12 +797,10 @@ if "__main__" == __name__:
     dev_path = "../corpus/npy/mecab_eojeol_electra/dev.npy"
     # mecab_unk_count(dev_path)
 
-    mecab_pos_unk_count(all_sent_list)
-
-    exit()
+    # mecab_pos_unk_count(all_sent_list)
 
     # make *.npy (use Mecab)
-    is_use_eojeol = False
+    is_use_eojeol = True
     if is_use_eojeol:
         make_mecab_eojeol_npy(
             tokenizer_name="monologg/koelectra-base-v3-discriminator",

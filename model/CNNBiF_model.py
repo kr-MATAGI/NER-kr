@@ -174,16 +174,16 @@ class ELECTRA_CNNBiF_Model(ElectraPreTrainedModel):
         logits = self.ne_classifier(enc_outputs)
         ner_loss = None
         if labels is not None:
-            # ner_loss_fct = nn.CrossEntropyLoss()
-            # ner_loss = ner_loss_fct(logits.view(-1, self.config.num_labels), labels.view(-1))
+            ner_loss_fct = nn.CrossEntropyLoss()
+            ner_loss = ner_loss_fct(logits.view(-1, self.config.num_labels), labels.view(-1))
 
             # CRF
-            ner_loss, sequence_of_tags = self.crf(emissions=logits, tags=labels, reduction="mean",
-                                                  mask=eojeol_attn_mask_copy.bool()), \
-                                         self.crf.decode(logits, mask=eojeol_attn_mask_copy.bool())
+            # ner_loss, sequence_of_tags = self.crf(emissions=logits, tags=labels, reduction="mean",
+            #                                       mask=eojeol_attn_mask_copy.bool()), \
+            #                              self.crf.decode(logits, mask=eojeol_attn_mask_copy.bool())
             ner_loss *= -1
-        else:
-            sequence_of_tags = self.crf.decode(logits)
+        # else:
+            # sequence_of_tags = self.crf.decode(logits)
 
         # CNNBiF
         cnn_bi_f_outputs = self.cnn_bi_f(eojeol_tensor) # [batch, kernel, hidden-1]
@@ -202,16 +202,16 @@ class ELECTRA_CNNBiF_Model(ElectraPreTrainedModel):
         elif ls_ids is None:
             total_loss = ner_loss
 
-        # return TokenClassifierOutput(
-        #     loss=total_loss,
-        #     logits=logits
-        # )
+        return TokenClassifierOutput(
+            loss=total_loss,
+            logits=logits
+        )
 
         # CRF
-        if labels is not None:
-            return total_loss, sequence_of_tags
-        else:
-            return sequence_of_tags
+        # if labels is not None:
+        #     return total_loss, sequence_of_tags
+        # else:
+        #     return sequence_of_tags
 
 if "__main__" == __name__:
     config = ElectraConfig.from_pretrained("monologg/koelectra-base-v3-discriminator")
