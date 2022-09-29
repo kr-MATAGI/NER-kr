@@ -24,10 +24,10 @@
   "model_name_or_path": "monologg/koelectra-base-v3-discriminator",
   "output_dir": "electra-eojeol-embed-nikl-only-split-josa-0929",
   "seed": 42,
-  "train_batch_size": 128,
+  "train_batch_size": 64,
   "eval_batch_size": 128,
-  "logging_steps": 1642,
-  "save_steps": 821,
+  "logging_steps": 8210,
+  "save_steps": 1642,
   "learning_rate": 5e-5,
   "n_gpu": 1
 }
