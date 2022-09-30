@@ -1,0 +1,95 @@
+=====================================================================================
+2022.09.14 실험 결과 정리
+
+1. ELECTRA + LSTM(POS) + CRF
+	- 형태소의 첫 토큰에만 품사 정보 반영
+	- f1_13136 = 0.9094739137761829
+	
+2. ELECTRA + Transformer Encoder
+	- 명사가 이어질경우 concat_NN으로 치환
+	- f1_16420 = 0.9120437064767136
+	
+3. ELECTRA + Transformer Encoder
+	- concat_NN, 형태소 분석 정보 반영 안함, 어절 임베딩 -> Token 단위로 다시 변경
+	- f1_9852 = 0.9050417599321585
+
+4. ELECTRA + Transformer Encoder
+	- 어절 임베딩 -> Token 단위로 다시 변경
+	- 형태소 분석 정보를 반영하고 바로 Linear Layer에 입력 줌, 결과가 들쭉날쭉함
+	- f1_4926 = 0.900468464239259
+	
+5. ELECTRA + Transformer Encoder + Bi-LSTM
+	- 어절 임베딩 -> Token 단위로 다시 변경
+	- hidden size를 input size와 동일하게 줌
+	- f1_9852 = 0.9066567974339995
+	
+6. ELECTRA + Transformer Encoder + Bi-LSTM
+	- 어절 임베딩 -> Token 단위로 다시 변경
+	- hidden size를 input size가 아닌 config.hidden_size로 줌
+	- f1_8210 = 0.9056945991502953
+	
+	
+7. ELECTRA + Transformer Encoder + LSTM
+	- 어절 임베딩 -> Token 단위로 다시 변경
+	- hidden size를 input size와 동일
+	- f1_13136 = 0.9057428921797971
+	
+	
+8. ELECTRA + Transformer Encoder
+	- 명사에 붙는 명사파생 접미사, 조사 분리
+	- f1_29547 = 0.9073256933085794
+	
+	- NE Labeling 수정해서 다시 해봐야함
+	
+9. ELECTRA + LSTM(POS) + Linear
+	- f1_9852 = 0.9047184260131951
+	
+	
+10. ELECTRA + Transformer(POS) + Linear
+	- f1_11494 = 0.901872085740135
+	
+
+
+
+========================= 09.27~ Mecab 관련 성능 측정
+11. ELECTRA + Transformer(POS) + Linear
+	- 매캡으로 어절 기호 나올때 분리하는 걸로 성능 측정
+	- 매캡 형태소 분석 단위로 성능 측정
+	- f1_16420 = 0.9014032588282764
+	
+12. ELECTRA + LSTM(POS) + CRF
+	- 매캡으로 형태소 단위 Wordpiece Token 만들어서 측정
+	- f1_8210 = 0.898538838198177
+
+13. ELECTRA + Transformer(POS) + Linear
+	- 매캡으로 명사뒤에 붙는 조사 분리해서 측정
+	- f1_14778 = 0.8977790474876983
+	
+14. ELECTRA + Transformer(POS) + CRF
+	- 조사 분리
+	- f1_16420 = 0.9019045121450379
+	
+	
+========================= 09.27~ 조사 분리 관련 성능 측정
+	
+14. ELECTRA + Transformer(POS) + Linear
+	- 서술격조사도 분리안하고 어절 단위
+	- f1_16420 = 0.9043678114573148
+	
+15. ELECTRA + Transformer(POS) + Linear
+	- 조사, 서술격 조사 분리
+	- f1_16420 = 0.9084703784426392
+	- CRF 추가 : f1_16420 = 0.9088181413081151
+	
+16. ELECTRA + Transformer(POS) + Linear
+	- 조사만 분리.
+	- f1_13136 = 0.9094299096089019
+	- CRF 추가 : f1_16420 = 0.9091689929138932
+	
+17. ELECTRA + LSTM(POS) + CRF
+	- Wordpiece 모델
+	- f1_11494 = 0.9100433382370482
+	
+18. ELECTRA + Transformer(POS) + CRF
+	- POS 3개만 사용 (조사 분리했으니까 공간 1개가 거의 필요없을거라 생각-> 실제 수치 확인 필요)
+	- f1_16420 = 0.9102756245471599

@@ -49,6 +49,8 @@ def make_error_dictionary(
     # Load model
     tokenizer = ElectraTokenizer.from_pretrained(model_name)
     model = Electra_Eojeol_Model.from_pretrained(model_path)
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    # model.to(device)
 
     # Load Datasets
     datasets_dict = load_dataset_by_path(datasets_path=datasets_path)
@@ -218,7 +220,7 @@ def ranking_by_read_file(root_dir: str = ""):
     print(f"total_errors: {total_errors}, nn_josa_errors: {nn_josa_errors}, nn_vcp_errors: {nn_vcp_errors}")
 
 #===========================================================================
-def divide_by_category(root_dir: str = ""):
+def divide_by_category(root_dir: str = "", save_dir_path: str = ""):
 #===========================================================================
     target_files = os.listdir(root_dir)
     res_dict = {}
@@ -236,7 +238,6 @@ def divide_by_category(root_dir: str = ""):
                     res_dict[item[2]].append((item[0], item[1], item[-1], pos))
 
     # Write
-    save_dir_path = "./dir_err_results_by_ne"
     for key in res_dict.keys():
         with open(save_dir_path + "/" + key + ".txt", mode="w", encoding="utf-8") as write_file:
             err_info_list = res_dict[key]
@@ -469,19 +470,18 @@ if "__main__" == __name__:
     model_path = "./eojeol_model/model"
     datasets_path = "./eojeol_model/npy"
     model_name = "monologg/koelectra-base-v3-discriminator"
-    save_dir_path = "./dic_err_results"
-    # make_error_dictionary(model_path=model_path, model_name=model_name,
-    #                       datasets_path=datasets_path, save_dir_path=save_dir_path)
+    save_dir_path = "./josa_dict_err_results"
+    make_error_dictionary(model_path=model_path, model_name=model_name,
+                          datasets_path=datasets_path, save_dir_path=save_dir_path)
 
-    # ranking_by_read_file(save_dir_path)
-    # exit()
+    ranking_by_read_file(save_dir_path)
+    save_dir_path = "./josa_dict_err_results_by_ne"
+    divide_by_category(root_dir=save_dir_path, save_dir_path=save_dir_path)
+    exit()
 
-    save_dir_path = "./dic_err_results"
-    # divide_by_category(root_dir=save_dir_path)
-
-    ne_err_results_save_path = "./dir_err_results_by_ne"
-    # search_outputs_by_data_idx(model_path=model_path, model_name=model_name,
-    #                            datasets_path=datasets_path)
+    ne_err_results_save_path = "./josa_dict_err_results"
+    search_outputs_by_data_idx(model_path=model_path, model_name=model_name,
+                               datasets_path=datasets_path)
 
     # compare_josa_split_results(model_path=model_path, model_name=model_name,
     #                            datasets_path=datasets_path,
@@ -491,5 +491,5 @@ if "__main__" == __name__:
     #                          datasets_path=datasets_path,
     #                          error_dir_path=ne_err_results_save_path)
 
-    check_XSN_josa_errors(error_results_path="./dic_err_results",
-                          target_pos="+J")
+    # check_XSN_josa_errors(error_results_path="./dic_err_results",
+    #                       target_pos="+J")

@@ -797,7 +797,8 @@ if "__main__" == __name__:
     dev_path = "../corpus/npy/mecab_eojeol_electra/dev.npy"
     # mecab_unk_count(dev_path)
 
-    # mecab_pos_unk_count(all_sent_list)
+    mecab_pos_unk_count(all_sent_list)
+    exit()
 
     # make *.npy (use Mecab)
     is_use_eojeol = True

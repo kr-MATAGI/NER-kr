@@ -325,7 +325,7 @@ def main():
         # g_use_crf = False
     elif 7 == g_user_select:
         config_file_path = "./config/electra-eojeol-model.json"
-        # g_use_crf = False
+        g_use_crf = False
     elif 8 == g_user_select:
         config_file_path = "./config/electra-all-feature-model.json"
     elif 9 == g_user_select:
