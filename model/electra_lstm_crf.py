@@ -27,7 +27,7 @@ class ELECTRA_POS_LSTM(ElectraPreTrainedModel):
         # pos tag embedding
         self.pos_embedding_1 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
         self.pos_embedding_2 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
-        self.pos_embedding_3 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
+        # self.pos_embedding_3 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
 
         '''
             @ Note
@@ -40,7 +40,7 @@ class ELECTRA_POS_LSTM(ElectraPreTrainedModel):
         self.dropout = nn.Dropout(self.dropout_rate)
 
         # LSTM
-        self.lstm_dim_size = config.hidden_size + (self.pos_embed_out_dim * 3) # + self.max_eojeol_len# + self.entity_embed_out_dim
+        self.lstm_dim_size = config.hidden_size + (self.pos_embed_out_dim * 2) # + self.max_eojeol_len# + self.entity_embed_out_dim
         self.lstm = nn.LSTM(input_size=self.lstm_dim_size, hidden_size=self.lstm_dim_size,
                             num_layers=1, batch_first=True, dropout=self.dropout_rate)
 
@@ -64,11 +64,11 @@ class ELECTRA_POS_LSTM(ElectraPreTrainedModel):
         # pos_tag_ids : [batch_size, seq_len, num_pos_tags]
         pos_tag_1 = pos_tag_ids[:, :, 0] # [batch_size, seq_len]
         pos_tag_2 = pos_tag_ids[:, :, 1] # [batch_size, seq_len]
-        pos_tag_3 = pos_tag_ids[:, :, 2] # [batch_size, seq_len]
+        # pos_tag_3 = pos_tag_ids[:, :, 2] # [batch_size, seq_len]
 
         pos_embed_1 = self.pos_embedding_1(pos_tag_1) # [batch_size, seq_len, pos_tag_embed]
         pos_embed_2 = self.pos_embedding_2(pos_tag_2)  # [batch_size, seq_len, pos_tag_embed]
-        pos_embed_3 = self.pos_embedding_3(pos_tag_3)  # [batch_size, seq_len, pos_tag_embed]
+        # pos_embed_3 = self.pos_embedding_3(pos_tag_3)  # [batch_size, seq_len, pos_tag_embed]
 
         # split_vcp
         # eojeol_embed = self.eojeol_embedding(eojeol_ids)
@@ -82,10 +82,9 @@ class ELECTRA_POS_LSTM(ElectraPreTrainedModel):
 
         electra_outputs = electra_outputs.last_hidden_state # [batch_size, seq_len, hidden_size]
 
-        concat_pos_embed = torch.concat([pos_embed_1, pos_embed_2, pos_embed_3], dim=-1)
+        # concat_pos_embed = torch.concat([pos_embed_1, pos_embed_2, pos_embed_3], dim=-1)
+        concat_pos_embed = torch.concat([pos_embed_1, pos_embed_2], dim=-1)
         concat_embed = torch.concat([electra_outputs, concat_pos_embed], dim=-1)
-        # concat_embed = torch.concat([concat_embed, eojeol_embed, entity_embed], dim=-1)
-        #concat_embed = torch.concat([concat_embed, eojeol_embed], dim=-1)
 
         # Transformer
         # attention_mask = attention_mask.unsqueeze(1).unsqueeze(2) # [64, 1, ,1, ..]

@@ -783,6 +783,114 @@ def save_mecab_wordpiece_npy(npy_dict: Dict[str, List], src_list_len, save_dir: 
 
     print(f"Complete - Save all npy files !")
 
+@dataclass
+class Morp_pair:
+    morp: List[str] = field(default_factory=list)
+    pos: List[str] = field(default_factory=list)
+
+#==========================================================================================
+def conv_nikl_pos_to_mecab(nikl_morp):
+#==========================================================================================
+    MM_list = ["MMA", "MMD", "MMN"]
+    SP_list = ["SO", "SW"]
+    ret_morp = nikl_morp
+    if nikl_morp in MM_list:
+        ret_morp = "MM"
+    # elif nikl_morp in SP_list:
+    #     ret_morp = "SY"
+
+    return ret_morp
+
+#==========================================================================================
+def conv_mecab_pos_to_nikl(mecab_pos_list):
+#==========================================================================================
+    ret_conv_pos_list = []
+    for mecab_pos in mecab_pos_list:
+        if "NNBC" == mecab_pos:
+            ret_conv_pos_list.append("NNB")
+        else:
+            ret_conv_pos_list.append(mecab_pos)
+    return ret_conv_pos_list
+
+#==========================================================================================
+def compare_mecab_and_gold_corpus(src_corpus_list: List[Sentence] = []):
+#==========================================================================================
+    '''
+        cmp_results_dict = { key: POS, value: { [(sent_id, sent_text, [(word_id, gold_corpus, mecab_pos_concat]] }
+    '''
+    cmp_results_dict = {}
+
+
+    # Mecab
+    mecab = Mecab()
+
+    for sent_item in src_corpus_list:
+        # Gold Corpus
+        gold_corpus_dict = {} # key: word_id, value = Word_POS_pair(word, pos)
+        # Set word_id(key)
+        for word_item in sent_item.word_list:
+            gold_corpus_dict[word_item.id] = []
+
+        # Set NIKL POS
+        for key in gold_corpus_dict.keys():
+            pos_list = []
+            form_list = []
+            for morp_item in sent_item.morp_list:
+                if key == morp_item.word_id:
+                    # word
+                    form_list.append(morp_item.form)
+                    # morp
+                    conv_label = conv_nikl_pos_to_mecab(nikl_morp=morp_item.label)
+                    pos_list.append(conv_label)
+            morp_pair = Morp_pair(morp=form_list, pos=pos_list)
+            gold_corpus_dict[key] = morp_pair
+
+        # Set Mecab POS
+        mecab_res_dict = {} # key: word_id, value = Word_POS_pair(word, pos)
+        mecab_res_deque = deque()
+        for mecab_res in mecab.pos(sent_item.text):
+            mecab_res_deque.append([mecab_res[0], mecab_res[1]])
+
+        eojeol_list = sent_item.text.split()
+        for e_idx, eojeol in enumerate(eojeol_list):
+            target_list = []
+            while 0 != len(mecab_res_deque):
+                left_item = mecab_res_deque.popleft()
+                if left_item[0] in eojeol:
+                    target_list.append(left_item)
+                else:
+                    mecab_res_deque.appendleft(left_item)
+                    break
+            concat_word = [x[0] for x in target_list]
+            concat_pos = []
+            for x in target_list:
+                sp_pos = x[1].split("+")
+                sp_pos = conv_mecab_pos_to_nikl(sp_pos)
+                concat_pos.extend(sp_pos)
+            word_pos_pair = Morp_pair(morp=concat_word, pos=concat_pos)
+            mecab_res_dict[e_idx+1] = word_pos_pair
+
+        # Compare
+        ignore_list = ["SF", "SE", "SS", "SP", "SO", "SW", "SSO", "SSC", "SC", "SY"] # "SL", "SH", "SN"
+        for key, value in gold_corpus_dict.items():
+            conv_nikl_giho_value = ["GH" if x in ignore_list else x for x in value.pos]
+
+            mecab_dict_value = mecab_res_dict[key]
+            conv_mecab_giho_value = ["GH" if x in ignore_list else x for x in mecab_dict_value.pos]
+            print(conv_nikl_giho_value)
+            print(conv_mecab_giho_value)
+            if "+".join(conv_nikl_giho_value) != "+".join(conv_mecab_giho_value):
+                diff_filter = np.where(conv_nikl_giho_value not in conv_mecab_giho_value)
+                print("AAAA: ", conv_nikl_giho_value)
+                print("BBBB: ", conv_mecab_giho_value)
+                print(diff_filter)
+                input()
+
+        print(sent_item.text)
+        print(gold_corpus_dict)
+        print(mecab_res_dict)
+        input()
+
 ### MAIN ###
 if "__main__" == __name__:
     print("[mecab_npy_maker] __main__ !")
@@ -791,14 +899,17 @@ if "__main__" == __name__:
     pkl_src_path = "../corpus/pkl/NIKL_ne_pos.pkl"
     all_sent_list = load_ne_entity_list(src_path=pkl_src_path)
 
-    # Mecab 기준으로 Token 나눴을 때,
-    train_path = "../corpus/npy/mecab_eojeol_electra/train.npy"
-    # mecab_unk_count(train_path)
-    dev_path = "../corpus/npy/mecab_eojeol_electra/dev.npy"
-    # mecab_unk_count(dev_path)
-
-    mecab_pos_unk_count(all_sent_list)
+    compare_mecab_and_gold_corpus(src_corpus_list=all_sent_list)
     exit()
+
+    # # Mecab 기준으로 Token 나눴을 때,
+    # train_path = "../corpus/npy/mecab_eojeol_electra/train.npy"
+    # # mecab_unk_count(train_path)
+    # dev_path = "../corpus/npy/mecab_eojeol_electra/dev.npy"
+    # # mecab_unk_count(dev_path)
+
+    # mecab_pos_unk_count(all_sent_list)
+    # exit()
 
     # make *.npy (use Mecab)
     is_use_eojeol = True
