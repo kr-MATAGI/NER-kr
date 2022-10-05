@@ -199,7 +199,7 @@ def load_ner_config_and_model(user_select: int, args, tag_dict):
         config.max_eojeol_len = 50
     elif 10 == user_select:
         # CHAR_ELECTRA+LSTM(POS)+CRF
-        config = ElectraConfig.from_pretrained("kocharelectra-base-discriminator",
+        config = ElectraConfig.from_pretrained("monologg/kocharelectra-base-discriminator",
                                                num_labels=len(tag_dict.keys()),
                                                id2label={str(i): label for i, label in enumerate(tag_dict.keys())},
                                                label2id={label: i for i, label in enumerate(tag_dict.keys())})
