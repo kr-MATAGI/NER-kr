@@ -17,7 +17,7 @@ class NER_POS_Dataset(Dataset):
         self.labels = labels
         #self.token_seq_len = toekn_seq_len
         self.pos_tag_ids = pos_tag_ids
-        self.eojeol_ids = eojeol_ids
+        # self.eojeol_ids = eojeol_ids
         #self.entity_ids = entity_ids
 
         self.input_ids = torch.tensor(self.input_ids, dtype=torch.long)
@@ -26,7 +26,7 @@ class NER_POS_Dataset(Dataset):
         self.labels = torch.tensor(self.labels, dtype=torch.long)
         #self.token_seq_len = torch.tensor(self.token_seq_len, dtype=torch.long)
         self.pos_tag_ids = torch.tensor(self.pos_tag_ids, dtype=torch.long)
-        self.eojeol_ids = torch.tensor(self.eojeol_ids, dtype=torch.long)
+        # self.eojeol_ids = torch.tensor(self.eojeol_ids, dtype=torch.long)
         #self.entity_ids = torch.tensor(self.entity_ids, dtype=torch.long)
 
     def __len__(self):
@@ -40,7 +40,7 @@ class NER_POS_Dataset(Dataset):
             "labels": self.labels[idx],
             #"token_seq_len": self.token_seq_len[idx],
             "pos_tag_ids": self.pos_tag_ids[idx],
-            "eojeol_ids": self.eojeol_ids[idx],
+            # "eojeol_ids": self.eojeol_ids[idx],
             #"entity_ids": self.entity_ids[idx]
         }
 
