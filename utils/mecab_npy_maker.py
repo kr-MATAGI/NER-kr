@@ -6,7 +6,6 @@ import pickle
 from dataclasses import dataclass, field
 from collections import deque
 
-import torch.cuda
 from eunjeon import Mecab
 
 from tag_def import ETRI_TAG, NIKL_POS_TAG, MECAB_POS_TAG
@@ -788,6 +787,14 @@ class Morp_pair:
     morp: List[str] = field(default_factory=list)
     pos: List[str] = field(default_factory=list)
 
+@dataclass
+class Compare_res:
+    sent_id: str = ""
+    sent_text: str = ""
+    target: Tuple[int, Tuple[str, str]] = field(default_factory=tuple)
+    nikl_morp: List[str] = field(default_factory=list)
+    mecab_morp: List[str] = field(default_factory=list)
+
 #==========================================================================================
 def conv_nikl_pos_to_mecab(nikl_morp):
 #==========================================================================================
@@ -820,10 +827,8 @@ def compare_mecab_and_gold_corpus(src_corpus_list: List[Sentence] = []):
     '''
     cmp_results_dict = {}
 
-
     # Mecab
     mecab = Mecab()
-
     for sent_item in src_corpus_list:
         # Gold Corpus
         gold_corpus_dict = {} # key: word_id, value = Word_POS_pair(word, pos)
@@ -877,19 +882,167 @@ def compare_mecab_and_gold_corpus(src_corpus_list: List[Sentence] = []):
 
             mecab_dict_value = mecab_res_dict[key]
             conv_mecab_giho_value = ["GH" if x in ignore_list else x for x in mecab_dict_value.pos]
-            print(conv_nikl_giho_value)
-            print(conv_mecab_giho_value)
             if "+".join(conv_nikl_giho_value) != "+".join(conv_mecab_giho_value):
-                diff_filter = np.where(conv_nikl_giho_value not in conv_mecab_giho_value)
-                print("AAAA: ", conv_nikl_giho_value)
-                print("BBBB: ", conv_mecab_giho_value)
-                print(diff_filter)
-                input()
+                # 형태소 분석 정보의 길이가 같다
+                if len(conv_nikl_giho_value) == len(conv_mecab_giho_value):
+                    for idx, (nikl_pos, mecab_pos) in enumerate(zip(conv_nikl_giho_value, conv_mecab_giho_value)):
+                        if nikl_pos != mecab_pos:
+                            filtered_target = (idx, (value.morp[idx], value.pos[idx]))
+                            cmp_res = Compare_res(sent_id=sent_item.id, sent_text=sent_item.text,
+                                                  target=filtered_target,
+                                                  nikl_morp=value, mecab_morp=mecab_dict_value)
+                            if nikl_pos not in cmp_results_dict.keys():
+                                cmp_results_dict[nikl_pos] = [cmp_res]
+                            else:
+                                cmp_results_dict[nikl_pos].append(cmp_res)
+                # gold corpus의 형태소 분석 정보가 더 많다.
+                elif len(conv_nikl_giho_value) > len(conv_mecab_giho_value):
+                    filtered_idx = -1
+                    for idx, mecab_pos in enumerate(conv_mecab_giho_value):
+                        if mecab_pos != conv_nikl_giho_value[idx]:
+                            filtered_idx = idx
+                            break
+                    filtered_target = ()
+                    cmp_res = Compare_res()
+                    if -1 != filtered_idx:
+                        filtered_target = (filtered_idx, (value.morp[filtered_idx], value.pos[filtered_idx]))
+                        cmp_res = Compare_res(sent_id=sent_item.id, sent_text=sent_item.text,
+                                              target=filtered_target,
+                                              nikl_morp=value, mecab_morp=mecab_dict_value)
+                    else:
+                        filtered_target = (0, (value.morp[0], value.pos[0]))
+                        cmp_res = Compare_res(sent_id=sent_item.id, sent_text=sent_item.text,
+                                              target=filtered_target, nikl_morp=value, mecab_morp=mecab_dict_value)
+                    if value.pos[filtered_idx] not in cmp_results_dict.keys():
+                        cmp_results_dict[value.pos[filtered_idx]] = [cmp_res]
+                    else:
+                        cmp_results_dict[value.pos[filtered_idx]].append(cmp_res)
+                # mecab의 형태소 분석 정보가 더 많다.
+                else:
+                    filtered_idx = -1
+                    for idx, nikl_pos in enumerate(conv_nikl_giho_value):
+                        if nikl_pos != conv_mecab_giho_value[idx]:
+                            filtered_idx = idx
+                            break
+                    filtered_target = ()
+                    cmp_res = Compare_res()
+                    if -1 != filtered_idx:
+                        filtered_target = (filtered_idx, (value.morp[filtered_idx], value.pos[filtered_idx]))
+                        cmp_res = Compare_res(sent_id=sent_item.id, sent_text=sent_item.text,
+                                              target=filtered_target,
+                                              nikl_morp=value, mecab_morp=mecab_dict_value)
+                    else:
+                        filtered_target = (0, (value.morp[0], value.pos[0]))
+                        cmp_res = Compare_res(sent_id=sent_item.id, sent_text=sent_item.text,
+                                              target=filtered_target,
+                                              nikl_morp=value, mecab_morp=mecab_dict_value)
+                    if value.pos[filtered_idx] not in cmp_results_dict.keys():
+                        cmp_results_dict[value.pos[filtered_idx]] = [cmp_res]
+                    else:
+                        cmp_results_dict[value.pos[filtered_idx]].append(cmp_res)
 
-        print(sent_item.text)
-        print(gold_corpus_dict)
-        print(mecab_res_dict)
-        input()
+    # Complete compare
+    for key, value in cmp_results_dict.items():
+        with open("./mecab_cmp/"+key+".txt", mode="w", encoding="utf-8") as write_file:
+            print(f"Value Size: {len(value)}")
+            for v in value:
+                write_file.write("sent_id: "+v.sent_id+"\n")
+                write_file.write("sent_text: "+v.sent_text+"\n")
+                write_file.write("target: "+str(v.target)+"\n")
+                write_file.write("nikl_item: "+str(v.nikl_morp)+"\n")
+                write_file.write("mecab_item: " + str(v.mecab_morp) + "\n")
+                write_file.write("\n\n")
+
+    # Save Dictionary
+    with open("./mecab_cmp/mecab_compare_dict.pkl", mode="wb") as write_pkl:
+        pickle.dump(cmp_results_dict, write_pkl)
+        print("save pkl")
+
+#==========================================================================================
+def check_nikl_and_mecab_difference(dic_pkl_path: str = ""):
+#==========================================================================================
+    load_dict = {}
+    with open(dic_pkl_path, mode="rb") as dict_pkl:
+        load_dict = pickle.load(dict_pkl)
+
+    # Check Total errors
+    total_diff_cnt = 0
+    for key, val in load_dict.items():
+        total_diff_cnt += len(val)
+
+    # Check (NNG to VV) or (NNP to VV)
+    nng2vv_err = 0
+    target_key = "NNG"
+    search_target = "NNG"
+    target_origin_dict_key: List[Compare_res] = load_dict[target_key]
+
+    search_dict = {}
+    err_cnt = 0
+    for nng_val in target_origin_dict_key:
+        target_idx = nng_val.target[0]
+        mecab_morp_pos_pair = nng_val.mecab_morp
+        if 0 >= len(mecab_morp_pos_pair.morp):
+            continue
+        try:
+            mecab_morp = mecab_morp_pos_pair.morp[target_idx]
+            mecab_pos = mecab_morp_pos_pair.pos[target_idx]
+        except:
+            print(target_idx)
+            print(nng_val.sent_text)
+            print(nng_val.target)
+            print(mecab_morp_pos_pair.morp)
+            print(mecab_morp_pos_pair.pos)
+            err_cnt += 1
+            print(err_cnt)
+
+        if mecab_pos not in search_dict.keys():
+            search_dict[mecab_pos] = [(nng_val.sent_text, nng_val.nikl_morp, mecab_morp_pos_pair)]
+        else:
+            search_dict[mecab_pos].append((nng_val.sent_text, nng_val.nikl_morp, mecab_morp_pos_pair))
+
+
+
+    for sent, lhs, rhs in search_dict[search_target]:
+        print("Sent: ", sent)
+        print("NIKL: ", lhs)
+        print("MECAB: ", rhs)
+        print("===================")
+    print(f"Target POS: {target_key}, Search Target: {search_target}, Size: {len(search_dict[search_target])}")
+
+    print("====================\nsearch_dict diff info ")
+    search_dict_rank = []
+    for key in search_dict.keys():
+        search_dict_rank.append((key, len(search_dict[key])))
+    search_dict_rank = sorted(search_dict_rank, key=lambda x: x[1], reverse=True)
+    for lhs, rhs in search_dict_rank:
+        print(f"{lhs} Diff item size: {rhs}")
+
+    print("====================\nsrc_dict diff info ")
+    load_dict_rank = []
+    for key in load_dict.keys():
+        load_dict_rank.append((key, len(load_dict[key])))
+    load_dict_rank = sorted(load_dict_rank, key=lambda x: x[1], reverse=True)
+    for lhs, rhs in load_dict_rank:
+        print(f"{lhs} Diff item size: {rhs}")
+    print(f"====================\nTotal Diff count: {total_diff_cnt}")
+
+#==========================================================================================
+def check_count_morp(src_sent_list):
+#==========================================================================================
+    nikl_morp_count = 0
+    mecab_morp_count = 0
+    mecab_pos_count = 0
+
+    mecab = Mecab()
+    for sent_item in src_sent_list:
+        mecab_res = mecab.pos(sent_item.text)
+        for item in mecab_res:
+            mecab_morp_count += 1
+            mecab_pos_count += len(item[1])
+        nikl_morp_count += len(sent_item.morp_list)
+    print("nikl_morp_count: ", nikl_morp_count)
+    print("mecab_morp_count: ", mecab_morp_count)
+    print("mecab_pos_count: ", mecab_pos_count)
 
 ### MAIN ###
 if "__main__" == __name__:
@@ -897,16 +1050,13 @@ if "__main__" == __name__:
 
     # load corpus
     pkl_src_path = "../corpus/pkl/NIKL_ne_pos.pkl"
-    all_sent_list = load_ne_entity_list(src_path=pkl_src_path)
+    all_sent_list = []
+    # all_sent_list = load_ne_entity_list(src_path=pkl_src_path)
 
-    compare_mecab_and_gold_corpus(src_corpus_list=all_sent_list)
+    # compare_mecab_and_gold_corpus(src_corpus_list=all_sent_list)
+    check_nikl_and_mecab_difference(dic_pkl_path="./mecab_cmp/mecab_compare_dict.pkl")
+    # check_count_morp(src_sent_list=all_sent_list)
     exit()
-
-    # # Mecab 기준으로 Token 나눴을 때,
-    # train_path = "../corpus/npy/mecab_eojeol_electra/train.npy"
-    # # mecab_unk_count(train_path)
-    # dev_path = "../corpus/npy/mecab_eojeol_electra/dev.npy"
-    # # mecab_unk_count(dev_path)
 
     # mecab_pos_unk_count(all_sent_list)
     # exit()

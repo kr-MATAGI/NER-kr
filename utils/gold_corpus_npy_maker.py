@@ -12,6 +12,9 @@ from data_def import Sentence, NE, Morp
 from transformers import AutoTokenizer, ElectraTokenizer
 from dict_maker import Dict_Item, make_dict_hash_table
 
+# koCharELECTRA
+from tokenization_kocharelectra import KoCharElectraTokenizer
+
 ### global
 random.seed(42)
 np.random.seed(42)
@@ -33,19 +36,14 @@ def conv_NIKL_pos_giho_category(sent_list: List[Sentence], is_status_nn: bool=Fa
     쉼표, 가운뎃점, 콜론, 빗금 (SP), 따옴표, 괄호표, 줄표(SS), 줄임표(SE), 붙임표(물결) (SO) -> SP
     '''
     for sent_item in sent_list:
-        for morp_item in sent_item.morp_list:
-            if "SS" == morp_item.label or "SE" == morp_item.label or "SO" == morp_item.label:
-                morp_item.label = "SP"
+        for mp_idx, morp_item in enumerate(sent_item.morp_list):
+            if "SS" in morp_item.label or "SE" in morp_item.label or "SO" in morp_item.label:
+                morp_item.label = morp_item.label.replace("SS", "SP").replace("SE", "SP").replace("SO", "SP")
             if "NNG" == morp_item.label or "NNP" == morp_item.label or "NNB" == morp_item.label:
                 if is_status_nn and morp_item.form in status_nn_list:
                     morp_item.label = "STATUS_NN"
-                    # print("\nAAAAAAAAAA:\n", morp_item)
-                    # input()
                 elif is_verb_nn and morp_item.form in verb_nn_list:
                     morp_item.label = "VERB_NN"
-                    # print("\nBBBBBBBBB:\n", morp_item)
-                    # input()
-
     return sent_list
 
 #==============================================================
@@ -105,7 +103,7 @@ def conv_TTA_ne_category(sent_list: List[Sentence]):
 def save_npy_dict(npy_dict: Dict[str, List], src_list_len, save_model_dir):
 #==============================================================
     # convert list to numpy
-    print(f"[save_npy_dict] Keys - {npy_dict.keys()}")
+    print(f"[save_npy_dict] Keys - {npy_dict.keys()}, {src_list_len}")
 
     npy_dict["input_ids"] = np.array(npy_dict["input_ids"])
     npy_dict["attention_mask"] = np.array(npy_dict["attention_mask"])
@@ -1824,13 +1822,161 @@ def make_not_split_jx_eojeol_datasets_npy(
     # save npy_dict
     save_eojeol_npy_dict(npy_dict, len(src_list), save_dir=save_model_dir)
 
+#==============================================================
+def make_char_level_npy(
+        tokenizer_name: str, src_list: List[Sentence], max_pos_nums: int=4,
+        max_len: int=128, debug_mode: bool=False,
+        save_model_dir: str = None
+):
+#==============================================================
+    if not save_model_dir:
+        print(f"[make_wordpiece_npy] Plz check save_model_dir: {save_model_dir}")
+        return
+
+    random.shuffle(src_list)
+
+    npy_dict = {
+        "input_ids": [],
+        "attention_mask": [],
+        "token_type_ids": [],
+        "labels": [],
+        "token_seq_len": [],
+        "eojeol_ids": [],
+        "pos_tag_ids": [],
+    }
+
+    pos_tag2ids = {v: int(k) for k, v in NIKL_POS_TAG.items()}
+    pos_ids2tag = {k: v for k, v in NIKL_POS_TAG.items()}
+    ne_ids2tag = {v: k for k, v in ETRI_TAG.items()}
+
+    tokenizer = KoCharElectraTokenizer.from_pretrained(tokenizer_name)
+
+    for proc_idx, src_item in enumerate(src_list):
+        if 0 == (proc_idx % 1000):
+            print(f"{proc_idx} Processing... {src_item.text}")
+        text_tokens = tokenizer.tokenize(src_item.text)
+
+        labels = ["O"] * len(text_tokens)
+        pos_tag_ids = []
+        for _ in range(len(text_tokens)):
+            pos_tag_ids.append(["O"] * max_pos_nums)
+
+        # NE
+        start_idx = 0
+        for ne_item in src_item.ne_list:
+            is_find = False
+            for s_idx in range(start_idx, len(text_tokens)):
+                if is_find:
+                    break
+                for char_cnt in range(0, len(text_tokens) - s_idx + 1):
+                    concat_text_tokens = text_tokens[s_idx:s_idx + char_cnt]
+
+                    if "".join(concat_text_tokens) == ne_item.text:
+                        # BIO Tagging
+                        for bio_idx in range(s_idx, s_idx + char_cnt):
+                            if bio_idx == s_idx:
+                                labels[bio_idx] = "B-" + ne_item.type
+                            else:
+                                labels[bio_idx] = "I-" + ne_item.type
+                        is_find = True
+                        start_idx = s_idx + char_cnt
+                        break
+        # end loop, NE
+
+        # Morp
+        start_idx = 0
+        for morp_item in src_item.morp_list:
+            is_find = False
+            split_morp_label_item = morp_item.label.split("+")
+
+            for s_idx in range(start_idx, len(text_tokens)):
+                if is_find:
+                    break
+                for char_cnt in range(0, len(text_tokens) - s_idx + 1):
+                    concat_text_tokens = text_tokens[s_idx:s_idx+char_cnt]
+                    if "".join(concat_text_tokens) == morp_item.form:
+                        for sp_idx, sp_item in enumerate(split_morp_label_item):
+                            if max_pos_nums <= sp_idx:
+                                break
+                            pos_tag_ids[s_idx][sp_idx] = sp_item
+                            if "" == sp_item:
+                                pos_tag_ids[s_idx][sp_idx] = "O"
+                        is_find = True
+                        start_idx = s_idx + char_cnt
+                        break
+        # end loop, Morp
+
+        text_tokens.insert(0, "[CLS]")
+        labels.insert(0, "O")
+        pos_tag_ids.insert(0, (["O"] * max_pos_nums))
+
+        valid_len = 0
+        if max_len <= len(text_tokens):
+            text_tokens = text_tokens[:max_len-1]
+            labels = labels[:max_len-1]
+            pos_tag_ids = pos_tag_ids[:max_len-1]
+
+            text_tokens.append("[SEP]")
+            labels.append("O")
+            pos_tag_ids.append(["O"] * max_pos_nums)
+
+            valid_len = max_len
+        else:
+            text_tokens.append("[SEP]")
+            labels.append("O")
+            pos_tag_ids.append(["O"] * max_pos_nums)
+
+            valid_len = len(text_tokens)
+            text_tokens += ["[PAD]"] * (max_len - valid_len)
+            labels += ["O"] * (max_len - valid_len)
+            for _ in range(max_len - valid_len):
+                pos_tag_ids.append(["O"] * max_pos_nums)
+
+            attention_mask = ([1] * valid_len) + ([0] * (max_len - valid_len))
+            token_type_ids = [0] * max_len
+            input_ids = tokenizer.convert_tokens_to_ids(text_tokens)
+            labels = [ETRI_TAG[x] for x in labels]
+
+            for i in range(max_len):
+                pos_tag_ids[i] = [pos_tag2ids[x] for x in pos_tag_ids[i]]
+
+            assert len(input_ids) == max_len, f"{input_ids} + {len(input_ids)}"
+            assert len(labels) == max_len, f"{labels} + {len(labels)}"
+            assert len(attention_mask) == max_len, f"{attention_mask} + {len(attention_mask)}"
+            assert len(token_type_ids) == max_len, f"{token_type_ids} + {len(token_type_ids)}"
+            assert len(pos_tag_ids) == max_len, f"{pos_tag_ids} + {len(pos_tag_ids)}"
+
+            npy_dict["input_ids"].append(input_ids)
+            npy_dict["attention_mask"].append(attention_mask)
+            npy_dict["token_type_ids"].append(token_type_ids)
+            npy_dict["labels"].append(labels)
+
+            # pos_tag_ids = convert_pos_tag_to_combi_tag(pos_tag_ids)
+            npy_dict["pos_tag_ids"].append(pos_tag_ids)
+
+            if debug_mode:
+                print(f"Sent: ")
+                print("Origin Sent Tokens: ", tokenizer.tokenize(src_item.text))
+                print("Eojeol Sent Tokens: ", text_tokens)
+                print(f"Sequence length: {valid_len}\n")
+                print(f"NE: {src_item.ne_list}\n")
+                print(f"Morp: {src_item.morp_list}\n")
+                conv_pos_tag_ids = [[pos_ids2tag[x] for x in pos_tag_item] for pos_tag_item in pos_tag_ids]
+                for ii, label, pti in zip(input_ids, labels, conv_pos_tag_ids):
+                    if 0 == ii:
+                        break
+                    print(ii, tokenizer.convert_ids_to_tokens([ii]), ne_ids2tag[label], pti)
+                input()
+
+    save_npy_dict(npy_dict, src_list_len=len(src_list), save_model_dir=save_model_dir)
+
 ### MAIN ###
 if "__main__" == __name__:
     print("[gold_corpus_npy_maker] __main__ !")
 
     all_sent_list = []
     # with open("../corpus/pkl/NIKL_ne_pos.pkl", mode="rb") as pkl_file:
-    with open("../corpus/pkl/NIKL_ne_pos.pkl", mode="rb") as pkl_file:
+    with open("../corpus/pkl/NIKL_wordpiece_ne_10pos.pkl", mode="rb") as pkl_file:
         all_sent_list = pickle.load(pkl_file)
         print(f"[make_gold_corpus_npy][__main__] all_sent_list size: {len(all_sent_list)}")
     all_sent_list = conv_TTA_ne_category(all_sent_list)
@@ -1851,9 +1997,9 @@ if "__main__" == __name__:
     #                    src_list=all_sent_list, max_len=128, debug_mode=False, save_model_dir="electra",
     #                    max_pos_nums=10)
 
-    make_eojeol_datasets_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",
-                             src_list=all_sent_list, max_len=128, debug_mode=False,
-                             save_model_dir="eojeol_electra")
+    # make_eojeol_datasets_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",
+    #                          src_list=all_sent_list, max_len=128, debug_mode=False,
+    #                          save_model_dir="eojeol_electra")
 
     # make_not_split_jx_eojeol_datasets_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",
     #                                       src_list=all_sent_list, max_len=128, debug_mode=False,
@@ -1862,3 +2008,7 @@ if "__main__" == __name__:
     # make_eojeol_and_wordpiece_labels_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",
     #                                      src_list=all_sent_list, max_len=128, debug_mode=False,
     #                                      save_model_dir="eojeol2wp_electra")
+
+    make_char_level_npy(tokenizer_name="monologg/kocharelectra-base-discriminator",
+                        src_list=all_sent_list, max_len=128, debug_mode=False,
+                        max_pos_nums=5, save_model_dir="char_electra")

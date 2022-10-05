@@ -8,10 +8,10 @@ from model.transformer_encoder import Trans_Encoder, Enc_Config
 from model.crf_layer import CRF
 
 #==============================================================
-class ELECTRA_POS_LSTM(ElectraPreTrainedModel):
+class CHAR_ELECTRA_POS_LSTM(ElectraPreTrainedModel):
 #==============================================================
     def __init__(self, config):
-        super(ELECTRA_POS_LSTM, self).__init__(config)
+        super(CHAR_ELECTRA_POS_LSTM, self).__init__(config)
         self.max_seq_len = config.max_seq_len
         self.num_labels = config.num_labels
         self.num_pos_labels = config.num_pos_labels
@@ -36,7 +36,7 @@ class ELECTRA_POS_LSTM(ElectraPreTrainedModel):
                 It only affects the model’s configuration. 
                 Use from_pretrained() to load the model weights.
         '''
-        self.electra = ElectraModel.from_pretrained("monologg/kocharelectra-base-discriminator", config=config)
+        self.electra = ElectraModel.from_pretrained("kocharelectra-base-discriminator", config=config)
         self.dropout = nn.Dropout(self.dropout_rate)
 
         # LSTM

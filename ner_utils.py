@@ -19,6 +19,7 @@ from model.roberta_lstm_crf import RoBERTa_LSTM_CRF
 from model.electra_eojeol_model import Electra_Eojeol_Model
 from model.electra_feature_model import Electra_Feature_Model
 from model.CNNBiF_model import ELECTRA_CNNBiF_Model
+from model.char_electra_lstm_crf import CHAR_ELECTRA_POS_LSTM
 
 #===============================================================
 def print_parameters(args, logger):
@@ -196,6 +197,16 @@ def load_ner_config_and_model(user_select: int, args, tag_dict):
         config.num_pos_labels = len(NIKL_POS_TAG.keys()) # NIKL
         config.max_seq_len = 128
         config.max_eojeol_len = 50
+    elif 10 == user_select:
+        # CHAR_ELECTRA+LSTM(POS)+CRF
+        config = ElectraConfig.from_pretrained("kocharelectra-base-discriminator",
+                                               num_labels=len(tag_dict.keys()),
+                                               id2label={str(i): label for i, label in enumerate(tag_dict.keys())},
+                                               label2id={label: i for i, label in enumerate(tag_dict.keys())})
+
+        config.num_pos_labels = len(NIKL_POS_TAG.keys())  # 국립국어원 형태 분석 말뭉치
+        config.max_seq_len = 128
+
 
     # model
     if 1 == user_select:
@@ -225,6 +236,9 @@ def load_ner_config_and_model(user_select: int, args, tag_dict):
     elif 9 == user_select:
         # ELECTRA + CNNBiF
         model = ELECTRA_CNNBiF_Model.from_pretrained(args.model_name_or_path, config=config)
+    elif 10 == user_select:
+        # ELECTRA + LSTM(POS) +CRF
+        model = CHAR_ELECTRA_POS_LSTM.from_pretrained(args.model_name_or_path, config=config)
 
     return config, model
 
@@ -260,6 +274,9 @@ def load_model_checkpoints(user_select, checkpoint):
     elif 9 == user_select:
         # ELECTRA + CNNBiF
         model = ELECTRA_CNNBiF_Model.from_pretrained(checkpoint)
+    elif 10 == user_select:
+        # CHAR_ELECTRA+LSTM(POS)+CRF
+        model = CHAR_ELECTRA_POS_LSTM.from_pretrained(checkpoint)
 
     return model
 

@@ -41,5 +41,7 @@ error_check/dic_err_results
 error_check/dir_err_results_by_ne
 error_check/josa_dict_err_results
 error_check/josa_dict_err_results_by_ne
+utils/mecab_cmp
+utils/kiwi_cmp
 pattern_check/results
 

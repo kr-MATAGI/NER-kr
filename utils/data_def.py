@@ -29,7 +29,7 @@ class Word:
 
 @dataclass
 class Sentence:
-    id: int = -1
+    id: str = ""
     text: str = ""
     word_list: List[Word] = field(default_factory=list)
     morp_list: List[Morp] = field(default_factory=list)
