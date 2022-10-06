@@ -4,7 +4,6 @@ import torch.nn as nn
 from transformers import ElectraModel, ElectraPreTrainedModel
 from transformers.modeling_outputs import TokenClassifierOutput
 
-from model.transformer_encoder import Trans_Encoder, Enc_Config
 from model.crf_layer import CRF
 
 #==============================================================
@@ -17,12 +16,6 @@ class ELECTRA_POS_LSTM(ElectraPreTrainedModel):
         self.num_pos_labels = config.num_pos_labels
         self.pos_embed_out_dim = 128
         self.dropout_rate = 0.1
-
-        # for encoder
-        # self.enc_dim_size = config.hidden_size + (self.pos_embed_out_dim * 3)
-        # self.enc_config = Enc_Config(config.vocab_size)
-        # self.enc_config.num_heads = 8
-        # self.enc_config.hidden_size = self.enc_dim_size
 
         # pos tag embedding
         self.pos_embedding_1 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
@@ -43,9 +36,6 @@ class ELECTRA_POS_LSTM(ElectraPreTrainedModel):
         self.lstm_dim_size = config.hidden_size + (self.pos_embed_out_dim * 3)
         self.lstm = nn.LSTM(input_size=self.lstm_dim_size, hidden_size=self.lstm_dim_size,
                             num_layers=1, batch_first=True, dropout=self.dropout_rate)
-
-        # Transformer
-        # self.trans_encoder = Trans_Encoder(self.enc_config)
 
         # Classifier
         self.classifier = nn.Linear(self.lstm_dim_size, config.num_labels)
@@ -79,13 +69,6 @@ class ELECTRA_POS_LSTM(ElectraPreTrainedModel):
         concat_pos_embed = torch.concat([pos_embed_1, pos_embed_2, pos_embed_3], dim=-1)
         # concat_pos_embed = torch.concat([pos_embed_1, pos_embed_2], dim=-1)
         concat_embed = torch.concat([electra_outputs, concat_pos_embed], dim=-1)
-
-        # Transformer
-        # attention_mask = attention_mask.unsqueeze(1).unsqueeze(2) # [64, 1, ,1, ..]
-        # attention_mask = attention_mask.to(dtype=next(self.parameters()).dtype)
-        # attention_mask = (1.0 - attention_mask) * -10000.0
-        # enc_outputs = self.trans_encoder(concat_embed, attention_mask)
-        # enc_outputs = enc_outputs[-1]
 
         # LSTM
         lstm_out, _ = self.lstm(concat_embed) # [batch_size, seq_len, hidden_size]

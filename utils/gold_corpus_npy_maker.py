@@ -2027,4 +2027,4 @@ if "__main__" == __name__:
 
     make_char_level_npy(tokenizer_name="monologg/kocharelectra-base-discriminator",
                         src_list=all_sent_list, max_len=128, debug_mode=False,
-                        max_pos_nums=5, save_model_dir="char_electra")
+                        max_pos_nums=10, save_model_dir="char_electra")
