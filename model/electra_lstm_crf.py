@@ -36,7 +36,7 @@ class ELECTRA_POS_LSTM(ElectraPreTrainedModel):
                 It only affects the model’s configuration. 
                 Use from_pretrained() to load the model weights.
         '''
-        self.electra = ElectraModel.from_pretrained("monologg/kocharelectra-base-discriminator", config=config)
+        self.electra = ElectraModel.from_pretrained("monologg/koelectra-base-v3-discriminator", config=config)
         self.dropout = nn.Dropout(self.dropout_rate)
 
         # LSTM
