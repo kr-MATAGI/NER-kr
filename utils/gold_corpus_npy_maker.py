@@ -1829,6 +1829,8 @@ def make_char_level_npy(
         save_model_dir: str = None
 ):
 #==============================================================
+    print(f"all_sent_list.len: {len(src_list)}")
+
     if not save_model_dir:
         print(f"[make_wordpiece_npy] Plz check save_model_dir: {save_model_dir}")
         return
@@ -1940,33 +1942,33 @@ def make_char_level_npy(
             for i in range(max_len):
                 pos_tag_ids[i] = [pos_tag2ids[x] for x in pos_tag_ids[i]]
 
-            assert len(input_ids) == max_len, f"{input_ids} + {len(input_ids)}"
-            assert len(labels) == max_len, f"{labels} + {len(labels)}"
-            assert len(attention_mask) == max_len, f"{attention_mask} + {len(attention_mask)}"
-            assert len(token_type_ids) == max_len, f"{token_type_ids} + {len(token_type_ids)}"
-            assert len(pos_tag_ids) == max_len, f"{pos_tag_ids} + {len(pos_tag_ids)}"
+        assert len(input_ids) == max_len, f"{input_ids} + {len(input_ids)}"
+        assert len(labels) == max_len, f"{labels} + {len(labels)}"
+        assert len(attention_mask) == max_len, f"{attention_mask} + {len(attention_mask)}"
+        assert len(token_type_ids) == max_len, f"{token_type_ids} + {len(token_type_ids)}"
+        assert len(pos_tag_ids) == max_len, f"{pos_tag_ids} + {len(pos_tag_ids)}"
 
-            npy_dict["input_ids"].append(input_ids)
-            npy_dict["attention_mask"].append(attention_mask)
-            npy_dict["token_type_ids"].append(token_type_ids)
-            npy_dict["labels"].append(labels)
+        npy_dict["input_ids"].append(input_ids)
+        npy_dict["attention_mask"].append(attention_mask)
+        npy_dict["token_type_ids"].append(token_type_ids)
+        npy_dict["labels"].append(labels)
 
-            # pos_tag_ids = convert_pos_tag_to_combi_tag(pos_tag_ids)
-            npy_dict["pos_tag_ids"].append(pos_tag_ids)
+        # pos_tag_ids = convert_pos_tag_to_combi_tag(pos_tag_ids)
+        npy_dict["pos_tag_ids"].append(pos_tag_ids)
 
-            if debug_mode:
-                print(f"Sent: ")
-                print("Origin Sent Tokens: ", tokenizer.tokenize(src_item.text))
-                print("Eojeol Sent Tokens: ", text_tokens)
-                print(f"Sequence length: {valid_len}\n")
-                print(f"NE: {src_item.ne_list}\n")
-                print(f"Morp: {src_item.morp_list}\n")
-                conv_pos_tag_ids = [[pos_ids2tag[x] for x in pos_tag_item] for pos_tag_item in pos_tag_ids]
-                for ii, label, pti in zip(input_ids, labels, conv_pos_tag_ids):
-                    if 0 == ii:
-                        break
-                    print(ii, tokenizer.convert_ids_to_tokens([ii]), ne_ids2tag[label], pti)
-                input()
+        if debug_mode:
+            print(f"Sent: ")
+            print("Origin Sent Tokens: ", tokenizer.tokenize(src_item.text))
+            print("Eojeol Sent Tokens: ", text_tokens)
+            print(f"Sequence length: {valid_len}\n")
+            print(f"NE: {src_item.ne_list}\n")
+            print(f"Morp: {src_item.morp_list}\n")
+            conv_pos_tag_ids = [[pos_ids2tag[x] for x in pos_tag_item] for pos_tag_item in pos_tag_ids]
+            for ii, label, pti in zip(input_ids, labels, conv_pos_tag_ids):
+                if 0 == ii:
+                    break
+                print(ii, tokenizer.convert_ids_to_tokens([ii]), ne_ids2tag[label], pti)
+            input()
 
     save_npy_dict(npy_dict, src_list_len=len(src_list), save_model_dir=save_model_dir)
 
@@ -1983,10 +1985,10 @@ if "__main__" == __name__:
     all_sent_list = conv_NIKL_pos_giho_category(all_sent_list, is_status_nn=False, is_verb_nn=False)
 
     # make npy
-    is_use_external_dict = False
-    hash_dict = None
-    if is_use_external_dict:
-        hash_dict = make_dict_hash_table(dict_path="../우리말샘_dict.pkl")
+    # is_use_external_dict = False
+    # hash_dict = None
+    # if is_use_external_dict:
+    #     hash_dict = make_dict_hash_table(dict_path="../우리말샘_dict.pkl")
 
     '''
         electra : monologg/koelectra-base-v3-discriminator

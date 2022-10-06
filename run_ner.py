@@ -296,6 +296,7 @@ def main():
     print(f"7. {NER_MODEL_LIST[7]}")
     print(f"8. {NER_MODEL_LIST[8]}")
     print(f"9. {NER_MODEL_LIST[9]}")
+    print(f"10. {NER_MODEL_LIST[10]}")
     print("=======================================")
     print(">>>> number: ")
 
