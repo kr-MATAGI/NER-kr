@@ -1,7 +1,7 @@
 {
   "task": "custom",
   "data_dir": "data",
-  "ckpt_dir": "ckpt-electra-lstm-crf-3-pos-1006",
+  "ckpt_dir": "ckpt-electra-lstm-crf-no-pos-1006",
   "train_npy": "./corpus/npy/electra/train.npy",
   "dev_npy": "./corpus/npy/electra/dev.npy",
   "test_npy": "./corpus/npy/electra/test.npy",
@@ -22,7 +22,7 @@
   "no_cuda": false,
   "model_type": "monologg/koelectra-base-v3-discriminator",
   "model_name_or_path": "monologg/koelectra-base-v3-discriminator",
-  "output_dir": "klue-electra-lstm-crf-3-pos-1006",
+  "output_dir": "klue-electra-lstm-crf-no-pos-1006",
   "seed": 42,
   "train_batch_size": 64,
   "eval_batch_size": 128,

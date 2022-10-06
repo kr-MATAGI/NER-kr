@@ -22,14 +22,14 @@ np.random.seed(42)
 #==============================================================
 def conv_NIKL_pos_giho_category(sent_list: List[Sentence], is_status_nn: bool=False, is_verb_nn: bool=False):
 #==============================================================
-    if is_status_nn:
-        with open("../corpus/nn_list/nn_sang_list.pkl", mode="rb") as status_nn_pkl:
-            status_nn_list = pickle.load(status_nn_pkl)
-            print(f"[conv_NIKL_pos_giho_categoy] status_nn_list.len: {len(status_nn_list)}")
-    if is_verb_nn:
-        with open("../corpus/nn_list/nn_verb_list.pkl", mode="rb") as verb_nn_pkl:
-            verb_nn_list = pickle.load(verb_nn_pkl)
-            print(f"[conv_NIKL_pos_giho_categoy] verb_nn_list.len: {len(verb_nn_list)}")
+    # if is_status_nn:
+    #     with open("../corpus/nn_list/nn_sang_list.pkl", mode="rb") as status_nn_pkl:
+    #         status_nn_list = pickle.load(status_nn_pkl)
+    #         print(f"[conv_NIKL_pos_giho_categoy] status_nn_list.len: {len(status_nn_list)}")
+    # if is_verb_nn:
+    #     with open("../corpus/nn_list/nn_verb_list.pkl", mode="rb") as verb_nn_pkl:
+    #         verb_nn_list = pickle.load(verb_nn_pkl)
+    #         print(f"[conv_NIKL_pos_giho_categoy] verb_nn_list.len: {len(verb_nn_list)}")
 
     '''
     SF, SW not converted
@@ -39,11 +39,11 @@ def conv_NIKL_pos_giho_category(sent_list: List[Sentence], is_status_nn: bool=Fa
         for mp_idx, morp_item in enumerate(sent_item.morp_list):
             if "SS" in morp_item.label or "SE" in morp_item.label or "SO" in morp_item.label:
                 morp_item.label = morp_item.label.replace("SS", "SP").replace("SE", "SP").replace("SO", "SP")
-            if "NNG" == morp_item.label or "NNP" == morp_item.label or "NNB" == morp_item.label:
-                if is_status_nn and morp_item.form in status_nn_list:
-                    morp_item.label = "STATUS_NN"
-                elif is_verb_nn and morp_item.form in verb_nn_list:
-                    morp_item.label = "VERB_NN"
+            # if "NNG" == morp_item.label or "NNP" == morp_item.label or "NNB" == morp_item.label:
+            #     if is_status_nn and morp_item.form in status_nn_list:
+            #         morp_item.label = "STATUS_NN"
+            #     elif is_verb_nn and morp_item.form in verb_nn_list:
+            #         morp_item.label = "VERB_NN"
     return sent_list
 
 #==============================================================
@@ -403,7 +403,7 @@ def make_wordpiece_npy(
         npy_dict["eojeol_ids"].append(eojeol_ids)
 
         # pos_tag_ids
-        pos_tag_ids = convert_pos_tag_to_combi_tag(pos_tag_ids)
+        # pos_tag_ids = convert_pos_tag_to_combi_tag(pos_tag_ids)
         npy_dict["pos_tag_ids"].append(pos_tag_ids)
 
         if debug_mode:
@@ -415,9 +415,10 @@ def make_wordpiece_npy(
             print(f"NE: {src_item.ne_list}\n")
             print(f"Morp: {src_item.morp_list}\n")
             conv_pos_tag_ids = [[pos_ids2tag[x] for x in pos_tag_item] for pos_tag_item in pos_tag_ids]
-            for ii, am, tti, label, pti, ej in zip(input_ids, attention_mask, token_type_ids,
-                                                   labels, conv_pos_tag_ids, eojeol_ids):
-                print(ii, tokenizer.convert_ids_to_tokens([ii]), ne_ids2tag[label], am, tti, pti, ej)
+            for ii, label, pti in zip(input_ids, labels, conv_pos_tag_ids):
+                if 0 == ii:
+                    break
+                print(ii, tokenizer.convert_ids_to_tokens([ii]), ne_ids2tag[label], pti)
             input()
 
     # save
@@ -2009,9 +2010,9 @@ if "__main__" == __name__:
         bert : klue/bert-base
         roberta : klue/roberta-base
     '''
-    # make_wordpiece_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",
-    #                    src_list=all_sent_list, max_len=128, debug_mode=False, save_model_dir="electra",
-    #                    max_pos_nums=10)
+    make_wordpiece_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",
+                       src_list=all_sent_list, max_len=128, debug_mode=False, save_model_dir="electra",
+                       max_pos_nums=4)
 
     # make_eojeol_datasets_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",
     #                          src_list=all_sent_list, max_len=128, debug_mode=False,
@@ -2025,6 +2026,6 @@ if "__main__" == __name__:
     #                                      src_list=all_sent_list, max_len=128, debug_mode=False,
     #                                      save_model_dir="eojeol2wp_electra")
 
-    make_char_level_npy(tokenizer_name="monologg/kocharelectra-base-discriminator",
-                        src_list=all_sent_list, max_len=128, debug_mode=False,
-                        max_pos_nums=10, save_model_dir="char_electra")
+    # make_char_level_npy(tokenizer_name="monologg/kocharelectra-base-discriminator",
+    #                     src_list=all_sent_list, max_len=128, debug_mode=False,
+    #                     max_pos_nums=10, save_model_dir="char_electra")
