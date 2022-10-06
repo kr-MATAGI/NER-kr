@@ -40,7 +40,7 @@ class CHAR_ELECTRA_POS_LSTM(ElectraPreTrainedModel):
         self.dropout = nn.Dropout(self.dropout_rate)
 
         # LSTM
-        self.lstm_dim_size = config.hidden_size + (self.pos_embed_out_dim)
+        self.lstm_dim_size = config.hidden_size #+ (self.pos_embed_out_dim * 3)
         self.lstm = nn.LSTM(input_size=self.lstm_dim_size, hidden_size=self.lstm_dim_size,
                             num_layers=1, batch_first=True, dropout=self.dropout_rate)
 
