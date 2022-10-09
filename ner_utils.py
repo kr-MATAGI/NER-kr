@@ -209,7 +209,7 @@ def load_ner_config_and_model(user_select: int, args, tag_dict):
         config.max_seq_len = 128
     elif 11 == user_select:
         # ELECTRA+LSTM(MECAB)+CRF
-        config = ElectraConfig.from_pretrained("monologg/kocharelectra-base-discriminator",
+        config = ElectraConfig.from_pretrained("monologg/koelectra-base-v3-discriminator",
                                                num_labels=len(tag_dict.keys()),
                                                id2label={str(i): label for i, label in enumerate(tag_dict.keys())},
                                                label2id={label: i for i, label in enumerate(tag_dict.keys())})
