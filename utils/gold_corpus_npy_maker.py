@@ -2010,9 +2010,9 @@ if "__main__" == __name__:
         bert : klue/bert-base
         roberta : klue/roberta-base
     '''
-    make_wordpiece_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",
-                       src_list=all_sent_list, max_len=128, debug_mode=False, save_model_dir="electra",
-                       max_pos_nums=4)
+    # make_wordpiece_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",
+    #                    src_list=all_sent_list, max_len=128, debug_mode=True, save_model_dir="electra",
+    #                    max_pos_nums=4)
 
     # make_eojeol_datasets_npy(tokenizer_name="monologg/koelectra-base-v3-discriminator",
     #                          src_list=all_sent_list, max_len=128, debug_mode=False,
@@ -2026,6 +2026,6 @@ if "__main__" == __name__:
     #                                      src_list=all_sent_list, max_len=128, debug_mode=False,
     #                                      save_model_dir="eojeol2wp_electra")
 
-    # make_char_level_npy(tokenizer_name="monologg/kocharelectra-base-discriminator",
-    #                     src_list=all_sent_list, max_len=128, debug_mode=False,
-    #                     max_pos_nums=10, save_model_dir="char_electra")
+    make_char_level_npy(tokenizer_name="monologg/kocharelectra-base-discriminator",
+                        src_list=all_sent_list, max_len=128, debug_mode=True,
+                        max_pos_nums=10, save_model_dir="char_electra")
