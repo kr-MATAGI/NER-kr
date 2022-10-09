@@ -297,6 +297,7 @@ def main():
     print(f"8. {NER_MODEL_LIST[8]}")
     print(f"9. {NER_MODEL_LIST[9]}")
     print(f"10. {NER_MODEL_LIST[10]}")
+    print(f"11. {NER_MODEL_LIST[11]}")
     print("=======================================")
     print(">>>> number: ")
 
@@ -334,6 +335,8 @@ def main():
         g_use_crf = False
     elif 10 == g_user_select:
         config_file_path = "./config/char-electra-lstm-crf.json"
+    elif 11 == g_user_select:
+        config_file_path = "./config/electra-mecab.json"
 
     with open(config_file_path) as config_file:
         args = AttrDict(json.load(config_file))
@@ -387,11 +390,11 @@ def main():
                                            eojeol_ids=test_eojeol_ids)
     else:
         train_dataset = NER_POS_Dataset(data=train_npy, labels=train_labels,
-                                        pos_tag_ids=train_pos_tag, eojeol_ids=train_eojeol_ids)
+                                        pos_tag_ids=train_pos_tag)
         dev_dataset = NER_POS_Dataset(data=dev_npy, labels=dev_labels,
-                                      pos_tag_ids=dev_pos_tag, eojeol_ids=dev_eojeol_ids)
+                                      pos_tag_ids=dev_pos_tag)
         test_dataset = NER_POS_Dataset(data=test_npy, labels=test_labels,
-                                       pos_tag_ids=test_pos_tag, eojeol_ids=test_eojeol_ids)
+                                       pos_tag_ids=test_pos_tag)
 
     if args.do_train:
         global_step, tr_loss = train(args, model, train_dataset, dev_dataset)

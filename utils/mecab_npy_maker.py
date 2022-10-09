@@ -529,7 +529,8 @@ def make_mecab_wordpiece_npy(
 ):
 #==========================================================================================
     # Mecab 분석을 Wordpiece 토큰으로 한것
-    
+    print("[make_mecab_wordpiece_npy] START !, src_list.len: ", len(src_list))
+
     if not save_model_dir:
         print(f"[mecab_npy_maker] Plz check save_model_dir: {save_model_dir}")
         return
@@ -1051,18 +1052,18 @@ if "__main__" == __name__:
     # load corpus
     pkl_src_path = "../corpus/pkl/NIKL_ne_pos.pkl"
     all_sent_list = []
-    # all_sent_list = load_ne_entity_list(src_path=pkl_src_path)
+    all_sent_list = load_ne_entity_list(src_path=pkl_src_path)
 
     # compare_mecab_and_gold_corpus(src_corpus_list=all_sent_list)
-    check_nikl_and_mecab_difference(dic_pkl_path="./mecab_cmp/mecab_compare_dict.pkl")
+    # check_nikl_and_mecab_difference(dic_pkl_path="./mecab_cmp/mecab_compare_dict.pkl")
     # check_count_morp(src_sent_list=all_sent_list)
-    exit()
+    # exit()
 
     # mecab_pos_unk_count(all_sent_list)
     # exit()
 
     # make *.npy (use Mecab)
-    is_use_eojeol = True
+    is_use_eojeol = False
     if is_use_eojeol:
         make_mecab_eojeol_npy(
             tokenizer_name="monologg/koelectra-base-v3-discriminator",
@@ -1073,6 +1074,6 @@ if "__main__" == __name__:
     else:
         make_mecab_wordpiece_npy(
             tokenizer_name="monologg/koelectra-base-v3-discriminator",
-            src_list=all_sent_list, token_max_len=128, debug_mode=True,
+            src_list=all_sent_list, token_max_len=128, debug_mode=False,
             save_model_dir="mecab_wordpiece_electra"
         )

@@ -9,7 +9,7 @@ class NER_POS_Dataset(Dataset):
     def __init__(
             self,
             data: np.ndarray, labels: np.ndarray,
-            pos_tag_ids: np.ndarray, eojeol_ids: np.ndarray#, entity_ids: np.ndarray, toekn_seq_len: np.ndarray
+            pos_tag_ids: np.ndarray
     ):
         self.input_ids = data[:][:, :, 0]
         self.attention_mask = data[:][:, :, 1]
