@@ -337,6 +337,7 @@ def main():
         config_file_path = "./config/char-electra-lstm-crf.json"
     elif 11 == g_user_select:
         config_file_path = "./config/electra-mecab.json"
+        g_use_crf = False
 
     with open(config_file_path) as config_file:
         args = AttrDict(json.load(config_file))

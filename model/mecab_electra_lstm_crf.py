@@ -38,13 +38,13 @@ class ELECTRA_MECAB(ElectraPreTrainedModel):
         self.dropout = nn.Dropout(self.dropout_rate)
 
         # LSTM
-        self.lstm_dim_size = config.hidden_size + self.num_ne_pos + self.num_josa_pos # + (self.pos_embed_out_dim * 2)
+        self.lstm_dim_size = config.hidden_size + (128 * self.num_ne_pos) + (128 * self.num_josa_pos) # + (self.pos_embed_out_dim * 2)
         self.lstm = nn.LSTM(input_size=self.lstm_dim_size, hidden_size=(self.lstm_dim_size // 2),
                             num_layers=1, batch_first=True, bidirectional=True, dropout=self.dropout_rate)
 
         # Classifier
         self.classifier = nn.Linear(self.lstm_dim_size, config.num_labels)
-        self.crf = CRF(num_tags=config.num_labels, batch_first=True)
+        # self.crf = CRF(num_tags=config.num_labels, batch_first=True)
 
         # Initialize weights and apply final processing
         self.post_init()
@@ -63,15 +63,17 @@ class ELECTRA_MECAB(ElectraPreTrainedModel):
         ne_pos = ne_pos.to(device)
         josa_pos = josa_pos.to(device)
 
-        # ne_pos_embed = self.ne_pos_embedding(ne_pos) # [batch_size, seq_len, num_ne_pos, pos_embed]
-        # josa_pos_embed = self.josa_pos_embedding(josa_pos) # [batch_size, seq_len, num_josa_pos, pos_embed]
+        ne_pos_embed = self.ne_pos_embedding(ne_pos) # [batch_size, seq_len, num_ne_pos, pos_embed]
+        josa_pos_embed = self.josa_pos_embedding(josa_pos) # [batch_size, seq_len, num_josa_pos, pos_embed]
+        ne_pos_embed = ne_pos_embed.view(input_ids.shape[0], input_ids.shape[1], -1)
+        josa_pos_embed = josa_pos_embed.view(input_ids.shape[0], input_ids.shape[1], -1)
 
         electra_outputs = self.electra(input_ids=input_ids,
                                        attention_mask=attention_mask,
                                        token_type_ids=token_type_ids)
 
         electra_outputs = electra_outputs.last_hidden_state # [batch_size, seq_len, hidden_size]
-        concat_embed = torch.concat([electra_outputs, ne_pos, josa_pos], dim=-1)
+        concat_embed = torch.concat([electra_outputs, ne_pos_embed, josa_pos_embed], dim=-1)
 
         # LSTM
         lstm_out, _ = self.lstm(concat_embed) # [batch_size, seq_len, hidden_size]
@@ -80,24 +82,24 @@ class ELECTRA_MECAB(ElectraPreTrainedModel):
         logits = self.classifier(lstm_out) # [128, 128, 31]
 
         # Get Loss
-        # loss = None
-        # if labels is not None:
-        #     loss_fct = nn.CrossEntropyLoss()
-        #     loss = loss_fct(logits.view(-1, self.config.num_labels), labels.view(-1))
-        #
-        # return TokenClassifierOutput(
-        #     loss=loss,
-        #     logits=logits
-        # )
+        loss = None
+        if labels is not None:
+            loss_fct = nn.CrossEntropyLoss()
+            loss = loss_fct(logits.view(-1, self.config.num_labels), labels.view(-1))
+
+        return TokenClassifierOutput(
+            loss=loss,
+            logits=logits
+        )
 
         # crf
-        if labels is not None:
-            log_likelihood, sequence_of_tags = self.crf(emissions=logits, tags=labels, mask=attention_mask.bool(),
-                                                        reduction="mean"), self.crf.decode(logits, mask=attention_mask.bool())
-            return log_likelihood, sequence_of_tags
-        else:
-            sequence_of_tags = self.crf.decode(logits)
-            return sequence_of_tags
+        # if labels is not None:
+        #     log_likelihood, sequence_of_tags = self.crf(emissions=logits, tags=labels, mask=attention_mask.bool(),
+        #                                                 reduction="mean"), self.crf.decode(logits, mask=attention_mask.bool())
+        #     return log_likelihood, sequence_of_tags
+        # else:
+        #     sequence_of_tags = self.crf.decode(logits)
+        #     return sequence_of_tags
 
     #===================================
     def _make_ne_pos_tensor(self, src_pos_ids):
