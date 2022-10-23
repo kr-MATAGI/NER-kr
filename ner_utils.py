@@ -214,9 +214,12 @@ def load_ner_config_and_model(user_select: int, args, tag_dict):
                                                id2label={str(i): label for i, label in enumerate(tag_dict.keys())},
                                                label2id={label: i for i, label in enumerate(tag_dict.keys())})
 
-        config.num_pos_labels = len(MECAB_POS_TAG.keys())  # Mecab
+        # config.num_pos_labels = len(MECAB_POS_TAG.keys())  # Mecab All POS
+        config.num_ne_pos = 5
+        config.num_josa_pos = 9
+        config.pos_id2label = {k: la for k, la in MECAB_POS_TAG.items()}
+        config.pos_label2id = {la: k for k, la in MECAB_POS_TAG.items()}
         config.max_seq_len = 128
-
 
     # model
     if 1 == user_select:

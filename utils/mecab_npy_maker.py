@@ -589,7 +589,6 @@ def make_mecab_wordpiece_npy(
         mecab_word_pair = convert_mecab_pos(src_item.word_list)
         mecab_item_list = tokenize_mecab_pair_unit_pos(mecab_word_pair, tokenizer)
 
-
         tok_pos_item_list = []
         for mecab_item in mecab_item_list:
             tok_pos_item_list.extend(mecab_item.tok_pos_list)
@@ -1058,7 +1057,6 @@ if "__main__" == __name__:
     # check_nikl_and_mecab_difference(dic_pkl_path="./mecab_cmp/mecab_compare_dict.pkl")
     # check_count_morp(src_sent_list=all_sent_list)
     # exit()
-
     # mecab_pos_unk_count(all_sent_list)
     # exit()
 

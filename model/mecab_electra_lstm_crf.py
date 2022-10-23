@@ -13,14 +13,19 @@ class ELECTRA_MECAB(ElectraPreTrainedModel):
         super(ELECTRA_MECAB, self).__init__(config)
         self.max_seq_len = config.max_seq_len
         self.num_labels = config.num_labels
-        self.num_pos_labels = config.num_pos_labels
+
+        # self.num_pos_labels = config.num_pos_labels
+        self.num_ne_pos = config.num_ne_pos
+        self.num_josa_pos = config.num_josa_pos
+        self.pos_id2label = config.pos_id2label
+        self.pos_label2id = config.pos_label2id
+
         self.pos_embed_out_dim = 128
-        self.dropout_rate = 0.1
+        self.dropout_rate = 0.3
 
         # pos tag embedding
-        self.pos_embedding_1 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
-        self.pos_embedding_2 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
-        self.pos_embedding_3 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
+        self.ne_pos_embedding = nn.Embedding(self.num_ne_pos, self.pos_embed_out_dim)
+        self.josa_pos_embedding = nn.Embedding(self.num_josa_pos, self.pos_embed_out_dim)
 
         '''
             @ Note
@@ -33,7 +38,7 @@ class ELECTRA_MECAB(ElectraPreTrainedModel):
         self.dropout = nn.Dropout(self.dropout_rate)
 
         # LSTM
-        self.lstm_dim_size = config.hidden_size + (self.pos_embed_out_dim * 3)
+        self.lstm_dim_size = config.hidden_size + self.num_ne_pos + self.num_josa_pos # + (self.pos_embed_out_dim * 2)
         self.lstm = nn.LSTM(input_size=self.lstm_dim_size, hidden_size=(self.lstm_dim_size // 2),
                             num_layers=1, batch_first=True, bidirectional=True, dropout=self.dropout_rate)
 
@@ -52,22 +57,21 @@ class ELECTRA_MECAB(ElectraPreTrainedModel):
     #===================================
         # pos embedding
         # pos_tag_ids : [batch_size, seq_len, num_pos_tags]
-        pos_tag_1 = pos_tag_ids[:, :, 0] # [batch_size, seq_len]
-        pos_tag_2 = pos_tag_ids[:, :, 1] # [batch_size, seq_len]
-        pos_tag_3 = pos_tag_ids[:, :, 2] # [batch_size, seq_len]
+        device = pos_tag_ids.device
+        ne_pos = self._make_ne_pos_tensor(pos_tag_ids.detach().cpu()) # [batch_size, seq_len, num_ne_pos]
+        josa_pos = self._make_josa_pos_tensor(pos_tag_ids.detach().cpu()) # [batch_size, seq_len, num_josa_pos]
+        ne_pos = ne_pos.to(device)
+        josa_pos = josa_pos.to(device)
 
-        pos_embed_1 = self.pos_embedding_1(pos_tag_1) # [batch_size, seq_len, pos_tag_embed]
-        pos_embed_2 = self.pos_embedding_2(pos_tag_2)  # [batch_size, seq_len, pos_tag_embed]
-        pos_embed_3 = self.pos_embedding_3(pos_tag_3)  # [batch_size, seq_len, pos_tag_embed]
+        # ne_pos_embed = self.ne_pos_embedding(ne_pos) # [batch_size, seq_len, num_ne_pos, pos_embed]
+        # josa_pos_embed = self.josa_pos_embedding(josa_pos) # [batch_size, seq_len, num_josa_pos, pos_embed]
 
         electra_outputs = self.electra(input_ids=input_ids,
                                        attention_mask=attention_mask,
                                        token_type_ids=token_type_ids)
 
         electra_outputs = electra_outputs.last_hidden_state # [batch_size, seq_len, hidden_size]
-
-        concat_pos_embed = torch.concat([pos_embed_1, pos_embed_2, pos_embed_3], dim=-1)
-        concat_embed = torch.concat([electra_outputs, concat_pos_embed], dim=-1)
+        concat_embed = torch.concat([electra_outputs, ne_pos, josa_pos], dim=-1)
 
         # LSTM
         lstm_out, _ = self.lstm(concat_embed) # [batch_size, seq_len, hidden_size]
@@ -94,3 +98,48 @@ class ELECTRA_MECAB(ElectraPreTrainedModel):
         else:
             sequence_of_tags = self.crf.decode(logits)
             return sequence_of_tags
+
+    #===================================
+    def _make_ne_pos_tensor(self, src_pos_ids):
+    #===================================
+        # src_pos_ids : [batch, seq_len, num_pos]
+        batch_size, max_seq_len, num_pos = src_pos_ids.size()
+        ne_pos_embed = torch.zeros(batch_size, max_seq_len, self.num_ne_pos, dtype=torch.long)
+        '''
+            [NNG, NNP, SN, NNB, NR] + Later (SW)
+        '''
+        ne_pos_list = ["NNG", "NNP", "SN", "NNB", "NR"]
+        ne_pos_label2id = {label: i for i, label in enumerate(ne_pos_list)}
+        for batch_idx, batch_item in enumerate(ne_pos_embed):
+            for seq_idx in range(max_seq_len):
+                ne_pos_one_hot = torch.zeros(self.num_ne_pos, dtype=torch.long)
+                curr_seq_pos = src_pos_ids[batch_idx, seq_idx] # [num_pos, ]
+                for ne_pos_key, ne_pos_ids in ne_pos_label2id.items():
+                    if ne_pos_ids in curr_seq_pos:
+                        ne_pos_one_hot[ne_pos_ids] = 1
+                batch_item[seq_idx] = ne_pos_one_hot
+
+        return ne_pos_embed
+
+    #===================================
+    def _make_josa_pos_tensor(self, src_pos_ids):
+    #===================================
+        # src_pos_ids : [batch, seq_len, num_pos]
+        batch_size, max_seq_len, num_pos = src_pos_ids.size()
+        josa_pos_embed = torch.zeros(batch_size, max_seq_len, self.num_josa_pos, dtype=torch.long)
+
+        '''
+            [JKS, JKC, JKG, JKO, JKB, JKV, JKQ, JX, JC]
+        '''
+        josa_list = ["JKS", "JKC", "JKG", "JKO", "JKB", "JKV", "JKQ", "JX", "JC"]
+        josa_label2id = {label: i for i, label in enumerate(josa_list)}
+        for batch_idx, batch_item in enumerate(josa_pos_embed):
+            for seq_idx in range(max_seq_len):
+                josa_one_hot = torch.zeros(self.num_josa_pos, dtype=torch.long)
+                curr_seq_pos = src_pos_ids[batch_idx, seq_idx] # [num_pos, ]
+                for josa_key, josa_ids in josa_label2id.items():
+                    if josa_ids in curr_seq_pos:
+                        josa_one_hot[josa_ids] = 1
+                batch_item[seq_idx] = josa_one_hot
+
+        return josa_pos_embed
