@@ -58,8 +58,7 @@ class ELECTRA_MECAB(ElectraPreTrainedModel):
         # pos embedding
         # pos_tag_ids : [batch_size, seq_len, num_pos_tags]
         device = pos_tag_ids.device
-        ne_pos = self._make_ne_pos_tensor(pos_tag_ids.detach().cpu()) # [batch_size, seq_len, num_ne_pos]
-        josa_pos = self._make_josa_pos_tensor(pos_tag_ids.detach().cpu()) # [batch_size, seq_len, num_josa_pos]
+        ne_pos, josa_pos = self._make_ne_and_josa_pos_tensor(pos_tag_ids.detach().cpu()) # [batch_size, seq_len, num_ne_pos]
         ne_pos = ne_pos.to(device)
         josa_pos = josa_pos.to(device)
 
@@ -102,46 +101,35 @@ class ELECTRA_MECAB(ElectraPreTrainedModel):
         #     return sequence_of_tags
 
     #===================================
-    def _make_ne_pos_tensor(self, src_pos_ids):
+    def _make_ne_and_josa_pos_tensor(self, src_pos_ids):
     #===================================
         # src_pos_ids : [batch, seq_len, num_pos]
         batch_size, max_seq_len, num_pos = src_pos_ids.size()
         ne_pos_embed = torch.zeros(batch_size, max_seq_len, self.num_ne_pos, dtype=torch.long)
+        josa_pos_embed = torch.zeros(batch_size, max_seq_len, self.num_josa_pos, dtype=torch.long)
         '''
             [NNG, NNP, SN, NNB, NR] + Later (SW)
-        '''
-        ne_pos_list = ["NNG", "NNP", "SN", "NNB", "NR"]
-        ne_pos_label2id = {label: i for i, label in enumerate(ne_pos_list)}
-        for batch_idx, batch_item in enumerate(ne_pos_embed):
-            for seq_idx in range(max_seq_len):
-                ne_pos_one_hot = torch.zeros(self.num_ne_pos, dtype=torch.long)
-                curr_seq_pos = src_pos_ids[batch_idx, seq_idx] # [num_pos, ]
-                for ne_pos_key, ne_pos_ids in ne_pos_label2id.items():
-                    if ne_pos_ids in curr_seq_pos:
-                        ne_pos_one_hot[ne_pos_ids] = 1
-                batch_item[seq_idx] = ne_pos_one_hot
-
-        return ne_pos_embed
-
-    #===================================
-    def _make_josa_pos_tensor(self, src_pos_ids):
-    #===================================
-        # src_pos_ids : [batch, seq_len, num_pos]
-        batch_size, max_seq_len, num_pos = src_pos_ids.size()
-        josa_pos_embed = torch.zeros(batch_size, max_seq_len, self.num_josa_pos, dtype=torch.long)
-
-        '''
             [JKS, JKC, JKG, JKO, JKB, JKV, JKQ, JX, JC]
         '''
+
+        ne_pos_list = ["NNG", "NNP", "SN", "NNB", "NR"]
+        ne_pos_label2id = {label: i for i, label in enumerate(ne_pos_list)}
+
         josa_list = ["JKS", "JKC", "JKG", "JKO", "JKB", "JKV", "JKQ", "JX", "JC"]
         josa_label2id = {label: i for i, label in enumerate(josa_list)}
-        for batch_idx, batch_item in enumerate(josa_pos_embed):
+
+        for batch_idx, (batch_ne_item, batch_josa_item) in enumerate(zip(ne_pos_embed, josa_pos_embed)):
             for seq_idx in range(max_seq_len):
+                ne_pos_one_hot = torch.zeros(self.num_ne_pos, dtype=torch.long)
                 josa_one_hot = torch.zeros(self.num_josa_pos, dtype=torch.long)
                 curr_seq_pos = src_pos_ids[batch_idx, seq_idx] # [num_pos, ]
+                for ne_pos_key, ne_pos_ids in ne_pos_label2id.items():
+                    if self.pos_label2id[ne_pos_key] in curr_seq_pos:
+                        ne_pos_one_hot[ne_pos_ids] = 1
                 for josa_key, josa_ids in josa_label2id.items():
-                    if josa_ids in curr_seq_pos:
+                    if self.pos_label2id[josa_key] in curr_seq_pos:
                         josa_one_hot[josa_ids] = 1
-                batch_item[seq_idx] = josa_one_hot
+                batch_ne_item[seq_idx] = ne_pos_one_hot
+                batch_josa_item[seq_idx] = josa_one_hot
 
-        return josa_pos_embed
+        return ne_pos_embed, josa_pos_embed
