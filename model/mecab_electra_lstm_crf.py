@@ -34,6 +34,9 @@ class ELECTRA_MECAB(ElectraPreTrainedModel):
                 It only affects the model’s configuration. 
                 Use from_pretrained() to load the model weights.
         '''
+        self.gate_layer = nn.Linear(config.hidden_size*2, config.hidden_size)
+        self.gate_sigmoid = nn.Sigmoid()
+
         self.electra = ElectraModel.from_pretrained("monologg/koelectra-base-v3-discriminator", config=config)
         self.dropout = nn.Dropout(self.dropout_rate)
 
@@ -57,16 +60,6 @@ class ELECTRA_MECAB(ElectraPreTrainedModel):
     #===================================
         # pos embedding
         # pos_tag_ids : [batch_size, seq_len, num_pos_tags]
-
-        # device = pos_tag_ids.device
-        # ne_pos, josa_pos = self._make_ne_and_josa_pos_tensor(pos_tag_ids.detach().cpu()) # [batch_size, seq_len, num_ne_pos]
-        # ne_pos = ne_pos.to(device)
-        # josa_pos = josa_pos.to(device)
-
-        # ne_pos_embed = self.ne_pos_embedding(ne_pos) # [batch_size, seq_len, num_ne_pos, pos_embed]
-        # josa_pos_embed = self.josa_pos_embedding(josa_pos) # [batch_size, seq_len, num_josa_pos, pos_embed]
-        # ne_pos_embed = ne_pos_embed.view(input_ids.shape[0], input_ids.shape[1], -1)
-        # josa_pos_embed = josa_pos_embed.view(input_ids.shape[0], input_ids.shape[1], -1)
 
         electra_outputs = self.electra(input_ids=input_ids,
                                        attention_mask=attention_mask,
@@ -134,3 +127,10 @@ class ELECTRA_MECAB(ElectraPreTrainedModel):
                 batch_josa_item[seq_idx] = josa_one_hot
 
         return ne_pos_embed, josa_pos_embed
+
+    #===================================
+    def _gate_network(self, lhs_embed, rhs_embed):
+    #===================================
+        concat_embed = torch.cat([lhs_embed, rhs_embed], -1)
+        context_gate = self.gate_sigmoid(self.gate_layer(concat_embed))
+        return torch.add(context_gate * lhs_embed, (1. - context_gate) * rhs_embed)

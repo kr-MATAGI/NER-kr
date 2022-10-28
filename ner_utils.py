@@ -117,7 +117,7 @@ def f1_pre_rec(labels, preds, is_ner=True):
 #===============================================================
 def show_ner_report(labels, preds):
 #===============================================================
-    return seqeval_metrics.classification_report(labels, preds)
+    return seqeval_metrics.classification_report(labels, preds, digits=3)
 
 #===============================================================
 def load_ner_config_and_model(user_select: int, args, tag_dict):

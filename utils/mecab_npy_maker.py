@@ -1044,6 +1044,130 @@ def check_count_morp(src_sent_list):
     print("mecab_morp_count: ", mecab_morp_count)
     print("mecab_pos_count: ", mecab_pos_count)
 
+#==========================================================================================
+def make_mecab_morp_npy(
+        tokenizer_name: str, src_list: List[Sentence],
+        token_max_len: int = 128, debug_mode: bool = False,
+        save_model_dir: str = None
+):
+#==========================================================================================
+    npy_dict = {
+        "input_ids": [],
+        "labels": [],
+        "attention_mask": [],
+        "token_type_ids": [],
+        "pos_tag_ids": [],
+        "morp_ids": []
+    }
+    # Init
+    pos_tag2ids = {v: int(k) for k, v in NIKL_POS_TAG.items()}
+    pos_ids2tag = {k: v for k, v in NIKL_POS_TAG.items()}
+    ne_ids2tag = {v: k for k, v in ETRI_TAG.items()}
+
+    tokenizer = ElectraTokenizer.from_pretrained(tokenizer_name)
+
+    # Test Sentences
+    test_str_list = [
+        "29·미국·사진", "전창수(42) 두산타워 마케팅팀 차장", "샌드위치→역(逆)샌드위치→신(新)샌드위치….",
+        "홍준표·원희룡·나경원 후보가 '3강'을 형성하며 엎치락뒤치락해 왔다.", "P 불투르(Vulture) 인사위원회 위원장은",
+        "넙치·굴비·홍어·톳·꼬시래기·굴·홍합", "연준 의장이", "황병서 북한군 총정치국장이 올해 10월 4일",
+        "영업익 4482억 ‘깜짝’… LG전자 ‘부활의 노래’", "LG 우규민-삼성 웹스터(대구)",
+        "‘김종영 그 절대를 향한’ 전시회", "재산증가액이 3억5000만원이다.", "‘진실·화해를 위한 과거사 정리위원회’",
+        "용의자들은 25일 아침 9시께", "해외50여 개국에서 5500회 이상 공연하며 사물놀이",
+        "REDD는 열대우림 등 산림자원을 보호하는 개도국이나",
+        "2010년 12월부터 이미 가중 처벌을 시행하는 어린이 보호구역의 교통사고 발생 건수는",
+        "금리설계형의 경우 변동금리(6개월 변동 코픽스 연동형)는", "현재 중국의 공항은 400여 개다.",
+        "'중국 편'이라고 믿었던 박 대통령에게", "2001년 한·미 주둔군지위협정(소파·SOFA)"
+    ]
+
+    for proc_idx, src_item in enumerate(src_list):
+        # Test
+        if debug_mode:
+            is_test_str = False
+            for test_str in test_str_list:
+                if test_str in src_item.text:
+                    is_test_str = True
+            if not is_test_str:
+                continue
+
+        if 0 == (proc_idx % 1000):
+            print(f"{proc_idx} Processing... {src_item.text}")
+
+        # Mecab
+        mecab = Mecab()
+        res_mecab = mecab.pos(src_item.text)
+
+        mecab_token_pair = [] # (txt_tokens, morp, POS)
+        text_tokens = []
+        for mecab_item in res_mecab:
+            tokens = tokenizer.tokenize(mecab_item[0])
+            text_tokens.extend(tokens)
+            mecab_token_pair.append((tokens, mecab_item[0], mecab_item[1]))
+
+        # Make NE Labels
+        tokens_len = len(text_tokens)
+        labels_ids = [ETRI_TAG["O"]] * tokens_len
+        morp_ids = [0] * tokens_len
+        b_check_use = [False for _ in range(tokens_len)]
+        for ne_idx, ne_item in enumerate(src_item.ne_list):
+            ne_char_list = list(ne_item.text.replace(" ", ""))
+            concat_item_list = []
+            for m_idx, mecab_item in enumerate(mecab_token_pair):
+                if b_check_use[m_idx]:
+                    continue
+                for sub_idx in range(m_idx + 1, len(mecab_token_pair)):
+                    concat_word = ["".join(x[0]).replace("##", "") for x in mecab_token_pair[m_idx:sub_idx]]
+                    concat_item_list.append(("".join(concat_word), (m_idx, sub_idx)))
+            concat_item_list = [x for x in concat_item_list if "".join(ne_char_list) in x[0]]
+            concat_item_list.sort(key=lambda x: len(x[0]))
+            if 0 >= len(concat_item_list):
+                continue
+            target_idx_pair = concat_item_list[0][1]
+
+            for bio_idx in range(target_idx_pair[0], target_idx_pair[1]):
+                b_check_use[bio_idx] = True
+                if bio_idx == target_idx_pair[0]:
+                    labels_ids[bio_idx] = "B-" + ne_item.type
+                else:
+                    labels_ids[bio_idx] = "I-" + ne_item.type
+        # end, Make NE Labels
+
+        # Make POS
+        pos_ids = []
+        for m_idx, mt_pair in enumerate(mecab_token_pair):
+            conv_pos = []
+            filter_pos = [x if "UNKNOWN" != x and "NA" != x and "UNA" != x and "VSV" != x else "O" for x in mt_pair[2]]
+            conv_pos.extend([pos_tag2ids[x] for x in filter_pos])
+            if 10 > len(conv_pos):
+                diff_len = (10 - len(conv_pos))
+                conv_pos += [pos_tag2ids["O"]] * diff_len
+            if 10 < len(conv_pos):
+                conv_pos = conv_pos[:10]
+            for _ in range(len(mt_pair[0])):
+                pos_ids.append(conv_pos)
+
+        # Matching Length
+        valid_token_len = 0
+        text_tokens.insert(0, "[CLS]")
+        if token_max_len <= len(text_tokens):
+            text_tokens = text_tokens[:token_max_len - 1]
+            text_tokens.append("[SEP]")
+
+            valid_token_len = token_max_len
+        else:
+            text_tokens.append("[SEP]")
+
+            valid_token_len = len(text_tokens)
+            text_tokens += ["[PAD]"] * (token_max_len - valid_token_len)
+
+        input_ids = tokenizer.convert_tokens_to_ids(text_tokens)
+        attention_mask = ([1] * valid_token_len) + ([0] * (token_max_len - valid_token_len))
+        token_type_ids = [0] * token_max_len
+
+        # POS
+
+
+
 ### MAIN ###
 if "__main__" == __name__:
     print("[mecab_npy_maker] __main__ !")
@@ -1061,17 +1185,23 @@ if "__main__" == __name__:
     # exit()
 
     # make *.npy (use Mecab)
-    is_use_eojeol = False
-    if is_use_eojeol:
+    make_npy_mode = "morp"
+    if "eojeol" == make_npy_mode:
         make_mecab_eojeol_npy(
             tokenizer_name="monologg/koelectra-base-v3-discriminator",
             src_list=all_sent_list, token_max_len=128, eojeol_max_len=50,
             debug_mode=False, josa_split=True,
             save_model_dir="mecab_split_josa_electra"
         )
-    else:
+    elif "wordpiece" == make_npy_mode:
         make_mecab_wordpiece_npy(
             tokenizer_name="monologg/koelectra-base-v3-discriminator",
             src_list=all_sent_list, token_max_len=128, debug_mode=False,
             save_model_dir="mecab_wordpiece_electra"
+        )
+    elif "morp" == make_npy_mode:
+        make_mecab_morp_npy(
+            tokenizer_name="monologg/koelectra-base-v3-discriminator",
+            src_list=all_sent_list, token_max_len=128,
+            debug_mode=False, save_model_dir="mecab_morp_electra"
         )
