@@ -21,6 +21,7 @@ from model.electra_feature_model import Electra_Feature_Model
 from model.CNNBiF_model import ELECTRA_CNNBiF_Model
 from model.char_electra_lstm_crf import CHAR_ELECTRA_POS_LSTM
 from model.mecab_electra_lstm_crf import ELECTRA_MECAB
+from model.morp_electra_model import ELECTRA_MECAB_MORP
 
 #===============================================================
 def print_parameters(args, logger):
@@ -68,14 +69,14 @@ def load_corpus_npy_datasets(src_path: str, mode: str="train"):
     root_path = "/".join(src_path.split("/")[:-1]) + "/" + mode
 
     dataset_npy = np.load(src_path)
-    # token_seq_len = np.load(root_path + "_token_seq_len.npy")
+
     pos_tag_npy = np.load(root_path + "_pos_tag.npy")
     labels_npy = np.load(root_path + "_labels.npy")
-    eojeol_ids = np.load(root_path + "_eojeol_ids.npy")
-    # ls_ids = np.load(root_path + "_ls_ids.npy")
-    #entity_ids = np.load(root_path + "_entity_ids.npy")
+    morp_ids = np.load(root_path + "_morp_ids.npy")
+    ne_pos_one_hot = np.load(root_path + "_ne_one_hot.npy")
+    josa_pos_one_hot = np.load(root_path + "_josa_one_hot.npy")
 
-    return dataset_npy, pos_tag_npy, labels_npy, eojeol_ids, #ls_ids, entity_ids
+    return dataset_npy, pos_tag_npy, labels_npy, morp_ids, ne_pos_one_hot, josa_pos_one_hot
 
 #===============================================================
 def init_logger():
@@ -253,8 +254,8 @@ def load_ner_config_and_model(user_select: int, args, tag_dict):
         # ELECTRA + LSTM(POS) +CRF
         model = CHAR_ELECTRA_POS_LSTM.from_pretrained(args.model_name_or_path, config=config)
     elif 11 == user_select:
-        # ELECTRA+LSTM(MECAB)+CRF
-        model = ELECTRA_MECAB.from_pretrained(args.model_name_or_path, config=config)
+        # ELECTRA+LSTM(MECAB)+[CRF] (MOR)
+        model = ELECTRA_MECAB_MORP.from_pretrained(args.model_name_or_path, config=config)
 
     return config, model
 
@@ -294,8 +295,8 @@ def load_model_checkpoints(user_select, checkpoint):
         # CHAR_ELECTRA+LSTM(POS)+CRF
         model = CHAR_ELECTRA_POS_LSTM.from_pretrained(checkpoint)
     elif 11 == user_select:
-        # ELECTRA+LSTM(MECAB)+CRF
-        model = ELECTRA_MECAB.from_pretrained(checkpoint)
+        # ELECTRA+LSTM(MECAB)+[CRF]
+        model = ELECTRA_MECAB_MORP.from_pretrained(checkpoint)
 
     return model
 

@@ -14,18 +14,8 @@ class ELECTRA_MECAB(ElectraPreTrainedModel):
         self.max_seq_len = config.max_seq_len
         self.num_labels = config.num_labels
 
-        # self.num_pos_labels = config.num_pos_labels
-        self.num_ne_pos = config.num_ne_pos
-        self.num_josa_pos = config.num_josa_pos
-        self.pos_id2label = config.pos_id2label
-        self.pos_label2id = config.pos_label2id
-
         self.pos_embed_out_dim = 128
         self.dropout_rate = 0.3
-
-        # pos tag embedding
-        # self.ne_pos_embedding = nn.Embedding(self.num_ne_pos, self.pos_embed_out_dim)
-        # self.josa_pos_embedding = nn.Embedding(self.num_josa_pos, self.pos_embed_out_dim)
 
         '''
             @ Note
@@ -34,8 +24,6 @@ class ELECTRA_MECAB(ElectraPreTrainedModel):
                 It only affects the model’s configuration. 
                 Use from_pretrained() to load the model weights.
         '''
-        self.gate_layer = nn.Linear(config.hidden_size*2, config.hidden_size)
-        self.gate_sigmoid = nn.Sigmoid()
 
         self.electra = ElectraModel.from_pretrained("monologg/koelectra-base-v3-discriminator", config=config)
         self.dropout = nn.Dropout(self.dropout_rate)

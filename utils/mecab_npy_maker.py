@@ -718,7 +718,7 @@ def save_mecab_wordpiece_npy(npy_dict: Dict[str, List], src_list_len, save_dir: 
     npy_dict["labels"] = np.array(npy_dict["labels"])
     npy_dict["pos_tag_ids"] = np.array(npy_dict["pos_tag_ids"])
 
-    # wordpiece 토큰 단위
+    # 토큰 단위
     print(f"Unit: Tokens")
     print(f"input_ids.shape: {npy_dict['input_ids'].shape}")
     print(f"attention_mask.shape: {npy_dict['attention_mask'].shape}")
@@ -782,6 +782,117 @@ def save_mecab_wordpiece_npy(npy_dict: Dict[str, List], src_list_len, save_dir: 
 
     print(f"Complete - Save all npy files !")
 
+#==========================================================================================
+def save_mecab_morp_npy(npy_dict: Dict[str, List], src_list_len, save_dir: str = None):
+#==========================================================================================
+    npy_dict["input_ids"] = np.array(npy_dict["input_ids"])
+    npy_dict["attention_mask"] = np.array(npy_dict["attention_mask"])
+    npy_dict["token_type_ids"] = np.array(npy_dict["token_type_ids"])
+    npy_dict["labels"] = np.array(npy_dict["labels"])
+    npy_dict["pos_tag_ids"] = np.array(npy_dict["pos_tag_ids"])
+    npy_dict["morp_ids"] = np.array(npy_dict["morp_ids"])
+    npy_dict["ne_one_hot"] = np.array(npy_dict["ne_one_hot"])
+    npy_dict["josa_one_hot"] = np.array(npy_dict["josa_one_hot"])
+
+    # 토큰 단위
+    print(f"Unit: Tokens")
+    print(f"input_ids.shape: {npy_dict['input_ids'].shape}")
+    print(f"attention_mask.shape: {npy_dict['attention_mask'].shape}")
+    print(f"token_type_ids.shape: {npy_dict['token_type_ids'].shape}")
+    print(f"labels.shape: {npy_dict['labels'].shape}")
+    print(f"pos_tag_ids.shape: {npy_dict['pos_tag_ids'].shape}")
+    print(f"morp_ids.shape: {npy_dict['morp_ids'].shape}")
+    print(f"ne_one_hot.shape: {npy_dict['ne_one_hot'].shape}")
+    print(f"josa_one_hot.shape: {npy_dict['josa_one_hot'].shape}")
+
+    # train/dev/test 분할
+    split_size = int(src_list_len * 0.1)
+    train_size = split_size * 7
+    valid_size = train_size + split_size
+
+    # Train
+    train_np = [npy_dict["input_ids"][:train_size],
+                npy_dict["attention_mask"][:train_size],
+                npy_dict["token_type_ids"][:train_size]]
+    train_np = np.stack(train_np, axis=-1)
+    train_labels_np = npy_dict["labels"][:train_size]
+    train_pos_tag_np = npy_dict["pos_tag_ids"][:train_size]
+    train_morp_ids_np = npy_dict["morp_ids"][:train_size]
+    train_ne_one_hot_np = npy_dict["ne_one_hot"][:train_size]
+    train_josa_one_hot_np = npy_dict["josa_one_hot"][:train_size]
+    print(f"train_np.shape: {train_np.shape}")
+    print(f"train_labels_np.shape: {train_labels_np.shape}")
+    print(f"train_pos_tag_ids_np.shape: {train_pos_tag_np.shape}")
+    print(f"train_morp_ids_np.shape: {train_morp_ids_np.shape}")
+    print(f"train_ne_one_hot_np.shape: {train_ne_one_hot_np.shape}")
+    print(f"train_josa_one_hot_np.shape: {train_josa_one_hot_np.shape}")
+
+    # Dev
+    dev_np = [npy_dict["input_ids"][train_size:valid_size],
+              npy_dict["attention_mask"][train_size:valid_size],
+              npy_dict["token_type_ids"][train_size:valid_size]]
+    dev_np = np.stack(dev_np, axis=-1)
+    dev_labels_np = npy_dict["labels"][train_size:valid_size]
+    dev_pos_tag_np = npy_dict["pos_tag_ids"][train_size:valid_size]
+    dev_morp_ids_np = npy_dict["morp_ids"][train_size:valid_size]
+    dev_ne_one_hot_np = npy_dict["ne_one_hot"][train_size:valid_size]
+    dev_josa_one_hot_np = npy_dict["josa_one_hot"][train_size:valid_size]
+    print(f"dev_np.shape: {dev_np.shape}")
+    print(f"dev_labels_np.shape: {dev_labels_np.shape}")
+    print(f"dev_pos_tag_ids_np.shape: {dev_pos_tag_np.shape}")
+    print(f"dev_morp_ids_np.shape: {dev_morp_ids_np.shape}")
+    print(f"dev_ne_one_hot_np.shape: {dev_ne_one_hot_np.shape}")
+    print(f"dev_josa_one_hot_np.shape: {dev_josa_one_hot_np.shape}")
+
+    # Test
+    test_np = [npy_dict["input_ids"][valid_size:],
+               npy_dict["attention_mask"][valid_size:],
+               npy_dict["token_type_ids"][valid_size:]]
+    test_np = np.stack(test_np, axis=-1)
+    test_labels_np = npy_dict["labels"][valid_size:]
+    test_pos_tag_np = npy_dict["pos_tag_ids"][valid_size:]
+    test_morp_ids_np = npy_dict["morp_ids"][valid_size:]
+    test_ne_one_hot_np = npy_dict["ne_one_hot"][valid_size:]
+    test_josa_one_hot_np = npy_dict["josa_one_hot"][valid_size:]
+    print(f"test_np.shape: {test_np.shape}")
+    print(f"test_labels_np.shape: {test_labels_np.shape}")
+    print(f"test_pos_tag_ids_np.shape: {test_pos_tag_np.shape}")
+    print(f"test_morp_ids_np.shape: {test_morp_ids_np.shape}")
+    print(f"test_ne_one_hot_np.shape: {test_ne_one_hot_np.shape}")
+    print(f"test_josa_one_hot_np.shape: {test_josa_one_hot_np.shape}")
+
+    root_path = "../corpus/npy/" + save_dir
+    # save input_ids, attention_mask, token_type_ids
+    np.save(root_path + "/train", train_np)
+    np.save(root_path + "/dev", dev_np)
+    np.save(root_path + "/test", test_np)
+
+    # save labels
+    np.save(root_path + "/train_labels", train_labels_np)
+    np.save(root_path + "/dev_labels", dev_labels_np)
+    np.save(root_path + "/test_labels", test_labels_np)
+
+    # save pos_tag_ids
+    np.save(root_path + "/train_pos_tag", train_pos_tag_np)
+    np.save(root_path + "/dev_pos_tag", dev_pos_tag_np)
+    np.save(root_path + "/test_pos_tag", test_pos_tag_np)
+
+    # save morp_ids
+    np.save(root_path + "/train_morp_ids", train_morp_ids_np)
+    np.save(root_path + "/dev_morp_ids", dev_morp_ids_np)
+    np.save(root_path + "/test_morp_ids", test_morp_ids_np)
+
+    # save NE, Josa One-hot
+    np.save(root_path + "/train_ne_one_hot", train_ne_one_hot_np)
+    np.save(root_path + "/dev_ne_one_hot", dev_ne_one_hot_np)
+    np.save(root_path + "/test_ne_one_hot", test_ne_one_hot_np)
+
+    np.save(root_path + "/train_josa_one_hot", train_josa_one_hot_np)
+    np.save(root_path + "/dev_josa_one_hot", dev_josa_one_hot_np)
+    np.save(root_path + "/test_josa_one_hot", test_josa_one_hot_np)
+
+    print(f"Complete - Save all npy files !")
+#================================================================
 @dataclass
 class Morp_pair:
     morp: List[str] = field(default_factory=list)
@@ -1048,7 +1159,8 @@ def check_count_morp(src_sent_list):
 def make_mecab_morp_npy(
         tokenizer_name: str, src_list: List[Sentence],
         token_max_len: int = 128, debug_mode: bool = False,
-        save_model_dir: str = None
+        save_model_dir: str = None,
+        ne_one_hot_size: int = 5, josa_one_hot_size: int = 9
 ):
 #==========================================================================================
     npy_dict = {
@@ -1057,11 +1169,13 @@ def make_mecab_morp_npy(
         "attention_mask": [],
         "token_type_ids": [],
         "pos_tag_ids": [],
-        "morp_ids": []
+        "morp_ids": [],
+        "ne_one_hot": [],
+        "josa_one_hot": []
     }
     # Init
-    pos_tag2ids = {v: int(k) for k, v in NIKL_POS_TAG.items()}
-    pos_ids2tag = {k: v for k, v in NIKL_POS_TAG.items()}
+    pos_tag2ids = {v: int(k) for k, v in MECAB_POS_TAG.items()}
+    pos_ids2tag = {k: v for k, v in MECAB_POS_TAG.items()}
     ne_ids2tag = {v: k for k, v in ETRI_TAG.items()}
 
     tokenizer = ElectraTokenizer.from_pretrained(tokenizer_name)
@@ -1102,13 +1216,12 @@ def make_mecab_morp_npy(
         for mecab_item in res_mecab:
             tokens = tokenizer.tokenize(mecab_item[0])
             text_tokens.extend(tokens)
-            mecab_token_pair.append((tokens, mecab_item[0], mecab_item[1]))
+            mecab_token_pair.append((tokens, mecab_item[0], mecab_item[1].split("+")))
 
         # Make NE Labels
-        tokens_len = len(text_tokens)
-        labels_ids = [ETRI_TAG["O"]] * tokens_len
-        morp_ids = [0] * tokens_len
-        b_check_use = [False for _ in range(tokens_len)]
+        token_pair_len = len(mecab_token_pair)
+        labels_ids = [ETRI_TAG["O"]] * token_pair_len
+        b_check_use = [False for _ in range(token_pair_len)]
         for ne_idx, ne_item in enumerate(src_item.ne_list):
             ne_char_list = list(ne_item.text.replace(" ", ""))
             concat_item_list = []
@@ -1116,7 +1229,7 @@ def make_mecab_morp_npy(
                 if b_check_use[m_idx]:
                     continue
                 for sub_idx in range(m_idx + 1, len(mecab_token_pair)):
-                    concat_word = ["".join(x[0]).replace("##", "") for x in mecab_token_pair[m_idx:sub_idx]]
+                    concat_word = ["".join(x[1]).replace("##", "") for x in mecab_token_pair[m_idx:sub_idx]]
                     concat_item_list.append(("".join(concat_word), (m_idx, sub_idx)))
             concat_item_list = [x for x in concat_item_list if "".join(ne_char_list) in x[0]]
             concat_item_list.sort(key=lambda x: len(x[0]))
@@ -1127,16 +1240,38 @@ def make_mecab_morp_npy(
             for bio_idx in range(target_idx_pair[0], target_idx_pair[1]):
                 b_check_use[bio_idx] = True
                 if bio_idx == target_idx_pair[0]:
-                    labels_ids[bio_idx] = "B-" + ne_item.type
+                    labels_ids[bio_idx] = ETRI_TAG["B-" + ne_item.type]
                 else:
-                    labels_ids[bio_idx] = "I-" + ne_item.type
+                    labels_ids[bio_idx] = ETRI_TAG["I-" + ne_item.type]
         # end, Make NE Labels
 
         # Make POS
+        ne_pos_list = ["NNG", "NNP", "SN", "NNB", "NR"]
+        ne_pos_label2id = {label: i for i, label in enumerate(ne_pos_list)}
+
+        josa_list = ["JKS", "JKC", "JKG", "JKO", "JKB", "JKV", "JKQ", "JX", "JC"]
+        josa_label2id = {label: i for i, label in enumerate(josa_list)}
+
         pos_ids = []
+        ne_one_hot_list = [] # 5
+        josa_one_hot_list = [] # 9
         for m_idx, mt_pair in enumerate(mecab_token_pair):
+            ne_one_hot = [0 for _ in range(ne_one_hot_size)]
+            josa_one_hot = [0 for _ in range(josa_one_hot_size)]
             conv_pos = []
             filter_pos = [x if "UNKNOWN" != x and "NA" != x and "UNA" != x and "VSV" != x else "O" for x in mt_pair[2]]
+
+            # NE에 나타나는 POS와 조사 POS를 One-Hot으로
+            for ne_key, ne_pos_ids in ne_pos_label2id.items():
+                if ne_key in filter_pos:
+                    ne_one_hot[ne_pos_ids] = 1
+            for josa_key, josa_pos_ids in josa_label2id.items():
+                if josa_key in filter_pos:
+                    josa_one_hot[josa_pos_ids] = 1
+            ne_one_hot_list.append(ne_one_hot)
+            josa_one_hot_list.append(josa_one_hot)
+
+            # All POS
             conv_pos.extend([pos_tag2ids[x] for x in filter_pos])
             if 10 > len(conv_pos):
                 diff_len = (10 - len(conv_pos))
@@ -1145,6 +1280,12 @@ def make_mecab_morp_npy(
                 conv_pos = conv_pos[:10]
             for _ in range(len(mt_pair[0])):
                 pos_ids.append(conv_pos)
+
+        # Make morp_ids (Check Morp Boundary)
+        morp_ids: List[int] = []
+        for mecab_pair in mecab_token_pair:
+            token_size = len(mecab_pair[0])
+            morp_ids.append(token_size)
 
         # Matching Length
         valid_token_len = 0
@@ -1165,8 +1306,98 @@ def make_mecab_morp_npy(
         token_type_ids = [0] * token_max_len
 
         # POS
+        pos_ids.insert(0, [pos_tag2ids["O"]] * 10)  # [CLS]
+        if token_max_len <= len(pos_ids):
+            pos_ids = pos_ids[:token_max_len - 1]
+            pos_ids.append([pos_tag2ids["O"]] * 10)  # [SEP]
+        else:
+            pos_ids_size = len(pos_ids)
+            for _ in range(token_max_len - pos_ids_size):
+                pos_ids.append([pos_tag2ids["O"]] * 10)
 
+        # NE, Josa One-Hot
+        ne_one_hot_list.insert(0, [0 for _ in range(ne_one_hot_size)])
+        josa_one_hot_list.insert(0, [0 for _ in range(josa_one_hot_size)])
+        if token_max_len <= len(ne_one_hot_list):
+            ne_one_hot_list = ne_one_hot_list[:token_max_len - 1]
+            ne_one_hot_list.append([0 for _ in range(ne_one_hot_size)])
 
+            josa_one_hot_list = josa_one_hot_list[:token_max_len - 1]
+            josa_one_hot_list.append([0 for _ in range(josa_one_hot_size)])
+        else:
+            curr_size = len(ne_one_hot_list)
+            for _ in range(token_max_len - curr_size):
+                ne_one_hot_list.append([0 for _ in range(ne_one_hot_size)])
+                josa_one_hot_list.append([0 for _ in range(josa_one_hot_size)])
+
+        # NE Label
+        labels_ids.insert(0, ETRI_TAG["O"])
+        if token_max_len <= len(labels_ids):
+            labels_ids = labels_ids[:token_max_len - 1]
+            labels_ids.append(ETRI_TAG["O"])
+        else:
+            label_ids_size = len(labels_ids)
+            for _ in range(token_max_len - label_ids_size):
+                labels_ids.append(ETRI_TAG["O"])
+
+        # morp_ids
+        morp_ids.insert(0, 1) # [CLS]
+        if token_max_len <= len(morp_ids):
+            morp_ids = morp_ids[:token_max_len - 1]
+            morp_ids.append(1) # [SEP]
+        else:
+            morp_ids.append(1) # [SEP]
+            morp_ids_size = len(morp_ids)
+            morp_ids += [0] * (token_max_len - morp_ids_size)
+
+        # Check size
+        assert len(input_ids) == token_max_len, f"{len(input_ids)} + {input_ids}"
+        assert len(attention_mask) == token_max_len, f"{len(attention_mask)} + {attention_mask}"
+        assert len(token_type_ids) == token_max_len, f"{len(token_type_ids)} + {token_type_ids}"
+        assert len(labels_ids) == token_max_len, f"{len(labels_ids)} + {labels_ids}"
+        assert len(pos_ids) == token_max_len, f"{len(pos_ids)} + {pos_ids}"
+        assert len(morp_ids) == token_max_len, f"{len(morp_ids)} + {morp_ids}"
+        assert len(ne_one_hot_list) == token_max_len, f"{len(ne_one_hot_list)} + {ne_one_hot_list}"
+        assert len(josa_one_hot_list) == token_max_len, f"{len(josa_one_hot_list)} + {josa_one_hot_list}"
+
+        # Insert npy_dict
+        npy_dict["input_ids"].append(input_ids)
+        npy_dict["attention_mask"].append(attention_mask)
+        npy_dict["token_type_ids"].append(token_type_ids)
+        npy_dict["labels"].append(labels_ids)
+        npy_dict["pos_tag_ids"].append(pos_ids)
+        npy_dict["morp_ids"].append(morp_ids)
+        npy_dict["ne_one_hot"].append(ne_one_hot_list)
+        npy_dict["josa_one_hot"].append(josa_one_hot_list)
+
+        # type check - pos_ids
+        type_check_pos_ids = np.array(pos_ids)
+        if "int32" != type_check_pos_ids.dtype:
+            print(type_check_pos_ids)
+            input()
+
+        # Debug mode
+        if debug_mode:
+            print(src_item.text)
+            print("Text tokens: \n", text_tokens)
+            print("NE labels: \n", src_item.ne_list)
+            print("Mecab tokens pair: \n", mecab_token_pair)
+            debug_pos_ids = [[pos_ids2tag[x] for x in pos_tag_item] for pos_tag_item in pos_ids]
+
+            # Token 별 확인
+            for t_tok, pos in zip(text_tokens, debug_pos_ids):
+                if "[PAD]" == t_tok:
+                    break
+                print(t_tok, pos)
+            input()
+
+            # 형태소 별 확인
+            for m_t_p, l_i, ne_o_h, josa_o_h, mp_i in zip(mecab_token_pair, labels_ids[1:],
+                                                          ne_one_hot_list[1:], josa_one_hot_list[1:], morp_ids[1:]):
+                print(m_t_p[0], m_t_p[-1], ne_ids2tag[l_i], ne_o_h, josa_o_h, mp_i)
+            input()
+
+    save_mecab_morp_npy(npy_dict, src_list_len=len(src_list), save_dir=save_model_dir)
 
 ### MAIN ###
 if "__main__" == __name__:
