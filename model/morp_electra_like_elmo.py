@@ -7,10 +7,10 @@ from transformers.modeling_outputs import TokenClassifierOutput
 from model.crf_layer import CRF
 
 #==============================================================
-class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
+class ELECTRA_MECAB_LAST_ADD_POS(ElectraPreTrainedModel):
 #==============================================================
     def __init__(self, config):
-        super(ELECTRA_MECAB_MORP, self).__init__(config)
+        super(ELECTRA_MECAB_LAST_ADD_POS, self).__init__(config)
         self.max_seq_len = config.max_seq_len
         self.num_labels = config.num_labels
 
@@ -36,16 +36,14 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
         self.dropout = nn.Dropout(self.dropout_rate)
 
         # POS tag embedding
-        # self.ne_pos_embedding = nn.Embedding(self.num_ne_pos, self.pos_embed_out_dim // 2)
+        self.ne_pos_embedding = nn.Embedding(self.num_ne_pos, self.pos_embed_out_dim // 2)
         self.josa_pos_embedding = nn.Embedding(self.num_josa_pos, self.pos_embed_out_dim)
 
         # Morp Embedding
         self.morp_embedding = nn.Embedding(self.max_seq_len, self.max_seq_len)
 
         # LSTM
-        # self.lstm_dim_size = config.hidden_size + ((self.pos_embed_out_dim // 2) * self.num_ne_pos) + \
-        #                      (self.pos_embed_out_dim * self.num_josa_pos)
-        self.lstm_dim_size = config.hidden_size + (self.pos_embed_out_dim * self.num_josa_pos)
+        self.lstm_dim_size = config.hidden_size #+ ((self.pos_embed_out_dim // 2) * self.num_ne_pos) + (self.pos_embed_out_dim * self.num_josa_pos)
         self.lstm = nn.LSTM(input_size=self.lstm_dim_size, hidden_size=(self.lstm_dim_size // 2),
                             num_layers=1, batch_first=True, bidirectional=True)
 
@@ -70,10 +68,8 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
         electra_outputs = electra_outputs.last_hidden_state # [batch_size, seq_len, hidden_size]
 
         # Use POS Embedding
-        # ne_pos_embed, josa_pos_embed = self._make_ne_and_josa_pos_embedding(ne_one_hot=ne_pos_one_hot,
-        #                                                                     josa_one_hot=josa_pos_one_hot)
-        josa_pos_embed = self._make_ne_and_josa_pos_embedding(ne_one_hot=ne_pos_one_hot,
-                                                              josa_one_hot=josa_pos_one_hot)
+        ne_pos_embed, josa_pos_embed = self._make_ne_and_josa_pos_embedding(ne_one_hot=ne_pos_one_hot,
+                                                                            josa_one_hot=josa_pos_one_hot)
 
         # Make Morp Tokens - [batch_size, seq_len, seq_len]
         morp_boundary_embed = self._detect_morp_boundary(last_hidden_size=electra_outputs.size(),
@@ -82,7 +78,7 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
         morp_tensors = morp_boundary_embed @ electra_outputs
 
         # Concat
-        concat_embed = torch.concat([morp_tensors, josa_pos_embed], dim=-1)
+        concat_embed = torch.concat([morp_tensors, ne_pos_embed, josa_pos_embed], dim=-1)
 
         # LSTM
         lstm_out, _ = self.lstm(concat_embed) # [batch_size, seq_len, hidden_size]
@@ -117,18 +113,17 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
             josa_one_hot: torch.Tensor,
     ):
     #===================================
-        # ne_pos_embedding = self.ne_pos_embedding(ne_one_hot) # [batch, seq_len, num_ne_pos, dim_outputs]
+        ne_pos_embedding = self.ne_pos_embedding(ne_one_hot) # [batch, seq_len, num_ne_pos, dim_outputs]
         josa_pos_embedding = self.josa_pos_embedding(josa_one_hot) # [batch, seq_len, num_ne_pos, dim_outputs]
 
         '''
             ne_pos_embedding.shape: [batch_size, seq_len, 320]
             josa_pos_embedding.shape: [batch_size, seq_len, 1152]
         '''
-        # ne_pos_embedding = ne_pos_embedding.view([ne_pos_embedding.shape[0], ne_pos_embedding.shape[1], -1])
+        ne_pos_embedding = ne_pos_embedding.view([ne_pos_embedding.shape[0], ne_pos_embedding.shape[1], -1])
         josa_pos_embedding = josa_pos_embedding.view([josa_pos_embedding.shape[0], josa_pos_embedding.shape[1], -1])
 
-        # return ne_pos_embedding, josa_pos_embedding
-        return josa_pos_embedding
+        return ne_pos_embedding, josa_pos_embedding
 
 
     #===================================

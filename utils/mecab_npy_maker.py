@@ -1434,5 +1434,5 @@ if "__main__" == __name__:
         make_mecab_morp_npy(
             tokenizer_name="monologg/koelectra-base-v3-discriminator",
             src_list=all_sent_list, token_max_len=128,
-            debug_mode=False, save_model_dir="mecab_morp_electra"
+            debug_mode=True, save_model_dir="mecab_morp_electra"
         )
