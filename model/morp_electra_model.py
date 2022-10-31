@@ -73,8 +73,8 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
         # Use POS Embedding
         # ne_pos_embed, josa_pos_embed = self._make_ne_and_josa_pos_embedding(ne_one_hot=ne_pos_one_hot,
         #                                                                     josa_one_hot=josa_pos_one_hot)
-        # josa_pos_embed = self._make_ne_and_josa_pos_embedding(ne_one_hot=ne_pos_one_hot,
-        #                                                       josa_one_hot=josa_pos_one_hot)
+        josa_pos_embed = self._make_ne_and_josa_pos_embedding(ne_one_hot=ne_pos_one_hot,
+                                                              josa_one_hot=josa_pos_one_hot)
 
         # Make Morp Tokens - [batch_size, seq_len, seq_len]
         # morp_boundary_embed = self._detect_morp_boundary(last_hidden_size=electra_outputs.size(),
@@ -89,7 +89,7 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
         lstm_out, _ = self.lstm(electra_outputs) # [batch_size, seq_len, hidden_size]
 
         # Classifier
-        lstm_out = torch.concat([lstm_out, josa_pos_one_hot], dim=-1)
+        lstm_out = torch.concat([lstm_out, josa_pos_embed], dim=-1)
         logits = self.classifier(lstm_out)
 
         # Get LossE
