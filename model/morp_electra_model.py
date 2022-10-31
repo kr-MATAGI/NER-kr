@@ -37,7 +37,7 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
 
         # POS tag embedding
         # self.ne_pos_embedding = nn.Embedding(self.num_ne_pos, self.pos_embed_out_dim // 2)
-        # self.josa_pos_embedding = nn.Embedding(self.num_josa_pos, self.pos_embed_out_dim)
+        self.josa_pos_embedding = nn.Embedding(self.num_josa_pos, self.pos_embed_out_dim)
 
         # Morp Embedding
         # self.morp_embedding = nn.Embedding(self.max_seq_len, self.max_seq_len)
