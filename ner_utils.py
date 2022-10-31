@@ -72,11 +72,12 @@ def load_corpus_npy_datasets(src_path: str, mode: str="train"):
 
     pos_tag_npy = np.load(root_path + "_pos_tag.npy")
     labels_npy = np.load(root_path + "_labels.npy")
-    morp_ids = np.load(root_path + "_morp_ids.npy")
+    # morp_ids = np.load(root_path + "_morp_ids.npy")
     ne_pos_one_hot = np.load(root_path + "_ne_one_hot.npy")
     josa_pos_one_hot = np.load(root_path + "_josa_one_hot.npy")
 
-    return dataset_npy, pos_tag_npy, labels_npy, morp_ids, ne_pos_one_hot, josa_pos_one_hot
+    # return dataset_npy, pos_tag_npy, labels_npy, morp_ids, ne_pos_one_hot, josa_pos_one_hot
+    return dataset_npy, pos_tag_npy, labels_npy, ne_pos_one_hot, josa_pos_one_hot
 
 #===============================================================
 def init_logger():

@@ -37,7 +37,7 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
 
         # POS tag embedding
         # self.ne_pos_embedding = nn.Embedding(self.num_ne_pos, self.pos_embed_out_dim // 2)
-        self.josa_pos_embedding = nn.Embedding(self.num_josa_pos, self.pos_embed_out_dim)
+        # self.josa_pos_embedding = nn.Embedding(self.num_josa_pos, self.pos_embed_out_dim)
 
         # Morp Embedding
         self.morp_embedding = nn.Embedding(self.max_seq_len, self.max_seq_len)
@@ -76,13 +76,13 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
                                                               josa_one_hot=josa_pos_one_hot)
 
         # Make Morp Tokens - [batch_size, seq_len, seq_len]
-        morp_boundary_embed = self._detect_morp_boundary(last_hidden_size=electra_outputs.size(),
-                                                         device=electra_outputs.device,
-                                                         morp_ids=morp_ids)
-        morp_tensors = morp_boundary_embed @ electra_outputs
+        # morp_boundary_embed = self._detect_morp_boundary(last_hidden_size=electra_outputs.size(),
+        #                                                  device=electra_outputs.device,
+        #                                                  morp_ids=morp_ids)
+        # morp_tensors = morp_boundary_embed @ electra_outputs
 
         # Concat
-        concat_embed = torch.concat([morp_tensors, josa_pos_embed], dim=-1)
+        concat_embed = torch.concat([electra_outputs, josa_pos_embed], dim=-1)
 
         # LSTM
         lstm_out, _ = self.lstm(concat_embed) # [batch_size, seq_len, hidden_size]
