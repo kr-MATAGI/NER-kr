@@ -367,12 +367,9 @@ def main():
     test_npy, test_pos_tag, test_labels, test_ne_one_hot, test_josa_one_hot = \
         load_corpus_npy_datasets(args.test_npy, mode="test")
 
-    print(f"train.shape - dataset: {train_npy.shape}, "
-          f"pos_tag: {train_pos_tag.shape}, labels: {train_labels.shape}, morp_ids: {train_morp_ids.shape}")
-    print(f"dev.shape - dataset: {dev_npy.shape}, "
-          f"pos_tag: {dev_pos_tag.shape}, labels: {dev_labels.shape}, morp_ids: {dev_morp_ids.shape}")
-    print(f"test.shape - dataset: {test_npy.shape},"
-          f"pos_tag: {test_pos_tag.shape}, labels: {test_labels.shape}, morp_ids: {test_morp_ids.shape}")
+    print(f"train.shape - dataset: {train_npy.shape}, pos_tag: {train_pos_tag.shape}, labels: {train_labels.shape}")
+    print(f"dev.shape - dataset: {dev_npy.shape}, pos_tag: {dev_pos_tag.shape}, labels: {dev_labels.shape}")
+    print(f"test.shape - dataset: {test_npy.shape}, pos_tag: {test_pos_tag.shape}, labels: {test_labels.shape}")
 
 
     # make train/dev/test dataset
