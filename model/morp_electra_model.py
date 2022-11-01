@@ -7,7 +7,6 @@ from transformers.modeling_outputs import TokenClassifierOutput
 
 from model.crf_layer import CRF
 
-
 #==============================================================
 class AttentionConfig:
 #==============================================================
@@ -107,16 +106,16 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
         # LSTM
         # self.lstm_dim_size = config.hidden_size + ((self.pos_embed_out_dim // 2) * self.num_ne_pos) + \
         #                      (self.pos_embed_out_dim * self.num_josa_pos)
-        self.lstm_dim = config.hidden_size + (self.pos_embed_out_dim * self.num_josa_pos)
-        self.encoder = nn.LSTM(input_size=self.lstm_dim, hidden_size=(self.lstm_dim // 2),
+        self.lstm_dim = config.hidden_size #+ (self.pos_embed_out_dim * self.num_josa_pos)
+        self.encoder = nn.LSTM(input_size=self.lstm_dim, hidden_size=(config.hidden_size // 2),
                                num_layers=1, batch_first=True, bidirectional=True)
 
         # Attention
-        self.attn_config = AttentionConfig(hidden_size=self.lstm_dim)
+        self.attn_config = AttentionConfig(hidden_size=config.hidden_size + (self.pos_embed_out_dim * self.num_josa_pos))
         self.attn_layer = Attention(self.attn_config)
 
         # Classifier
-        self.classifier_dim = self.lstm_dim
+        self.classifier_dim = config.hidden_size + (self.pos_embed_out_dim * self.num_josa_pos)
         self.classifier = nn.Linear(self.classifier_dim, config.num_labels)
         # self.crf = CRF(num_tags=config.num_labels, batch_first=True)
 
@@ -157,12 +156,13 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
             hidden: [n_layers * n_directions, batch_size, hidden_dim]
             cell: [n_layers * n_directions, batch_size, hidden_dim]
         '''
-        lstm_out, (h_n, c_n) = self.encoder(concat_embed) # [batch_size, seq_len, hidden_size]
+        lstm_out, (h_n, c_n) = self.encoder(electra_outputs) # [batch_size, seq_len, hidden_size]
+        concat_embed = torch.concat([lstm_out, josa_pos_embed], dim=-1)
 
         # Attention
         attention_mask = attention_mask.unsqueeze(1).unsqueeze(2)
         attention_mask = attention_mask.to(dtype=next(self.parameters()).dtype)
-        attn_out = self.attn_layer(lstm_out, attention_mask)
+        attn_out = self.attn_layer(concat_embed, attention_mask)
 
         # Classifier
         logits = self.classifier(attn_out)

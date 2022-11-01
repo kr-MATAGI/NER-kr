@@ -1,7 +1,7 @@
 {
   "task": "custom",
   "data_dir": "data",
-  "ckpt_dir": "ckpt-electra-mecab-wordpiece-attn-test-1101",
+  "ckpt_dir": "ckpt-electra-mecab-wordpiece-decre-lstm-hidden-attn-1101",
   "train_npy": "./corpus/npy/mecab_wordpiece_electra/train.npy",
   "dev_npy": "./corpus/npy/mecab_wordpiece_electra/dev.npy",
   "test_npy": "./corpus/npy/mecab_wordpiece_electra/test.npy",
@@ -22,12 +22,12 @@
   "no_cuda": false,
   "model_type": "monologg/koelectra-base-v3-discriminator",
   "model_name_or_path": "monologg/koelectra-base-v3-discriminator",
-  "output_dir": "electra-electra-mecab-wordpiece-attn-test-1101",
+  "output_dir": "electra-electra-mecab-wordpiece-decre-lstm-hidden-attn-1101",
   "seed": 42,
-  "train_batch_size": 64,
+  "train_batch_size": 32,
   "eval_batch_size": 128,
-  "logging_steps": 3284,
-  "save_steps": 1642,
+  "logging_steps": 6566,
+  "save_steps": 3283,
   "learning_rate": 5e-5,
   "n_gpu": 1
 }
