@@ -1,10 +1,72 @@
 import torch
 import torch.nn as nn
+import math
 
 from transformers import ElectraModel, ElectraPreTrainedModel
 from transformers.modeling_outputs import TokenClassifierOutput
 
 from model.crf_layer import CRF
+
+
+#==============================================================
+class AttentionConfig:
+#==============================================================
+    def __init__(self,
+                 num_heads: int = 12,
+                 hidden_size: int = 768,
+                 dropout_prob: float = 0.1,
+                 ):
+        self.num_heads = num_heads
+        self.hidden_size = hidden_size
+        self.dropout_prob = dropout_prob
+
+
+#==============================================================
+class Attention(nn.Module):
+#==============================================================
+    def __init__(self, config: AttentionConfig):
+        super(Attention, self).__init__()
+        self.num_attention_heads = config.num_heads
+        self.attention_head_size = int(config.hidden_size / config.num_heads)
+        self.all_head_size = self.num_attention_heads * self.attention_head_size
+
+        self.query = nn.Linear(config.hidden_size, self.all_head_size)
+        self.key = nn.Linear(config.hidden_size, self.all_head_size)
+        self.value = nn.Linear(config.hidden_size, self.all_head_size)
+
+        self.o_proj = nn.Linear(config.hidden_size, config.hidden_size)
+        self.dropout = nn.Dropout(config.dropout_prob)
+
+        self.softmax = nn.Softmax(dim=-1)
+
+    def transpose_for_scores(self, x):
+        new_x_shape = x.size()[:-1] + (self.num_attention_heads, self.attention_head_size)
+        x = x.view(*new_x_shape)
+        return x.permute(0, 2, 1, 3)
+
+    def forward(self, hidden_states, attention_mask):
+        mixed_query_layer = self.query(hidden_states)
+        mixed_key_layer = self.key(hidden_states)
+        mixed_value_layer = self.value(hidden_states)
+
+        query_layer = self.transpose_for_scores(mixed_query_layer)
+        key_layer = self.transpose_for_scores(mixed_key_layer)
+        value_layer = self.transpose_for_scores(mixed_value_layer)
+
+        # attention_scores : [64, 8, 25, 25]
+        attention_scores = torch.matmul(query_layer, key_layer.transpose(-1, -2))
+        attention_scores = attention_scores / math.sqrt(self.attention_head_size)
+        attention_scores = attention_scores + attention_mask
+        attention_probs = self.softmax(attention_scores)
+        attention_probs = self.dropout(attention_probs)
+
+        context_layer = torch.matmul(attention_probs, value_layer)
+        context_layer = context_layer.permute(0, 2, 1, 3).contiguous()
+        new_context_layer_shape = context_layer.size()[:-2] + (self.all_head_size,)
+        context_layer = context_layer.view(*new_context_layer_shape)
+        attention_output = self.o_proj(context_layer)
+
+        return attention_output
 
 #==============================================================
 class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
@@ -20,7 +82,7 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
         self.pos_label2id = config.pos_label2id
 
         self.pos_embed_out_dim = 128
-        self.dropout_rate = 0.3
+        self.dropout_rate = 0.1
 
         '''
             @ Note
@@ -45,12 +107,16 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
         # LSTM
         # self.lstm_dim_size = config.hidden_size + ((self.pos_embed_out_dim // 2) * self.num_ne_pos) + \
         #                      (self.pos_embed_out_dim * self.num_josa_pos)
-        self.lstm_dim = config.hidden_size #+ (self.pos_embed_out_dim * self.num_josa_pos)
-        self.lstm = nn.LSTM(input_size=self.lstm_dim, hidden_size=(self.lstm_dim // 2),
-                            num_layers=1, batch_first=True, bidirectional=True)
+        self.lstm_dim = config.hidden_size + (self.pos_embed_out_dim * self.num_josa_pos)
+        self.encoder = nn.LSTM(input_size=self.lstm_dim, hidden_size=(self.lstm_dim // 2),
+                               num_layers=1, batch_first=True, bidirectional=True)
+
+        # Attention
+        self.attn_config = AttentionConfig(hidden_size=self.lstm_dim)
+        self.attn_layer = Attention(self.attn_config)
 
         # Classifier
-        self.classifier_dim = self.lstm_dim + (self.pos_embed_out_dim * self.num_josa_pos)
+        self.classifier_dim = self.lstm_dim
         self.classifier = nn.Linear(self.classifier_dim, config.num_labels)
         # self.crf = CRF(num_tags=config.num_labels, batch_first=True)
 
@@ -83,14 +149,23 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
         # morp_tensors = morp_boundary_embed @ electra_outputs
 
         # Concat
-        # concat_embed = torch.concat([electra_outputs, josa_pos_embed], dim=-1)
+        concat_embed = torch.concat([electra_outputs, josa_pos_embed], dim=-1)
 
         # LSTM
-        lstm_out, _ = self.lstm(electra_outputs) # [batch_size, seq_len, hidden_size]
+        '''
+            output: [seq_len, batch_size, hidden_dim * n_direction]
+            hidden: [n_layers * n_directions, batch_size, hidden_dim]
+            cell: [n_layers * n_directions, batch_size, hidden_dim]
+        '''
+        lstm_out, (h_n, c_n) = self.encoder(concat_embed) # [batch_size, seq_len, hidden_size]
+
+        # Attention
+        attention_mask = attention_mask.unsqueeze(1).unsqueeze(2)
+        attention_mask = attention_mask.to(dtype=next(self.parameters()).dtype)
+        attn_out = self.attn_layer(lstm_out, attention_mask)
 
         # Classifier
-        lstm_out = torch.concat([lstm_out, josa_pos_embed], dim=-1)
-        logits = self.classifier(lstm_out)
+        logits = self.classifier(attn_out)
 
         # Get LossE
         loss = None
