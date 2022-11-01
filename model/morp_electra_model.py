@@ -111,7 +111,7 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
                                num_layers=1, batch_first=True, bidirectional=True)
 
         # Attention
-        self.attn_hidden_dim = config.hidden_size + (self.pos_embed_out_dim * self.num_josa_pos)
+        self.attn_hidden_dim = config.hidden_size
         self.attn_config = AttentionConfig(hidden_size=self.attn_hidden_dim)
         self.attn_layer = Attention(self.attn_config)
 
