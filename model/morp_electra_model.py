@@ -166,7 +166,11 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
         # Attention
         attention_mask = attention_mask.unsqueeze(1).unsqueeze(2)
         attention_mask = attention_mask.to(dtype=next(self.parameters()).dtype)
-        attn_out = self.attn_layer(concat_embed, attention_mask)
+        attn_out = self.attn_layer(lstm_out, attention_mask)
+
+        # LSTM Decoder
+
+
 
         # Classifier
         logits = self.classifier(attn_out)
