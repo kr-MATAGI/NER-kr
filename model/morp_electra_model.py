@@ -120,7 +120,7 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
                                num_layers=1, batch_first=True)
 
         # Classifier
-        self.classifier_dim = config.hidden_size + (self.pos_embed_out_dim * self.num_josa_pos)
+        self.classifier_dim = config.hidden_size
         self.classifier = nn.Linear(self.classifier_dim, config.num_labels)
         # self.crf = CRF(num_tags=config.num_labels, batch_first=True)
 
