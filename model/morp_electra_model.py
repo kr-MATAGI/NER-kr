@@ -103,16 +103,21 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
         # Morp Embedding
         # self.morp_embedding = nn.Embedding(self.max_seq_len, self.max_seq_len)
 
-        # LSTM
+        # LSTM Encoder
         # self.lstm_dim_size = config.hidden_size + ((self.pos_embed_out_dim // 2) * self.num_ne_pos) + \
         #                      (self.pos_embed_out_dim * self.num_josa_pos)
-        self.lstm_dim = config.hidden_size #+ (self.pos_embed_out_dim * self.num_josa_pos)
+        self.lstm_dim = config.hidden_size + (self.pos_embed_out_dim * self.num_josa_pos)
         self.encoder = nn.LSTM(input_size=self.lstm_dim, hidden_size=(config.hidden_size // 2),
                                num_layers=1, batch_first=True, bidirectional=True)
 
         # Attention
-        self.attn_config = AttentionConfig(hidden_size=config.hidden_size + (self.pos_embed_out_dim * self.num_josa_pos))
+        self.attn_hidden_dim = config.hidden_size + (self.pos_embed_out_dim * self.num_josa_pos)
+        self.attn_config = AttentionConfig(hidden_size=self.attn_hidden_dim)
         self.attn_layer = Attention(self.attn_config)
+
+        # LSTM Decoder
+        self.decoder = nn.LSTM(input_size=self.attn_hidden_dim, hidden_size=config.hidden_size,
+                               num_layers=1, batch_first=True)
 
         # Classifier
         self.classifier_dim = config.hidden_size + (self.pos_embed_out_dim * self.num_josa_pos)
@@ -156,8 +161,7 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
             hidden: [n_layers * n_directions, batch_size, hidden_dim]
             cell: [n_layers * n_directions, batch_size, hidden_dim]
         '''
-        lstm_out, (h_n, c_n) = self.encoder(electra_outputs) # [batch_size, seq_len, hidden_size]
-        concat_embed = torch.concat([lstm_out, josa_pos_embed], dim=-1)
+        lstm_out, (h_n, c_n) = self.encoder(concat_embed) # [batch_size, seq_len, hidden_size]
 
         # Attention
         attention_mask = attention_mask.unsqueeze(1).unsqueeze(2)
