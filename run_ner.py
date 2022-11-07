@@ -207,7 +207,8 @@ def train(args, model, train_dataset, dev_dataset):
 
     model.zero_grad()
     for epoch in range(args.num_train_epochs):
-        train_dataloader = DataLoader(train_dataset, sampler=train_sampler, batch_size=args.train_batch_size)
+        train_dataloader = DataLoader(train_dataset, sampler=train_sampler, batch_size=args.train_batch_size,
+                                      pin_memory=True)
         pbar = tqdm(train_dataloader)
         for step, batch in enumerate(pbar):
             model.train()

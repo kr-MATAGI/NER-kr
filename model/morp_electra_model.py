@@ -180,7 +180,7 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
                                                  device=device, tensor_size=tensor_size)
         new_char_lvl_tensor = None
         for batch_idx in range(tensor_size[0]):
-            boundary = jamo_boundary[batch_idx]
+            boundary = jamo_boundary[batch_idx].detach().cpu()
             batch_char_tensor = char_lvl_tensor[batch_idx]
             start_bdry = 0
             new_seq_tensor = None
@@ -188,11 +188,12 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
                 extract_tensor = batch_char_tensor[:, start_bdry:start_bdry+bdry.item()]
                 if self.max_cnn_input > extract_tensor.shape[1]:
                     diff_size = self.max_cnn_input - extract_tensor.shape[1]
-                    empty_pad_tensor = torch.zeros(self.char_vocab_size, diff_size).to(device)
+                    empty_pad_tensor = torch.zeros(self.char_vocab_size, diff_size)
                     extract_tensor = torch.hstack([extract_tensor, empty_pad_tensor])
-                extract_tensor = extract_tensor.unsqueeze(0) # [1, vocab_size, 형태소 최대 길이]
+                extract_tensor = extract_tensor.unsqueeze(0).to(device) # [1, vocab_size, 형태소 최대 길이]
                 start_bdry += bdry.item()
                 cnn_out = self.char_cnn(extract_tensor)  # [batch, last_linear_embed]
+                cnn_out = cnn_out.detach().cpu()
                 if new_seq_tensor is None:
                     new_seq_tensor = cnn_out
                 else:
@@ -201,6 +202,7 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
                 new_char_lvl_tensor = new_seq_tensor.unsqueeze(0)
             else:
                 new_char_lvl_tensor = torch.vstack([new_char_lvl_tensor, new_seq_tensor.unsqueeze(0)])
+        new_char_lvl_tensor = new_char_lvl_tensor.to(device)
 
         # Concat
         concat_embed = torch.concat([electra_outputs, new_char_lvl_tensor], dim=-1)
@@ -309,7 +311,7 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
 
         stacked_tensors = torch.zeros(tensor_size[0], tensor_size[1] * 3, self.char_vocab_size)
         for batch_idx in range(tensor_size[0]):
-            batch_char_ids = char_ids[batch_idx]
+            batch_char_ids = char_ids[batch_idx].detach().cpu()
 
             seq_tensor = None
             for seq_ch in batch_char_ids:
@@ -328,7 +330,7 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
             stacked_tensors[batch_idx] = seq_tensor
         stacked_shape = stacked_tensors.shape
         # [batch_size, vocab_size, seq_len * 3]
-        stacked_tensors = stacked_tensors.reshape(stacked_shape[0], stacked_shape[2], stacked_shape[1]).to(device)
+        stacked_tensors = stacked_tensors.reshape(stacked_shape[0], stacked_shape[2], stacked_shape[1])
         return stacked_tensors
 
     #===================================
