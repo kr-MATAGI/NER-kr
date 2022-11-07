@@ -67,10 +67,12 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
                 "attention_mask": batch["attention_mask"].to(args.device),
                 "token_type_ids": batch["token_type_ids"].to(args.device),
                 "labels": batch["labels"].to(args.device),
-                "pos_tag_ids": batch["pos_tag_ids"].to(args.device),
+                # "pos_tag_ids": batch["pos_tag_ids"].to(args.device),
                 # "morp_ids": batch["morp_ids"].to(args.device),
-                "ne_pos_one_hot": batch["ne_pos_one_hot"].to(args.device),
-                "josa_pos_one_hot": batch["josa_pos_one_hot"].to(args.device)
+                # "ne_pos_one_hot": batch["ne_pos_one_hot"].to(args.device),
+                # "josa_pos_one_hot": batch["josa_pos_one_hot"].to(args.device)
+                "jamo_ids": batch["jamo_ids"].to(args.device),
+                "jamo_boundary": batch["jamo_boundary"].to(args.device)
             }
 
             if g_use_crf:
@@ -214,10 +216,12 @@ def train(args, model, train_dataset, dev_dataset):
                 "attention_mask": batch["attention_mask"].to(args.device),
                 "token_type_ids": batch["token_type_ids"].to(args.device),
                 "labels": batch["labels"].to(args.device),
-                "pos_tag_ids": batch["pos_tag_ids"].to(args.device),
+                # "pos_tag_ids": batch["pos_tag_ids"].to(args.device),
                 # "morp_ids": batch["morp_ids"].to(args.device),
-                "ne_pos_one_hot": batch["ne_pos_one_hot"].to(args.device),
-                "josa_pos_one_hot": batch["josa_pos_one_hot"].to(args.device)
+                # "ne_pos_one_hot": batch["ne_pos_one_hot"].to(args.device),
+                # "josa_pos_one_hot": batch["josa_pos_one_hot"].to(args.device)
+                "jamo_ids": batch["jamo_ids"].to(args.device),
+                "jamo_boundary": batch["jamo_boundary"].to(args.device)
             }
 
             if g_use_crf:
@@ -360,36 +364,29 @@ def main():
     model.to(args.device)
 
     # load train/dev/test npy
-    train_npy, train_pos_tag, train_labels, train_ne_one_hot, train_josa_one_hot = \
+    train_npy, train_labels, train_jamo_ids, train_boundary = \
         load_corpus_npy_datasets(args.train_npy, mode="train")
-    dev_npy, dev_pos_tag, dev_labels, dev_ne_one_hot, dev_josa_one_hot = \
+    dev_npy, dev_labels, dev_jamo_ids, dev_boundary = \
         load_corpus_npy_datasets(args.dev_npy, mode="dev")
-    test_npy, test_pos_tag, test_labels, test_ne_one_hot, test_josa_one_hot = \
+    test_npy, test_labels, test_jamo_ids, test_boundary = \
         load_corpus_npy_datasets(args.test_npy, mode="test")
 
-    print(f"train.shape - dataset: {train_npy.shape}, pos_tag: {train_pos_tag.shape}, labels: {train_labels.shape}")
-    print(f"dev.shape - dataset: {dev_npy.shape}, pos_tag: {dev_pos_tag.shape}, labels: {dev_labels.shape}")
-    print(f"test.shape - dataset: {test_npy.shape}, pos_tag: {test_pos_tag.shape}, labels: {test_labels.shape}")
-
+    print(f"train.shape - dataset: {train_npy.shape}, labels: {train_labels.shape}, ")
+    print(f"dev.shape - dataset: {dev_npy.shape}, labels: {dev_labels.shape}, ")
+    print(f"test.shape - dataset: {test_npy.shape}, labels: {test_labels.shape}, ")
 
     # make train/dev/test dataset
     if (5 == g_user_select) or (9 == g_user_select):
-        train_dataset = NER_Eojeol_Datasets(token_data=train_npy, labels=train_labels,
-                                            pos_tag_ids=train_pos_tag, eojeol_ids=None)
-        dev_dataset = NER_Eojeol_Datasets(token_data=dev_npy, labels=dev_labels,
-                                          pos_tag_ids=dev_pos_tag, eojeol_ids=None)
-        test_dataset = NER_Eojeol_Datasets(token_data=test_npy, labels=test_labels,
-                                           pos_tag_ids=test_pos_tag, eojeol_ids=None)
+        train_dataset = NER_Eojeol_Datasets(token_data=train_npy, labels=train_labels, eojeol_ids=None)
+        dev_dataset = NER_Eojeol_Datasets(token_data=dev_npy, labels=dev_labels, eojeol_ids=None)
+        test_dataset = NER_Eojeol_Datasets(token_data=test_npy, labels=test_labels, eojeol_ids=None)
     else:
         train_dataset = NER_POS_Dataset(data=train_npy, labels=train_labels,
-                                        pos_tag_ids=train_pos_tag,
-                                        ne_pos_one_hot=train_ne_one_hot, josa_pos_one_hot=train_josa_one_hot)
+                                        jamo_ids=train_jamo_ids, jamo_boundary=train_boundary)
         dev_dataset = NER_POS_Dataset(data=dev_npy, labels=dev_labels,
-                                      pos_tag_ids=dev_pos_tag,
-                                      ne_pos_one_hot=dev_ne_one_hot, josa_pos_one_hot=dev_josa_one_hot)
+                                      jamo_ids=dev_jamo_ids, jamo_boundary=dev_boundary)
         test_dataset = NER_POS_Dataset(data=test_npy, labels=test_labels,
-                                       pos_tag_ids=test_pos_tag,
-                                       ne_pos_one_hot=test_ne_one_hot, josa_pos_one_hot=test_josa_one_hot)
+                                       jamo_ids=test_jamo_ids, jamo_boundary=test_boundary)
 
     if args.do_train:
         global_step, tr_loss = train(args, model, train_dataset, dev_dataset)

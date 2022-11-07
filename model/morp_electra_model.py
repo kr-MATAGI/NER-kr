@@ -6,6 +6,7 @@ from transformers import ElectraModel, ElectraPreTrainedModel
 from transformers.modeling_outputs import TokenClassifierOutput
 
 from model.crf_layer import CRF
+from model.char_cnn import CharCNN
 
 #==============================================================
 class AttentionConfig:
@@ -74,14 +75,21 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
         super(ELECTRA_MECAB_MORP, self).__init__(config)
         self.max_seq_len = config.max_seq_len
         self.num_labels = config.num_labels
+        self.dropout_rate = 0.1
 
         self.num_ne_pos = config.num_ne_pos
         self.num_josa_pos = config.num_josa_pos
         self.pos_id2label = config.pos_id2label
         self.pos_label2id = config.pos_label2id
 
+        # POS
         self.pos_embed_out_dim = 128
-        self.dropout_rate = 0.1
+
+        # Morp
+        # self.morp_embed_out_dim = 128
+
+        # Char-level
+        self.char_vocab_size = config.char_vocab_size
 
         '''
             @ Note
@@ -93,12 +101,18 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
         # self.gate_layer = nn.Linear(config.hidden_size*2, config.hidden_size)
         # self.gate_sigmoid = nn.Sigmoid()
 
+        # ELECTRA
         self.electra = ElectraModel.from_pretrained("monologg/koelectra-base-v3-discriminator", config=config)
         self.dropout = nn.Dropout(self.dropout_rate)
 
+        # Char-level Embedding
+        self.max_cnn_input = 30 # CNN에 입력으로 최대 몇 글자가 들어갈지 (글자 * 3(초/중/종성))
+        self.char_cnn = CharCNN(vocab_size=self.char_vocab_size,
+                                seq_len=self.max_seq_len)
+
         # POS tag embedding
         # self.ne_pos_embedding = nn.Embedding(self.num_ne_pos, self.pos_embed_out_dim // 2)
-        self.josa_pos_embedding = nn.Embedding(self.num_josa_pos, self.pos_embed_out_dim)
+        # self.josa_pos_embedding = nn.Embedding(self.num_josa_pos, self.pos_embed_out_dim)
 
         # Morp Embedding
         # self.morp_embedding = nn.Embedding(self.max_seq_len, self.max_seq_len)
@@ -106,18 +120,14 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
         # LSTM Encoder
         # self.lstm_dim_size = config.hidden_size + ((self.pos_embed_out_dim // 2) * self.num_ne_pos) + \
         #                      (self.pos_embed_out_dim * self.num_josa_pos)
-        self.lstm_dim = config.hidden_size + (self.pos_embed_out_dim * self.num_josa_pos)
+        self.lstm_dim = config.hidden_size * 2
         self.encoder = nn.LSTM(input_size=self.lstm_dim, hidden_size=(config.hidden_size // 2),
                                num_layers=1, batch_first=True, bidirectional=True)
 
         # Attention
-        self.attn_hidden_dim = config.hidden_size
-        self.attn_config = AttentionConfig(hidden_size=self.attn_hidden_dim)
-        self.attn_layer = Attention(self.attn_config)
-
-        # LSTM Decoder
-        self.decoder = nn.LSTM(input_size=self.attn_hidden_dim, hidden_size=config.hidden_size,
-                               num_layers=1, batch_first=True)
+        # self.attn_hidden_dim = config.hidden_size
+        # self.attn_config = AttentionConfig(hidden_size=self.attn_hidden_dim)
+        # self.attn_layer = Attention(self.attn_config)
 
         # Classifier
         self.classifier_dim = config.hidden_size
@@ -132,8 +142,14 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
                 input_ids, token_type_ids, attention_mask,
                 labels=None, pos_tag_ids=None,
                 morp_ids=None, ne_pos_one_hot=None, josa_pos_one_hot=None,
-    ):
+                jamo_ids=None, jamo_boundary=None
+                ):
     #===================================
+        '''
+            char_ids: 초/중/종성, 기호, 숫자, 영어의 vocab_ids
+            char_boundary: 각 형태소별 문자 길이
+        '''
+
         electra_outputs = self.electra(input_ids=input_ids,
                                        attention_mask=attention_mask,
                                        token_type_ids=token_type_ids)
@@ -143,17 +159,51 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
         # Use POS Embedding
         # ne_pos_embed, josa_pos_embed = self._make_ne_and_josa_pos_embedding(ne_one_hot=ne_pos_one_hot,
         #                                                                     josa_one_hot=josa_pos_one_hot)
-        josa_pos_embed = self._make_ne_and_josa_pos_embedding(ne_one_hot=ne_pos_one_hot,
-                                                              josa_one_hot=josa_pos_one_hot)
+        # josa_pos_embed = self._make_ne_and_josa_pos_embedding(ne_one_hot=ne_pos_one_hot,
+        #                                                       josa_one_hot=josa_pos_one_hot)
 
-        # Make Morp Tokens - [batch_size, seq_len, seq_len]
+        ''' Make Morp Tokens - [batch_size, seq_len, seq_len] '''
         # morp_boundary_embed = self._detect_morp_boundary(last_hidden_size=electra_outputs.size(),
         #                                                  device=electra_outputs.device,
         #                                                  morp_ids=morp_ids)
-        # morp_tensors = morp_boundary_embed @ electra_outputs
+        # morp_embed = morp_boundary_embed @ electra_outputs
+
+        ''' Make Char-Level Embedding '''
+        device = electra_outputs.device
+        tensor_size = electra_outputs.size() # [batch, seq_len, hidden]
+        '''
+            jamo_ids.shape: [batch_size, seq_len, 3]
+            jamo_boundary: [batch_size, seq_len]
+        '''
+        # [batch_size, vocab_size, seq_len * 3]
+        char_lvl_tensor = self._make_jamo_tensor(char_ids=jamo_ids, char_boundary=jamo_boundary,
+                                                 device=device, tensor_size=tensor_size)
+        new_char_lvl_tensor = None
+        for batch_idx in range(tensor_size[0]):
+            boundary = jamo_boundary[batch_idx]
+            batch_char_tensor = char_lvl_tensor[batch_idx]
+            start_bdry = 0
+            new_seq_tensor = None
+            for bdry in boundary:
+                extract_tensor = batch_char_tensor[:, start_bdry:start_bdry+bdry.item()]
+                if self.max_cnn_input > extract_tensor.shape[1]:
+                    diff_size = self.max_cnn_input - extract_tensor.shape[1]
+                    empty_pad_tensor = torch.zeros(self.char_vocab_size, diff_size).to(device)
+                    extract_tensor = torch.hstack([extract_tensor, empty_pad_tensor])
+                extract_tensor = extract_tensor.unsqueeze(0) # [1, vocab_size, 형태소 최대 길이]
+                start_bdry += bdry.item()
+                cnn_out = self.char_cnn(extract_tensor)  # [batch, last_linear_embed]
+                if new_seq_tensor is None:
+                    new_seq_tensor = cnn_out
+                else:
+                    new_seq_tensor = torch.vstack([new_seq_tensor, cnn_out])
+            if new_char_lvl_tensor is None:
+                new_char_lvl_tensor = new_seq_tensor.unsqueeze(0)
+            else:
+                new_char_lvl_tensor = torch.vstack([new_char_lvl_tensor, new_seq_tensor.unsqueeze(0)])
 
         # Concat
-        concat_embed = torch.concat([electra_outputs, josa_pos_embed], dim=-1)
+        concat_embed = torch.concat([electra_outputs, new_char_lvl_tensor], dim=-1)
 
         # LSTM
         '''
@@ -161,19 +211,15 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
             hidden: [n_layers * n_directions, batch_size, hidden_dim]
             cell: [n_layers * n_directions, batch_size, hidden_dim]
         '''
-        lstm_out, (h_n, c_n) = self.encoder(concat_embed) # [batch_size, seq_len, hidden_size]
+        enc_out, (enc_h_n, enc_c_n) = self.encoder(concat_embed) # [batch_size, seq_len, hidden_size]
 
         # Attention
-        attention_mask = attention_mask.unsqueeze(1).unsqueeze(2)
-        attention_mask = attention_mask.to(dtype=next(self.parameters()).dtype)
-        attn_out = self.attn_layer(lstm_out, attention_mask)
-
-        # LSTM Decoder
-
-
+        # attention_mask = attention_mask.unsqueeze(1).unsqueeze(2)
+        # attention_mask = attention_mask.to(dtype=next(self.parameters()).dtype)
+        # attn_out = self.attn_layer(enc_out, attention_mask)
 
         # Classifier
-        logits = self.classifier(attn_out)
+        logits = self.classifier(enc_out)
 
         # Get LossE
         loss = None
@@ -245,6 +291,45 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
         morp_boundary_embed = self.morp_embedding(new_morp_tensors)
 
         return morp_boundary_embed
+
+    #===================================
+    def _make_jamo_tensor(self,
+                          char_ids: torch.Tensor,
+                          char_boundary: torch.Tensor,
+                          device, tensor_size
+                          ):
+    #===================================
+        '''
+            char_ids: [batch_size, seq_len, 3]
+            char_boundary: [batch_size, seq_len]
+            tensor_size : [batch, seq_len, hidden]
+            return:
+                stacked_tensors: [batch, seq_len, vocab_size's one_hot]
+        '''
+
+        stacked_tensors = torch.zeros(tensor_size[0], tensor_size[1] * 3, self.char_vocab_size)
+        for batch_idx in range(tensor_size[0]):
+            batch_char_ids = char_ids[batch_idx]
+
+            seq_tensor = None
+            for seq_ch in batch_char_ids:
+                first_one_hot = torch.zeros(self.char_vocab_size)
+                second_one_hot = torch.zeros(self.char_vocab_size)
+                third_one_hot = torch.zeros(self.char_vocab_size)
+
+                first_one_hot[seq_ch[0]] = 1 # [1, vocab_size]
+                second_one_hot[seq_ch[1]] = 1
+                third_one_hot[seq_ch[2]] = 1
+
+                if seq_tensor is None:
+                    seq_tensor = torch.vstack([first_one_hot, second_one_hot, third_one_hot])
+                else:
+                    seq_tensor = torch.vstack([seq_tensor, first_one_hot, second_one_hot, third_one_hot])
+            stacked_tensors[batch_idx] = seq_tensor
+        stacked_shape = stacked_tensors.shape
+        # [batch_size, vocab_size, seq_len * 3]
+        stacked_tensors = stacked_tensors.reshape(stacked_shape[0], stacked_shape[2], stacked_shape[1]).to(device)
+        return stacked_tensors
 
     #===================================
     def _gate_network(self, lhs_embed, rhs_embed):

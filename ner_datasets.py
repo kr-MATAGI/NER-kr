@@ -9,29 +9,31 @@ class NER_POS_Dataset(Dataset):
     def __init__(
             self,
             data: np.ndarray, labels: np.ndarray,
-            pos_tag_ids: np.ndarray,
-            # morp_ids: np.ndarray,
-            ne_pos_one_hot: np.ndarray, josa_pos_one_hot: np.ndarray
+            jamo_ids: np.ndarray, jamo_boundary: np.ndarray
     ):
         self.input_ids = data[:][:, :, 0]
         self.attention_mask = data[:][:, :, 1]
         self.token_type_ids = data[:][:, :, 2]
         self.labels = labels
-        self.pos_tag_ids = pos_tag_ids
 
         # self.morp_ids = morp_ids
-        self.ne_pos_one_hot = ne_pos_one_hot
-        self.josa_pos_one_hot = josa_pos_one_hot
+        # self.ne_pos_one_hot = ne_pos_one_hot
+        # self.josa_pos_one_hot = josa_pos_one_hot
+
+        self.jamo_ids = jamo_ids
+        self.jamo_boundary = jamo_boundary
 
         self.input_ids = torch.tensor(self.input_ids, dtype=torch.long)
         self.attention_mask = torch.tensor(self.attention_mask, dtype=torch.long)
         self.token_type_ids = torch.tensor(self.token_type_ids, dtype=torch.long)
         self.labels = torch.tensor(self.labels, dtype=torch.long)
-        self.pos_tag_ids = torch.tensor(self.pos_tag_ids, dtype=torch.long)
 
         # self.morp_ids = torch.tensor(self.morp_ids, dtype=torch.long)
-        self.ne_pos_one_hot = torch.tensor(self.ne_pos_one_hot, dtype=torch.long)
-        self.josa_pos_one_hot = torch.tensor(self.josa_pos_one_hot, dtype=torch.long)
+        # self.ne_pos_one_hot = torch.tensor(self.ne_pos_one_hot, dtype=torch.long)
+        # self.josa_pos_one_hot = torch.tensor(self.josa_pos_one_hot, dtype=torch.long)
+
+        self.jamo_ids = torch.tensor(self.jamo_ids, dtype=torch.long)
+        self.jamo_boundary = torch.tensor(self.jamo_boundary, dtype=torch.long)
 
     def __len__(self):
         return len(self.input_ids)
@@ -42,11 +44,14 @@ class NER_POS_Dataset(Dataset):
             "attention_mask": self.attention_mask[idx],
             "token_type_ids": self.token_type_ids[idx],
             "labels": self.labels[idx],
-            "pos_tag_ids": self.pos_tag_ids[idx],
+            # "pos_tag_ids": self.pos_tag_ids[idx],
 
             # "morp_ids": self.morp_ids[idx],
-            "ne_pos_one_hot": self.ne_pos_one_hot[idx],
-            "josa_pos_one_hot": self.josa_pos_one_hot[idx]
+            # "ne_pos_one_hot": self.ne_pos_one_hot[idx],
+            # "josa_pos_one_hot": self.josa_pos_one_hot[idx]
+
+            "jamo_ids": self.jamo_ids[idx],
+            "jamo_boundary": self.jamo_boundary[idx]
         }
 
         return items

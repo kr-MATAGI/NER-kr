@@ -6,6 +6,7 @@ import pickle
 from dataclasses import dataclass, field
 from collections import deque
 
+import sacrebleu
 from eunjeon import Mecab
 
 from tag_def import ETRI_TAG, NIKL_POS_TAG, MECAB_POS_TAG
@@ -19,6 +20,12 @@ from gold_corpus_npy_maker import (
 
 from typing import List, Dict, Tuple
 from transformers import AutoTokenizer, ElectraTokenizer
+
+# Character Level
+import unicodedata
+from jamo import h2j, j2hcj
+from string import ascii_lowercase
+import re
 
 ## Structured
 @dataclass
@@ -550,8 +557,8 @@ def make_mecab_wordpiece_npy(
         "attention_mask": [],
         "token_type_ids": [],
         "pos_tag_ids": [],
-        "ne_one_hot": [],
-        "josa_one_hot": []
+        # "ne_one_hot": [],
+        # "josa_one_hot": []
     }
 
     pos_tag2ids = {v: int(k) for k, v in MECAB_POS_TAG.items()}
@@ -866,10 +873,12 @@ def save_mecab_morp_npy(npy_dict: Dict[str, List], src_list_len, save_dir: str =
     npy_dict["attention_mask"] = np.array(npy_dict["attention_mask"])
     npy_dict["token_type_ids"] = np.array(npy_dict["token_type_ids"])
     npy_dict["labels"] = np.array(npy_dict["labels"])
-    npy_dict["pos_tag_ids"] = np.array(npy_dict["pos_tag_ids"])
+    # npy_dict["pos_tag_ids"] = np.array(npy_dict["pos_tag_ids"])
     npy_dict["morp_ids"] = np.array(npy_dict["morp_ids"])
-    npy_dict["ne_one_hot"] = np.array(npy_dict["ne_one_hot"])
-    npy_dict["josa_one_hot"] = np.array(npy_dict["josa_one_hot"])
+    # npy_dict["ne_one_hot"] = np.array(npy_dict["ne_one_hot"])
+    # npy_dict["josa_one_hot"] = np.array(npy_dict["josa_one_hot"])
+    npy_dict["jamo_one_hot"] = np.array(npy_dict["jamo_one_hot"])
+    npy_dict["char_boundary"] = np.array(npy_dict["char_boundary"])
 
     # 토큰 단위
     print(f"Unit: Tokens")
@@ -877,10 +886,12 @@ def save_mecab_morp_npy(npy_dict: Dict[str, List], src_list_len, save_dir: str =
     print(f"attention_mask.shape: {npy_dict['attention_mask'].shape}")
     print(f"token_type_ids.shape: {npy_dict['token_type_ids'].shape}")
     print(f"labels.shape: {npy_dict['labels'].shape}")
-    print(f"pos_tag_ids.shape: {npy_dict['pos_tag_ids'].shape}")
+    # print(f"pos_tag_ids.shape: {npy_dict['pos_tag_ids'].shape}")
     print(f"morp_ids.shape: {npy_dict['morp_ids'].shape}")
-    print(f"ne_one_hot.shape: {npy_dict['ne_one_hot'].shape}")
-    print(f"josa_one_hot.shape: {npy_dict['josa_one_hot'].shape}")
+    # print(f"ne_one_hot.shape: {npy_dict['ne_one_hot'].shape}")
+    # print(f"josa_one_hot.shape: {npy_dict['josa_one_hot'].shape}")
+    print(f"jamo_one_hot : {npy_dict['jamo_one_hot'].shape}")
+    print(f"char_boundary : {npy_dict['char_boundary'].shape}")
 
     # train/dev/test 분할
     split_size = int(src_list_len * 0.1)
@@ -893,16 +904,20 @@ def save_mecab_morp_npy(npy_dict: Dict[str, List], src_list_len, save_dir: str =
                 npy_dict["token_type_ids"][:train_size]]
     train_np = np.stack(train_np, axis=-1)
     train_labels_np = npy_dict["labels"][:train_size]
-    train_pos_tag_np = npy_dict["pos_tag_ids"][:train_size]
+    # train_pos_tag_np = npy_dict["pos_tag_ids"][:train_size]
     train_morp_ids_np = npy_dict["morp_ids"][:train_size]
-    train_ne_one_hot_np = npy_dict["ne_one_hot"][:train_size]
-    train_josa_one_hot_np = npy_dict["josa_one_hot"][:train_size]
+    # train_ne_one_hot_np = npy_dict["ne_one_hot"][:train_size]
+    # train_josa_one_hot_np = npy_dict["josa_one_hot"][:train_size]
+    train_jamo_one_hot_np = npy_dict["jamo_one_hot"][:train_size]
+    train_char_boundary_np = npy_dict["char_boundary"][:train_size]
     print(f"train_np.shape: {train_np.shape}")
     print(f"train_labels_np.shape: {train_labels_np.shape}")
-    print(f"train_pos_tag_ids_np.shape: {train_pos_tag_np.shape}")
+    # print(f"train_pos_tag_ids_np.shape: {train_pos_tag_np.shape}")
     print(f"train_morp_ids_np.shape: {train_morp_ids_np.shape}")
-    print(f"train_ne_one_hot_np.shape: {train_ne_one_hot_np.shape}")
-    print(f"train_josa_one_hot_np.shape: {train_josa_one_hot_np.shape}")
+    # print(f"train_ne_one_hot_np.shape: {train_ne_one_hot_np.shape}")
+    # print(f"train_josa_one_hot_np.shape: {train_josa_one_hot_np.shape}")
+    print(f"train_jamo_one_hot.shape: {train_jamo_one_hot_np.shape}")
+    print(f"train_char_boundary_np.shape: {train_char_boundary_np.shape}")
 
     # Dev
     dev_np = [npy_dict["input_ids"][train_size:valid_size],
@@ -910,16 +925,20 @@ def save_mecab_morp_npy(npy_dict: Dict[str, List], src_list_len, save_dir: str =
               npy_dict["token_type_ids"][train_size:valid_size]]
     dev_np = np.stack(dev_np, axis=-1)
     dev_labels_np = npy_dict["labels"][train_size:valid_size]
-    dev_pos_tag_np = npy_dict["pos_tag_ids"][train_size:valid_size]
+    # dev_pos_tag_np = npy_dict["pos_tag_ids"][train_size:valid_size]
     dev_morp_ids_np = npy_dict["morp_ids"][train_size:valid_size]
-    dev_ne_one_hot_np = npy_dict["ne_one_hot"][train_size:valid_size]
-    dev_josa_one_hot_np = npy_dict["josa_one_hot"][train_size:valid_size]
+    # dev_ne_one_hot_np = npy_dict["ne_one_hot"][train_size:valid_size]
+    # dev_josa_one_hot_np = npy_dict["josa_one_hot"][train_size:valid_size]
+    dev_jamo_one_hot_np = npy_dict["jamo_one_hot"][train_size:valid_size]
+    dev_char_boundary_np = npy_dict["char_boundary"][train_size:valid_size]
     print(f"dev_np.shape: {dev_np.shape}")
     print(f"dev_labels_np.shape: {dev_labels_np.shape}")
-    print(f"dev_pos_tag_ids_np.shape: {dev_pos_tag_np.shape}")
+    # print(f"dev_pos_tag_ids_np.shape: {dev_pos_tag_np.shape}")
     print(f"dev_morp_ids_np.shape: {dev_morp_ids_np.shape}")
-    print(f"dev_ne_one_hot_np.shape: {dev_ne_one_hot_np.shape}")
-    print(f"dev_josa_one_hot_np.shape: {dev_josa_one_hot_np.shape}")
+    # print(f"dev_ne_one_hot_np.shape: {dev_ne_one_hot_np.shape}")
+    # print(f"dev_josa_one_hot_np.shape: {dev_josa_one_hot_np.shape}")
+    print(f"dev_jamo_one_hot_np.shape: {dev_jamo_one_hot_np.shape}")
+    print(f"dev_char_boundary_np.shape: {dev_char_boundary_np.shape}")
 
     # Test
     test_np = [npy_dict["input_ids"][valid_size:],
@@ -927,16 +946,20 @@ def save_mecab_morp_npy(npy_dict: Dict[str, List], src_list_len, save_dir: str =
                npy_dict["token_type_ids"][valid_size:]]
     test_np = np.stack(test_np, axis=-1)
     test_labels_np = npy_dict["labels"][valid_size:]
-    test_pos_tag_np = npy_dict["pos_tag_ids"][valid_size:]
+    # test_pos_tag_np = npy_dict["pos_tag_ids"][valid_size:]
     test_morp_ids_np = npy_dict["morp_ids"][valid_size:]
-    test_ne_one_hot_np = npy_dict["ne_one_hot"][valid_size:]
-    test_josa_one_hot_np = npy_dict["josa_one_hot"][valid_size:]
+    # test_ne_one_hot_np = npy_dict["ne_one_hot"][valid_size:]
+    # test_josa_one_hot_np = npy_dict["josa_one_hot"][valid_size:]
+    test_jamo_one_hot_np = npy_dict["jamo_one_hot"][valid_size:]
+    test_char_boundary_np = npy_dict["char_boundary"][valid_size:]
     print(f"test_np.shape: {test_np.shape}")
     print(f"test_labels_np.shape: {test_labels_np.shape}")
-    print(f"test_pos_tag_ids_np.shape: {test_pos_tag_np.shape}")
+    # print(f"test_pos_tag_ids_np.shape: {test_pos_tag_np.shape}")
     print(f"test_morp_ids_np.shape: {test_morp_ids_np.shape}")
-    print(f"test_ne_one_hot_np.shape: {test_ne_one_hot_np.shape}")
-    print(f"test_josa_one_hot_np.shape: {test_josa_one_hot_np.shape}")
+    # print(f"test_ne_one_hot_np.shape: {test_ne_one_hot_np.shape}")
+    # print(f"test_josa_one_hot_np.shape: {test_josa_one_hot_np.shape}")
+    print(f"test_jamo_one_hot_np.shape: {dev_jamo_one_hot_np.shape}")
+    print(f"test_char_boundary_np.shape: {dev_char_boundary_np.shape}")
 
     root_path = "../corpus/npy/" + save_dir
     # save input_ids, attention_mask, token_type_ids
@@ -950,9 +973,11 @@ def save_mecab_morp_npy(npy_dict: Dict[str, List], src_list_len, save_dir: str =
     np.save(root_path + "/test_labels", test_labels_np)
 
     # save pos_tag_ids
+    '''
     np.save(root_path + "/train_pos_tag", train_pos_tag_np)
     np.save(root_path + "/dev_pos_tag", dev_pos_tag_np)
     np.save(root_path + "/test_pos_tag", test_pos_tag_np)
+    '''
 
     # save morp_ids
     np.save(root_path + "/train_morp_ids", train_morp_ids_np)
@@ -960,6 +985,7 @@ def save_mecab_morp_npy(npy_dict: Dict[str, List], src_list_len, save_dir: str =
     np.save(root_path + "/test_morp_ids", test_morp_ids_np)
 
     # save NE, Josa One-hot
+    '''
     np.save(root_path + "/train_ne_one_hot", train_ne_one_hot_np)
     np.save(root_path + "/dev_ne_one_hot", dev_ne_one_hot_np)
     np.save(root_path + "/test_ne_one_hot", test_ne_one_hot_np)
@@ -967,8 +993,20 @@ def save_mecab_morp_npy(npy_dict: Dict[str, List], src_list_len, save_dir: str =
     np.save(root_path + "/train_josa_one_hot", train_josa_one_hot_np)
     np.save(root_path + "/dev_josa_one_hot", dev_josa_one_hot_np)
     np.save(root_path + "/test_josa_one_hot", test_josa_one_hot_np)
+    '''
+
+    # Save 초/중/종성 OneHot, CharBoundary
+    np.save(root_path + "/train_jamo_one_hot", train_jamo_one_hot_np)
+    np.save(root_path + "/dev_jamo_one_hot", dev_jamo_one_hot_np)
+    np.save(root_path + "/test_jamo_one_hot", test_jamo_one_hot_np)
+
+    np.save(root_path + "/train_boundary", train_char_boundary_np)
+    np.save(root_path + "/dev_boundary", dev_char_boundary_np)
+    np.save(root_path + "/test_boundary", test_char_boundary_np)
 
     print(f"Complete - Save all npy files !")
+
+
 #================================================================
 @dataclass
 class Morp_pair:
@@ -1237,7 +1275,8 @@ def make_mecab_morp_npy(
         tokenizer_name: str, src_list: List[Sentence],
         token_max_len: int = 128, debug_mode: bool = False,
         save_model_dir: str = None,
-        ne_one_hot_size: int = 5, josa_one_hot_size: int = 9
+        ne_one_hot_size: int = 5, josa_one_hot_size: int = 9,
+        char_dict: Dict[str, int] = None,
 ):
 #==========================================================================================
     npy_dict = {
@@ -1245,11 +1284,14 @@ def make_mecab_morp_npy(
         "labels": [],
         "attention_mask": [],
         "token_type_ids": [],
-        "pos_tag_ids": [],
+        # "pos_tag_ids": [],
         "morp_ids": [],
-        "ne_one_hot": [],
-        "josa_one_hot": []
+        # "ne_one_hot": [],
+        # "josa_one_hot": [],
+        "jamo_one_hot": [],
+        "char_boundary": [],
     }
+
     # Init
     pos_tag2ids = {v: int(k) for k, v in MECAB_POS_TAG.items()}
     pos_ids2tag = {k: v for k, v in MECAB_POS_TAG.items()}
@@ -1296,17 +1338,17 @@ def make_mecab_morp_npy(
             mecab_token_pair.append((tokens, mecab_item[0], mecab_item[1].split("+")))
 
         # Make NE Labels
-        token_pair_len = len(mecab_token_pair)
+        token_pair_len = len(text_tokens)
         labels_ids = [ETRI_TAG["O"]] * token_pair_len
         b_check_use = [False for _ in range(token_pair_len)]
         for ne_idx, ne_item in enumerate(src_item.ne_list):
             ne_char_list = list(ne_item.text.replace(" ", ""))
             concat_item_list = []
-            for m_idx, mecab_item in enumerate(mecab_token_pair):
+            for m_idx, mecab_item in enumerate(text_tokens):
                 if b_check_use[m_idx]:
                     continue
-                for sub_idx in range(m_idx + 1, len(mecab_token_pair)):
-                    concat_word = ["".join(x[1]).replace("##", "") for x in mecab_token_pair[m_idx:sub_idx]]
+                for sub_idx in range(m_idx + 1, len(text_tokens)):
+                    concat_word = ["".join(x).replace("##", "") for x in text_tokens[m_idx:sub_idx]]
                     concat_item_list.append(("".join(concat_word), (m_idx, sub_idx)))
             concat_item_list = [x for x in concat_item_list if "".join(ne_char_list) in x[0]]
             concat_item_list.sort(key=lambda x: len(x[0]))
@@ -1323,12 +1365,13 @@ def make_mecab_morp_npy(
         # end, Make NE Labels
 
         # Make POS
-        ne_pos_list = ["NNG", "NNP", "SN", "NNB", "NR"]
-        ne_pos_label2id = {label: i for i, label in enumerate(ne_pos_list)}
+        # ne_pos_list = ["NNG", "NNP", "SN", "NNB", "NR"]
+        # ne_pos_label2id = {label: i for i, label in enumerate(ne_pos_list)}
+        #
+        # josa_list = ["JKS", "JKC", "JKG", "JKO", "JKB", "JKV", "JKQ", "JX", "JC"]
+        # josa_label2id = {label: i for i, label in enumerate(josa_list)}
 
-        josa_list = ["JKS", "JKC", "JKG", "JKO", "JKB", "JKV", "JKQ", "JX", "JC"]
-        josa_label2id = {label: i for i, label in enumerate(josa_list)}
-
+        '''
         pos_ids = []
         ne_one_hot_list = [] # 5
         josa_one_hot_list = [] # 9
@@ -1357,6 +1400,7 @@ def make_mecab_morp_npy(
                 conv_pos = conv_pos[:10]
             for _ in range(len(mt_pair[0])):
                 pos_ids.append(conv_pos)
+        '''
 
         # Make morp_ids (Check Morp Boundary)
         morp_ids: List[int] = []
@@ -1382,7 +1426,28 @@ def make_mecab_morp_npy(
         attention_mask = ([1] * valid_token_len) + ([0] * (token_max_len - valid_token_len))
         token_type_ids = [0] * token_max_len
 
+        # Make 초/중/종성 One-Hot
+        char_one_hot = make_jamo_one_hot(vocab_dict=char_dict,
+                                         vocab_size=len(char_dict),
+                                         sent=src_item.text.replace(" ", "_"),
+                                         seq_len=token_max_len)
+        char_boundary = []
+        for mtp in mecab_token_pair:
+            for inner_item in mtp[0]:
+                char_boundary.append(len(inner_item.replace("##", "")))
+                # print(mtp[0], inner_item, len(inner_item.replace("##", "")))
+
+        char_boundary.insert(0, 1) # [CLS]
+        if token_max_len <= len(char_boundary):
+            char_boundary = char_boundary[:token_max_len - 1]
+            char_boundary.append(1)  # [SEP]
+        else:
+            char_boundary_size = len(char_boundary)
+            for _ in range(token_max_len - char_boundary_size):
+                char_boundary.append(0)
+
         # POS
+        '''
         pos_ids.insert(0, [pos_tag2ids["O"]] * 10)  # [CLS]
         if token_max_len <= len(pos_ids):
             pos_ids = pos_ids[:token_max_len - 1]
@@ -1391,8 +1456,10 @@ def make_mecab_morp_npy(
             pos_ids_size = len(pos_ids)
             for _ in range(token_max_len - pos_ids_size):
                 pos_ids.append([pos_tag2ids["O"]] * 10)
+        '''
 
         # NE, Josa One-Hot
+        '''
         ne_one_hot_list.insert(0, [0 for _ in range(ne_one_hot_size)])
         josa_one_hot_list.insert(0, [0 for _ in range(josa_one_hot_size)])
         if token_max_len <= len(ne_one_hot_list):
@@ -1406,6 +1473,7 @@ def make_mecab_morp_npy(
             for _ in range(token_max_len - curr_size):
                 ne_one_hot_list.append([0 for _ in range(ne_one_hot_size)])
                 josa_one_hot_list.append([0 for _ in range(josa_one_hot_size)])
+        '''
 
         # NE Label
         labels_ids.insert(0, ETRI_TAG["O"])
@@ -1432,26 +1500,30 @@ def make_mecab_morp_npy(
         assert len(attention_mask) == token_max_len, f"{len(attention_mask)} + {attention_mask}"
         assert len(token_type_ids) == token_max_len, f"{len(token_type_ids)} + {token_type_ids}"
         assert len(labels_ids) == token_max_len, f"{len(labels_ids)} + {labels_ids}"
-        assert len(pos_ids) == token_max_len, f"{len(pos_ids)} + {pos_ids}"
+        # assert len(pos_ids) == token_max_len, f"{len(pos_ids)} + {pos_ids}"
         assert len(morp_ids) == token_max_len, f"{len(morp_ids)} + {morp_ids}"
-        assert len(ne_one_hot_list) == token_max_len, f"{len(ne_one_hot_list)} + {ne_one_hot_list}"
-        assert len(josa_one_hot_list) == token_max_len, f"{len(josa_one_hot_list)} + {josa_one_hot_list}"
+        # assert len(ne_one_hot_list) == token_max_len, f"{len(ne_one_hot_list)} + {ne_one_hot_list}"
+        # assert len(josa_one_hot_list) == token_max_len, f"{len(josa_one_hot_list)} + {josa_one_hot_list}"
+        assert len(char_one_hot) == token_max_len, f"{len(char_one_hot)} + {char_one_hot}"
+        assert len(char_boundary) == token_max_len, f"{len(char_boundary)} + {char_boundary}"
 
         # Insert npy_dict
         npy_dict["input_ids"].append(input_ids)
         npy_dict["attention_mask"].append(attention_mask)
         npy_dict["token_type_ids"].append(token_type_ids)
         npy_dict["labels"].append(labels_ids)
-        npy_dict["pos_tag_ids"].append(pos_ids)
+        # npy_dict["pos_tag_ids"].append(pos_ids)
         npy_dict["morp_ids"].append(morp_ids)
-        npy_dict["ne_one_hot"].append(ne_one_hot_list)
-        npy_dict["josa_one_hot"].append(josa_one_hot_list)
+        # npy_dict["ne_one_hot"].append(ne_one_hot_list)
+        # npy_dict["josa_one_hot"].append(josa_one_hot_list)
+        npy_dict["jamo_one_hot"].append(char_one_hot)
+        npy_dict["char_boundary"].append(char_boundary)
 
         # type check - pos_ids
-        type_check_pos_ids = np.array(pos_ids)
-        if "int32" != type_check_pos_ids.dtype:
-            print(type_check_pos_ids)
-            input()
+        # type_check_pos_ids = np.array(pos_ids)
+        # if "int32" != type_check_pos_ids.dtype:
+        #     print(type_check_pos_ids)
+        #     input()
 
         # Debug mode
         if debug_mode:
@@ -1459,22 +1531,148 @@ def make_mecab_morp_npy(
             print("Text tokens: \n", text_tokens)
             print("NE labels: \n", src_item.ne_list)
             print("Mecab tokens pair: \n", mecab_token_pair)
-            debug_pos_ids = [[pos_ids2tag[x] for x in pos_tag_item] for pos_tag_item in pos_ids]
+            # debug_pos_ids = [[pos_ids2tag[x] for x in pos_tag_item] for pos_tag_item in pos_ids]
 
             # Token 별 확인
-            for t_tok, pos in zip(text_tokens, debug_pos_ids):
+            for t_tok, lab in zip(text_tokens, labels_ids):
                 if "[PAD]" == t_tok:
                     break
-                print(t_tok, pos)
+                print(t_tok, ne_ids2tag[lab])
             input()
 
             # 형태소 별 확인
-            for m_t_p, l_i, ne_o_h, josa_o_h, mp_i in zip(mecab_token_pair, labels_ids[1:],
-                                                          ne_one_hot_list[1:], josa_one_hot_list[1:], morp_ids[1:]):
-                print(m_t_p[0], m_t_p[-1], ne_ids2tag[l_i], ne_o_h, josa_o_h, mp_i)
+            for m_t_p, mp_i in zip(mecab_token_pair, morp_ids[1:]):
+                print(m_t_p[0], m_t_p[1], mp_i)
             input()
 
+        # For Test
+        # if proc_idx == 100:
+        #     break
+
     save_mecab_morp_npy(npy_dict, src_list_len=len(src_list), save_dir=save_model_dir)
+
+#======================================================
+def kor_letter_from(letter):
+#======================================================
+    lastLetterInt = 15572643
+
+    if not letter:
+        return '가'
+
+    a = letter
+    b = a.encode('utf8')
+    c = int(b.hex(), 16)
+
+    if c == lastLetterInt:
+        return False
+
+    d = hex(c + 1)
+    e = bytearray.fromhex(d[2:])
+
+    flag = True
+    while flag:
+        try:
+            r = e.decode('utf-8')
+            flag = False
+        except UnicodeDecodeError:
+            c = c + 1
+            d = hex(c)
+            e = bytearray.fromhex(d[2:])
+
+    return e.decode()
+
+#======================================================
+def split_hangul_components(all_hangul: List[str]):
+#======================================================
+    comp_list = []
+
+    # 한글
+    for char in all_hangul:
+        ch_split = list(j2hcj(h2j(char)))
+        comp_list.extend(ch_split)
+    comp_list = list(set(comp_list))
+
+    # 숫자
+    for num in range(0, 10):
+        comp_list.append(str(num))
+
+    # 영어
+    comp_list.extend(ascii_lowercase)
+
+    # TODO: 특수 문자
+
+    comp_list = sorted(comp_list)
+    comp_list.insert(0, "<p>") # PAD
+    comp_list.insert(1, "<u>") # UNK
+    comp_list.insert(2, "<e>") # end of char
+    comp_list.insert(3, "_") # space
+
+    return comp_list
+
+#==========================================================================================
+def make_char_dictionary(all_sent: List[Sentence], save_path:str):
+#==========================================================================================
+    # 말뭉치 내에서 기호 얻기
+    char_set = []
+    for sent in all_sent:
+        for ch in list(sent.text.replace(" ", "_")):
+            unicode_name = unicodedata.name(ch)
+            if re.search(r"[가-힣a-zA-Z0-9]+", ch) or unicode_name.startswith("CJK") \
+                    or unicode_name.startswith("KATAKANA") or unicode_name.startswith("HANGUL") or \
+                    unicode_name.startswith("SOFT") or unicode_name.startswith("HIRAGANA"):
+                continue
+            else:
+                char_set.append(str(ch))
+
+    # 초/중/종성
+    all_hangul = []
+    add_ch = ''
+    while True:
+        add_ch = kor_letter_from(add_ch)
+        if add_ch is False:
+            break
+        all_hangul.append(add_ch)
+    hangul_comp_list = split_hangul_components(all_hangul)
+    char_set.extend(hangul_comp_list)
+    char_set = sorted(list(set(char_set)))
+
+    char_dict = {c: i for i, c in enumerate(char_set)}
+    # print(char_dict)
+    # print(len(char_dict))
+
+    # Save
+    with open(save_path, mode="wb") as dict_pkl:
+        pickle.dump(char_dict, dict_pkl)
+
+    return char_dict
+
+#======================================================
+def make_jamo_one_hot(vocab_dict: Dict[str, int],
+                      vocab_size: int, sent: str = "",
+                      seq_len: int = 128):
+#======================================================
+    split_by_char = list(sent)
+
+    # 3: 초/중/종성
+    # chars_one_hot = np.zeros((seq_len * 3, vocab_size))
+    chars_one_hot = np.zeros((seq_len, 3))
+    add_idx = 0
+    for ch_idx, char in enumerate(split_by_char):
+        if 128 <= ch_idx:
+            break
+        jamo = j2hcj(h2j(char))
+        zeros_np = np.zeros((3, ))
+        for jm_idx, jm in enumerate(jamo):
+            if jm not in vocab_dict.keys():
+                # zeros_np[jm_idx, vocab_dict["<u>"]] = 1
+                zeros_np[jm_idx] = vocab_dict["<u>"]
+            else:
+                # zeros_np[jm_idx, vocab_dict[jm]] = 1
+                zeros_np[jm_idx] = vocab_dict[jm]
+        chars_one_hot[add_idx] = zeros_np
+        add_idx += 1
+
+    return chars_one_hot
 
 ### MAIN ###
 if "__main__" == __name__:
@@ -1485,15 +1683,29 @@ if "__main__" == __name__:
     all_sent_list = []
     all_sent_list = load_ne_entity_list(src_path=pkl_src_path)
 
-    # compare_mecab_and_gold_corpus(src_corpus_list=all_sent_list)
-    # check_nikl_and_mecab_difference(dic_pkl_path="./mecab_cmp/mecab_compare_dict.pkl")
-    # check_count_morp(src_sent_list=all_sent_list)
-    # exit()
-    # mecab_pos_unk_count(all_sent_list)
-    # exit()
+    # Make Char Dictionary
+    b_make_char_dict = False
+    char_lvl_dict = None
+    char_dict_path = "../corpus/char_dict.pkl"
+    if b_make_char_dict:
+        char_lvl_dict = make_char_dictionary(all_sent_list, save_path=char_dict_path)
+    else:
+        with open(char_dict_path, mode="rb") as char_dict_pkl:
+            char_lvl_dict = pickle.load(char_dict_pkl)
+    print(f"vocab_size: {len(char_lvl_dict)}")
+
+    '''
+    # Mecab하고 모두의 말뭉치 비교
+    compare_mecab_and_gold_corpus(src_corpus_list=all_sent_list)
+    check_nikl_and_mecab_difference(dic_pkl_path="./mecab_cmp/mecab_compare_dict.pkl")
+    check_count_morp(src_sent_list=all_sent_list)
+    exit()
+    mecab_pos_unk_count(all_sent_list)
+    exit()
+    '''
 
     # make *.npy (use Mecab)
-    make_npy_mode = "wordpiece"
+    make_npy_mode = "morp"
     if "eojeol" == make_npy_mode:
         make_mecab_eojeol_npy(
             tokenizer_name="monologg/koelectra-base-v3-discriminator",
@@ -1511,5 +1723,6 @@ if "__main__" == __name__:
         make_mecab_morp_npy(
             tokenizer_name="monologg/koelectra-base-v3-discriminator",
             src_list=all_sent_list, token_max_len=128,
-            debug_mode=True, save_model_dir="mecab_morp_electra"
+            debug_mode=False, save_model_dir="mecab_morp_electra",
+            char_dict=char_lvl_dict
         )
