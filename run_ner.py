@@ -1,6 +1,7 @@
 import json
 import os
 import numpy as np
+import pickle
 
 import glob
 import re
@@ -71,8 +72,9 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
                 # "morp_ids": batch["morp_ids"].to(args.device),
                 # "ne_pos_one_hot": batch["ne_pos_one_hot"].to(args.device),
                 # "josa_pos_one_hot": batch["josa_pos_one_hot"].to(args.device)
-                "jamo_ids": batch["jamo_ids"].to(args.device),
-                "jamo_boundary": batch["jamo_boundary"].to(args.device)
+                # "jamo_ids": batch["jamo_ids"].to(args.device),
+                # "jamo_boundary": batch["jamo_boundary"].to(args.device)
+                "sents": batch["sents"].to(args.device)
             }
 
             if g_use_crf:
@@ -179,6 +181,11 @@ def train(args, model, train_dataset, dev_dataset):
 
     # eps : 줄이기 전/후의 lr차이가 eps보다 작으면 무시한다.
     optimizer = torch.optim.AdamW(optimizer_grouped_parameters, lr=args.learning_rate, eps=args.adam_epsilon)
+
+    for n, p in model.named_parameters(): # @TODO: Check False
+        if "charELMo" in n:
+            p.requires_grad = False
+
     # @NOTE: optimizer에 설정된 learning_rate까지 선형으로 감소시킨다. (스케줄러)
     scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=int(t_total * args.warmup_proportion),
                                                 num_training_steps=t_total)
@@ -207,8 +214,7 @@ def train(args, model, train_dataset, dev_dataset):
 
     model.zero_grad()
     for epoch in range(args.num_train_epochs):
-        train_dataloader = DataLoader(train_dataset, sampler=train_sampler, batch_size=args.train_batch_size,
-                                      pin_memory=True)
+        train_dataloader = DataLoader(train_dataset, sampler=train_sampler, batch_size=args.train_batch_size)
         pbar = tqdm(train_dataloader)
         for step, batch in enumerate(pbar):
             model.train()
@@ -221,8 +227,9 @@ def train(args, model, train_dataset, dev_dataset):
                 # "morp_ids": batch["morp_ids"].to(args.device),
                 # "ne_pos_one_hot": batch["ne_pos_one_hot"].to(args.device),
                 # "josa_pos_one_hot": batch["josa_pos_one_hot"].to(args.device)
-                "jamo_ids": batch["jamo_ids"].to(args.device),
-                "jamo_boundary": batch["jamo_boundary"].to(args.device)
+                # "jamo_ids": batch["jamo_ids"].to(args.device),
+                # "jamo_boundary": batch["jamo_boundary"].to(args.device)
+                "sents": batch["sents"].to(args.device)
             }
 
             if g_use_crf:
@@ -365,16 +372,16 @@ def main():
     model.to(args.device)
 
     # load train/dev/test npy
-    train_npy, train_labels, train_jamo_ids, train_boundary = \
+    train_npy, train_labels, train_sents = \
         load_corpus_npy_datasets(args.train_npy, mode="train")
-    dev_npy, dev_labels, dev_jamo_ids, dev_boundary = \
+    dev_npy, dev_labels, dev_sents = \
         load_corpus_npy_datasets(args.dev_npy, mode="dev")
-    test_npy, test_labels, test_jamo_ids, test_boundary = \
+    test_npy, test_labels, test_sents = \
         load_corpus_npy_datasets(args.test_npy, mode="test")
 
-    print(f"train.shape - dataset: {train_npy.shape}, labels: {train_labels.shape}, ")
-    print(f"dev.shape - dataset: {dev_npy.shape}, labels: {dev_labels.shape}, ")
-    print(f"test.shape - dataset: {test_npy.shape}, labels: {test_labels.shape}, ")
+    print(f"train.shape - dataset: {train_npy.shape}, labels: {train_labels.shape}, sents: {len(train_sents)}")
+    print(f"dev.shape - dataset: {dev_npy.shape}, labels: {dev_labels.shape}, sents: {len(dev_sents)}")
+    print(f"test.shape - dataset: {test_npy.shape}, labels: {test_labels.shape}, sents: {len(test_sents)}")
 
     # make train/dev/test dataset
     if (5 == g_user_select) or (9 == g_user_select):
@@ -382,12 +389,13 @@ def main():
         dev_dataset = NER_Eojeol_Datasets(token_data=dev_npy, labels=dev_labels, eojeol_ids=None)
         test_dataset = NER_Eojeol_Datasets(token_data=test_npy, labels=test_labels, eojeol_ids=None)
     else:
-        train_dataset = NER_POS_Dataset(data=train_npy, labels=train_labels,
-                                        jamo_ids=train_jamo_ids, jamo_boundary=train_boundary)
-        dev_dataset = NER_POS_Dataset(data=dev_npy, labels=dev_labels,
-                                      jamo_ids=dev_jamo_ids, jamo_boundary=dev_boundary)
-        test_dataset = NER_POS_Dataset(data=test_npy, labels=test_labels,
-                                       jamo_ids=test_jamo_ids, jamo_boundary=test_boundary)
+        elmo_vocab = None
+        with open("C:/Users/MATAGI/Desktop/Git/NER_Private/model/charELMo/char_elmo_vocab.pkl", mode="rb") as vocab_pkl:
+            elmo_vocab = pickle.load(vocab_pkl)
+            print(f"[run_ner][__main__] Load Vocab : {len(elmo_vocab)}")
+        train_dataset = NER_POS_Dataset(data=train_npy, labels=train_labels, sentences=train_sents, char_dic=elmo_vocab)
+        dev_dataset = NER_POS_Dataset(data=dev_npy, labels=dev_labels, sentences=dev_sents, char_dic=elmo_vocab)
+        test_dataset = NER_POS_Dataset(data=test_npy, labels=test_labels, sentences=test_sents, char_dic=elmo_vocab)
 
     if args.do_train:
         global_step, tr_loss = train(args, model, train_dataset, dev_dataset)

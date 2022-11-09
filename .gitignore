@@ -13,17 +13,16 @@ old_version/datasets
 config.json
 test-*.txt
 
-
 # model
 *.pt
 *.bin
+*.pth
 
 # Mac
 .DS_Store
 
 # KorLex
 old_version/Utils/KorLex_api
-
 
 # new ner model
 /corpus

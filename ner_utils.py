@@ -73,13 +73,16 @@ def load_corpus_npy_datasets(src_path: str, mode: str="train"):
     # pos_tag_npy = np.load(root_path + "_pos_tag.npy")
     labels_npy = np.load(root_path + "_labels.npy")
     # morp_ids = np.load(root_path + "_morp_ids.npy")
-    jamo_ids = np.load(root_path + "_jamo_one_hot.npy")
-    jamo_boundary = np.load(root_path + "_boundary.npy")
+    # jamo_ids = np.load(root_path + "_jamo_one_hot.npy")
+    # jamo_boundary = np.load(root_path + "_boundary.npy")
     # ne_pos_one_hot = np.load(root_path + "_ne_one_hot.npy")
     # josa_pos_one_hot = np.load(root_path + "_josa_one_hot.npy")
+    sentences = []
+    with open(root_path + "_sents.pkl", mode="rb") as sents_pkl:
+        sentences = pickle.load(sents_pkl)
 
     # return dataset_npy, pos_tag_npy, labels_npy, morp_ids, ne_pos_one_hot, josa_pos_one_hot
-    return dataset_npy, labels_npy, jamo_ids, jamo_boundary
+    return dataset_npy, labels_npy, sentences
 
 #===============================================================
 def init_logger():
@@ -224,7 +227,7 @@ def load_ner_config_and_model(user_select: int, args, tag_dict):
         config.pos_id2label = {k: la for k, la in MECAB_POS_TAG.items()}
         config.pos_label2id = {la: k for k, la in MECAB_POS_TAG.items()}
         config.max_seq_len = 128
-        config.char_vocab_size = 226
+        config.elmo_vocab_size = 13198 # @TODO: 하드 코딩 수정
 
     # model
     if 1 == user_select:

@@ -1292,6 +1292,9 @@ def make_mecab_morp_npy(
         "char_boundary": [],
     }
 
+    # shuffle
+    random.shuffle(src_list)
+
     # Init
     pos_tag2ids = {v: int(k) for k, v in MECAB_POS_TAG.items()}
     pos_ids2tag = {k: v for k, v in MECAB_POS_TAG.items()}
@@ -1325,6 +1328,10 @@ def make_mecab_morp_npy(
 
         if 0 == (proc_idx % 1000):
             print(f"{proc_idx} Processing... {src_item.text}")
+
+        ''' For CharELMo '''
+        npy_dict["sentences"].append(src_item.text.replace(" ", "_"))
+        continue
 
         # Mecab
         mecab = Mecab()
@@ -1674,6 +1681,28 @@ def make_jamo_one_hot(vocab_dict: Dict[str, int],
 
     return chars_one_hot
 
+#======================================================
+def load_sentences_datasets(src_sents: List[Sentence]) -> Tuple[List[str], List[str], List[str]]:
+#======================================================
+    # Load
+    print(f"[load_sentences_datasets] Load data size: {len(src_sents)}")
+
+    total_sents = []
+    for sent in src_sents:
+        total_sents.append(sent.text.replace(" ", "_"))
+
+    # Shuffle
+    split_size = int(len(total_sents) * 0.1)
+    train_idx = split_size * 7
+    dev_idx = train_idx + split_size
+
+    train_sents = total_sents[:train_idx]
+    dev_sents = total_sents[train_idx:dev_idx]
+    test_sents = total_sents[dev_idx:]
+    print(f"[load_sentences_datasets] size - train: {len(train_sents)}, dev: {len(dev_sents)}, test: {len(test_sents)}")
+
+    return train_sents, dev_sents, test_sents
+
 ### MAIN ###
 if "__main__" == __name__:
     print("[mecab_npy_maker] __main__ !")
@@ -1701,6 +1730,36 @@ if "__main__" == __name__:
     check_count_morp(src_sent_list=all_sent_list)
     exit()
     mecab_pos_unk_count(all_sent_list)
+    exit()
+    '''
+
+    ''' For CharELMo '''
+
+    '''
+    train_sents, dev_sents, test_sents = load_sentences_datasets(src_sents=all_sent_list)
+    print(f"train.len: {len(train_sents)}, dev.len: {len(dev_sents)}, test.len: {len(test_sents)}")
+    tokenizer = ElectraTokenizer.from_pretrained("monologg/koelectra-base-v3-discriminator")
+    comp_train_np = np.load("../corpus/npy/mecab_morp_electra/train.npy")
+    comp_dev_np = np.load("../corpus/npy/mecab_morp_electra/dev.npy")
+    comp_test_np = np.load("../corpus/npy/mecab_morp_electra/test.npy")
+    assert len(train_sents) == comp_train_np.shape[0], "Check - Train Len !"
+    assert len(dev_sents) == comp_dev_np.shape[0], "Check - Dev Len !"
+    assert len(test_sents) == comp_test_np.shape[0], "Check - Test Len !"
+    print(train_sents[256])
+    print(tokenizer.convert_ids_to_tokens(comp_train_np[256, :, 0]), "\n")
+    print(dev_sents[311])
+    print(tokenizer.convert_ids_to_tokens(comp_dev_np[311, :, 0]), "\n")
+    print(test_sents[4166])
+    print(tokenizer.convert_ids_to_tokens(comp_test_np[4166, :, 0]), "\n")
+    with open("../corpus/npy/mecab_morp_electra/train_sents.pkl", mode="wb") as train_sents_pkl:
+        pickle.dump(train_sents, train_sents_pkl)
+        print("save_train")
+    with open("../corpus/npy/mecab_morp_electra/dev_sents.pkl", mode="wb") as dev_sents_pkl:
+        pickle.dump(dev_sents, dev_sents_pkl)
+        print("save_dev")
+    with open("../corpus/npy/mecab_morp_electra/test_sents.pkl", mode="wb") as test_sents_pkl:
+        pickle.dump(test_sents, test_sents_pkl)
+        print("save_test")
     exit()
     '''
 

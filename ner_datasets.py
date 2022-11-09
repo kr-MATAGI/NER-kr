@@ -1,6 +1,9 @@
 import numpy as np
 import torch
+import re
+
 from torch.utils.data import Dataset
+from typing import List, Dict
 
 ### ELECTRA, BERT
 #===============================================================
@@ -9,31 +12,58 @@ class NER_POS_Dataset(Dataset):
     def __init__(
             self,
             data: np.ndarray, labels: np.ndarray,
-            jamo_ids: np.ndarray, jamo_boundary: np.ndarray
+            sentences: List[str], char_dic: Dict[str, int], seq_len: int = 128
     ):
         self.input_ids = data[:][:, :, 0]
         self.attention_mask = data[:][:, :, 1]
         self.token_type_ids = data[:][:, :, 2]
         self.labels = labels
 
+        self.sentences = sentences
+        self.seq_len = seq_len
+        self.char_dic = char_dic
+        self.vocab_size = len(char_dic)
+
         # self.morp_ids = morp_ids
         # self.ne_pos_one_hot = ne_pos_one_hot
         # self.josa_pos_one_hot = josa_pos_one_hot
 
-        self.jamo_ids = jamo_ids
-        self.jamo_boundary = jamo_boundary
+        # self.jamo_ids = jamo_ids
+        # self.jamo_boundary = jamo_boundary
 
         self.input_ids = torch.tensor(self.input_ids, dtype=torch.long)
         self.attention_mask = torch.tensor(self.attention_mask, dtype=torch.long)
         self.token_type_ids = torch.tensor(self.token_type_ids, dtype=torch.long)
         self.labels = torch.tensor(self.labels, dtype=torch.long)
 
+        self.sentences = self._char_elmo_sents_getitem(self.sentences)
+
         # self.morp_ids = torch.tensor(self.morp_ids, dtype=torch.long)
         # self.ne_pos_one_hot = torch.tensor(self.ne_pos_one_hot, dtype=torch.long)
         # self.josa_pos_one_hot = torch.tensor(self.josa_pos_one_hot, dtype=torch.long)
 
-        self.jamo_ids = torch.tensor(self.jamo_ids, dtype=torch.long)
-        self.jamo_boundary = torch.tensor(self.jamo_boundary, dtype=torch.long)
+        # self.jamo_ids = torch.tensor(self.jamo_ids, dtype=torch.long)
+        # self.jamo_boundary = torch.tensor(self.jamo_boundary, dtype=torch.long)
+
+    def _char_elmo_sents_getitem(self, src_sents):
+        X = []
+        for sent in src_sents:
+            temp_X = []
+            for char in sent:
+                if re.search(r"[A-Z]+", char):
+                    char = char.lower()
+                if char in self.char_dic.keys():
+                    temp_X.append(self.char_dic[char])
+                else:
+                    temp_X.append(self.char_dic["[UNK]"])
+
+            if len(temp_X) >= self.seq_len:
+                temp_X = temp_X[:self.seq_len]
+            else:
+                temp_X += [0] * (self.seq_len - len(temp_X))
+            X.append(temp_X)
+        X = torch.LongTensor(X)
+        return X
 
     def __len__(self):
         return len(self.input_ids)
@@ -50,8 +80,10 @@ class NER_POS_Dataset(Dataset):
             # "ne_pos_one_hot": self.ne_pos_one_hot[idx],
             # "josa_pos_one_hot": self.josa_pos_one_hot[idx]
 
-            "jamo_ids": self.jamo_ids[idx],
-            "jamo_boundary": self.jamo_boundary[idx]
+            # "jamo_ids": self.jamo_ids[idx],
+            # "jamo_boundary": self.jamo_boundary[idx]
+            
+            "sents": self.sentences[idx]
         }
 
         return items

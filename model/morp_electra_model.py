@@ -8,6 +8,10 @@ from transformers.modeling_outputs import TokenClassifierOutput
 from model.crf_layer import CRF
 from model.char_cnn import CharCNN
 
+''' CharELMo '''
+import pickle
+from model.charELMo import CharELMo
+
 #==============================================================
 class AttentionConfig:
 #==============================================================
@@ -19,7 +23,6 @@ class AttentionConfig:
         self.num_heads = num_heads
         self.hidden_size = hidden_size
         self.dropout_prob = dropout_prob
-
 
 #==============================================================
 class Attention(nn.Module):
@@ -89,7 +92,7 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
         # self.morp_embed_out_dim = 128
 
         # Char-level
-        self.char_vocab_size = config.char_vocab_size
+        self.elmo_vocab_size = config.elmo_vocab_size
 
         '''
             @ Note
@@ -105,10 +108,16 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
         self.electra = ElectraModel.from_pretrained("monologg/koelectra-base-v3-discriminator", config=config)
         self.dropout = nn.Dropout(self.dropout_rate)
 
+        # CharELMo
+        self.charELMo = CharELMo(vocab_size=self.elmo_vocab_size, mode="repr")
+        self.charELMo.load_state_dict(torch.load("C:/Users/MATAGI/Desktop/Git/NER_Private/model/charELMo/16_model.pth"))
+
         # Char-level Embedding
+        '''
         self.max_cnn_input = 30 # CNN에 입력으로 최대 몇 글자가 들어갈지 (글자 * 3(초/중/종성))
         self.char_cnn = CharCNN(vocab_size=self.char_vocab_size,
                                 seq_len=self.max_seq_len)
+        '''
 
         # POS tag embedding
         # self.ne_pos_embedding = nn.Embedding(self.num_ne_pos, self.pos_embed_out_dim // 2)
@@ -120,7 +129,7 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
         # LSTM Encoder
         # self.lstm_dim_size = config.hidden_size + ((self.pos_embed_out_dim // 2) * self.num_ne_pos) + \
         #                      (self.pos_embed_out_dim * self.num_josa_pos)
-        self.lstm_dim = config.hidden_size * 2
+        self.lstm_dim = config.hidden_size * 3
         self.encoder = nn.LSTM(input_size=self.lstm_dim, hidden_size=(config.hidden_size // 2),
                                num_layers=1, batch_first=True, bidirectional=True)
 
@@ -142,7 +151,7 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
                 input_ids, token_type_ids, attention_mask,
                 labels=None, pos_tag_ids=None,
                 morp_ids=None, ne_pos_one_hot=None, josa_pos_one_hot=None,
-                jamo_ids=None, jamo_boundary=None
+                jamo_ids=None, jamo_boundary=None, sents=None
                 ):
     #===================================
         '''
@@ -169,18 +178,19 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
         # morp_embed = morp_boundary_embed @ electra_outputs
 
         ''' Make Char-Level Embedding '''
+        '''
         device = electra_outputs.device
         tensor_size = electra_outputs.size() # [batch, seq_len, hidden]
         '''
-            jamo_ids.shape: [batch_size, seq_len, 3]
-            jamo_boundary: [batch_size, seq_len]
+            #jamo_ids.shape: [batch_size, seq_len, 3]
+            #jamo_boundary: [batch_size, seq_len]
         '''
         # [batch_size, vocab_size, seq_len * 3]
         char_lvl_tensor = self._make_jamo_tensor(char_ids=jamo_ids, char_boundary=jamo_boundary,
                                                  device=device, tensor_size=tensor_size)
         new_char_lvl_tensor = None
         for batch_idx in range(tensor_size[0]):
-            boundary = jamo_boundary[batch_idx].detach().cpu()
+            boundary = jamo_boundary[batch_idx]
             batch_char_tensor = char_lvl_tensor[batch_idx]
             start_bdry = 0
             new_seq_tensor = None
@@ -188,12 +198,12 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
                 extract_tensor = batch_char_tensor[:, start_bdry:start_bdry+bdry.item()]
                 if self.max_cnn_input > extract_tensor.shape[1]:
                     diff_size = self.max_cnn_input - extract_tensor.shape[1]
-                    empty_pad_tensor = torch.zeros(self.char_vocab_size, diff_size)
+                    empty_pad_tensor = torch.zeros(self.char_vocab_size, diff_size, device=torch.device(device))
                     extract_tensor = torch.hstack([extract_tensor, empty_pad_tensor])
-                extract_tensor = extract_tensor.unsqueeze(0).to(device) # [1, vocab_size, 형태소 최대 길이]
+                extract_tensor = extract_tensor.unsqueeze(0) # [1, vocab_size, 형태소 최대 길이]
                 start_bdry += bdry.item()
                 cnn_out = self.char_cnn(extract_tensor)  # [batch, last_linear_embed]
-                cnn_out = cnn_out.detach().cpu()
+                cnn_out = cnn_out
                 if new_seq_tensor is None:
                     new_seq_tensor = cnn_out
                 else:
@@ -202,10 +212,22 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
                 new_char_lvl_tensor = new_seq_tensor.unsqueeze(0)
             else:
                 new_char_lvl_tensor = torch.vstack([new_char_lvl_tensor, new_seq_tensor.unsqueeze(0)])
-        new_char_lvl_tensor = new_char_lvl_tensor.to(device)
+        new_char_lvl_tensor = new_char_lvl_tensor
+        '''
+
+        # CharELMo
+        '''
+            elmo_x : [batch_size, seq_len, elmo_embed_dim]
+            elmo_layer_1_out : [batch_size, seq_len, elmo_lstm_hidden * 2]
+            elmo_layer_2_out : [batch_size, seq_len, elmo_lstm_hidden * 2]
+            elmo_repr : [batch_size, seq_len, elmo_lstm_hidden * 2]
+        '''
+        elmo_x, elmo_layer_1_out, elmo_layer_2_out = self.charELMo(sents)
+        ''' elmo_x 써야 되는가 차원 안맞긴 한데 안써도 된다고 본거 같긴함 (optional)'''
+        elmo_repr = elmo_layer_1_out + elmo_layer_2_out
 
         # Concat
-        concat_embed = torch.concat([electra_outputs, new_char_lvl_tensor], dim=-1)
+        concat_embed = torch.concat([electra_outputs, elmo_repr], dim=-1)
 
         # LSTM
         '''
@@ -309,15 +331,16 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
                 stacked_tensors: [batch, seq_len, vocab_size's one_hot]
         '''
 
-        stacked_tensors = torch.zeros(tensor_size[0], tensor_size[1] * 3, self.char_vocab_size)
+        stacked_tensors = torch.zeros(tensor_size[0], tensor_size[1] * 3, self.char_vocab_size,
+                                      device=torch.device(device))
         for batch_idx in range(tensor_size[0]):
-            batch_char_ids = char_ids[batch_idx].detach().cpu()
+            batch_char_ids = char_ids[batch_idx]
 
             seq_tensor = None
             for seq_ch in batch_char_ids:
-                first_one_hot = torch.zeros(self.char_vocab_size)
-                second_one_hot = torch.zeros(self.char_vocab_size)
-                third_one_hot = torch.zeros(self.char_vocab_size)
+                first_one_hot = torch.zeros(self.char_vocab_size, device=torch.device(device))
+                second_one_hot = torch.zeros(self.char_vocab_size, device=torch.device(device))
+                third_one_hot = torch.zeros(self.char_vocab_size, device=torch.device(device))
 
                 first_one_hot[seq_ch[0]] = 1 # [1, vocab_size]
                 second_one_hot[seq_ch[1]] = 1
