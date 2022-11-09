@@ -48,6 +48,7 @@ class NER_POS_Dataset(Dataset):
     def _char_elmo_sents_getitem(self, src_sents):
         X = []
         for sent in src_sents:
+            print("\nSent: ", sent)
             temp_X = []
             for char in sent:
                 if re.search(r"[A-Z]+", char):
@@ -56,7 +57,7 @@ class NER_POS_Dataset(Dataset):
                     temp_X.append(self.char_dic[char])
                 else:
                     temp_X.append(self.char_dic["[UNK]"])
-
+            print("TEMP_X: ", temp_X, "\n========================\n")
             if len(temp_X) >= self.seq_len:
                 temp_X = temp_X[:self.seq_len]
             else:
