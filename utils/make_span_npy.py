@@ -75,9 +75,12 @@ def make_span_idx_label_pair(ne_list, text_tokens):
                 concat_item_list.append(("".join(concat_word), (tok_idx, sub_idx - 1))) # Modify -1
         concat_item_list = [x for x in concat_item_list if "".join(ne_char_list) in x[0]]
         concat_item_list.sort(key=lambda x: len(x[0]))
+        # print(ne_item.text, ne_item.type, concat_item_list)
         if 0 >= len(concat_item_list):
             continue
         target_idx_pair = concat_item_list[0][1]
+        for bio_idx in range(target_idx_pair[0], target_idx_pair[1] + 1):
+            b_check_use[bio_idx] = True
         key = str(target_idx_pair[0]) + ";" + str(target_idx_pair[1])
         ret_dict[key] = ne_item.type
 
@@ -177,7 +180,7 @@ def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
 
         # Span NER
         context_split = [x[0] for x in mecab_res]
-        all_span_idx_list = enumerate_spans(context_split, offset=0, max_span_width=span_max_len)
+        all_span_idx_list = enumerate_spans(text_tokens, offset=0, max_span_width=span_max_len)
         all_span_len_list = []
         for idx_pair in all_span_idx_list:
             s_idx, e_idx = idx_pair
@@ -227,6 +230,16 @@ def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
             diff_len = max_num_span - len(all_span_idx_list)
             all_span_idx_list += [(0, 0)] * diff_len
 
+        assert len(input_ids) == seq_max_len, f"{len(input_ids)}"
+        assert len(attention_mask) == seq_max_len, f"{len(attention_mask)}"
+        assert len(token_type_ids) == seq_max_len, f"{len(token_type_ids)}"
+        assert len(label_ids) == seq_max_len, f"{len(label_ids)}"
+
+        assert len(span_only_label_token) == max_num_span, f"{len(span_only_label_token)}"
+        assert len(all_span_idx_list) == max_num_span, f"{len(all_span_idx_list)}"
+        assert len(all_span_len_list) == max_num_span, f"{len(all_span_len_list)}"
+        assert len(real_span_mask_token) == max_num_span, f"{len(real_span_mask_token)}"
+
         npy_dict["input_ids"].append(input_ids)
         npy_dict["attention_mask"].append(attention_mask)
         npy_dict["token_type_ids"].append(token_type_ids)
@@ -238,14 +251,19 @@ def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
         npy_dict["all_span_idx_list"].append(all_span_idx_list)
 
         if debug_mode:
-            for t, l in zip(text_tokens, label_ids):
-                print(t, ne_detail_ids2_tok[l])
+            print(span_idx_label_dict)
+            print(span_idx_new_label_dict)
+            for i, (t, l) in enumerate(zip(text_tokens, label_ids)):
+                if "[PAD]" == t:
+                    break
+                print(t, ne_detail_ids2_tok[l], i)
             input()
-        # if 0 == (proc_idx % 100):
+
+        # if 0 == ((proc_idx+1) % 1000):
         #     # For save Test
         #     break
 
-    # save_span_npy(npy_dict, len(src_list), save_npy_path)
+    save_span_npy(npy_dict, len(src_list), save_npy_path)
 
 #=======================================================================================
 def save_span_npy(npy_dict, src_list_len, save_path):
@@ -287,6 +305,7 @@ def save_span_npy(npy_dict, src_list_len, save_path):
     train_all_span_idx_list_np = npy_dict["all_span_idx_list"][:train_size]
     print(f"train_np.shape: {train_np.shape}")
     print(f"train_label_ids.shape: {train_label_ids_np.shape}")
+
     print(f"train_span_only_label_token_np.shape: {train_span_only_label_token_np.shape}")
     print(f"train_all_span_len_list_np.len: {train_all_span_len_list_np.shape}")
     print(f"train_real_span_mask_token_np.len: {train_real_span_mask_token_np.shape}")

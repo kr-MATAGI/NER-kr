@@ -336,6 +336,9 @@ def load_model_checkpoints(user_select, checkpoint):
     elif 11 == user_select:
         # ELECTRA+LSTM(MECAB)+[CRF]
         model = ELECTRA_MECAB_MORP.from_pretrained(checkpoint)
+    elif 12 == user_select:
+        # Span NER (ELECTRA)
+        model = ElectraSpanNER.from_pretrained(checkpoint)
 
     return model
 
