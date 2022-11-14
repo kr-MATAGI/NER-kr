@@ -151,7 +151,10 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
         for j in range(out_label_ids.shape[1]):
             if out_label_ids[i, j] != ignore_index:
                 out_label_list[i].append(label_map[out_label_ids[i][j]])
-                preds_list[i].append(label_map[preds[i][j]])
+                if 12 == g_user_select:
+                    preds_list[i].append(preds[i][j])
+                else:
+                    preds_list[i].append(label_map[preds[i][j]])
     result = f1_pre_rec(out_label_list, preds_list, is_ner=True)
     results.update(result)
 
