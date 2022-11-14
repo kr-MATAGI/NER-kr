@@ -110,7 +110,7 @@ class ElectraSpanNER(ElectraPreTrainedModel):
         predict_prob = self.softmax(all_span_rep)
 
         # For Test
-        # preds = self.get_predict(predicts=predict_prob, all_span_idxs=all_span_idxs_ltoken, label_ids=label_ids)
+        preds = self.get_predict(predicts=predict_prob, all_span_idxs=all_span_idxs_ltoken, label_ids=label_ids)
         if "eval" == mode:
             loss = self.compute_loss(all_span_rep, span_only_label, real_span_mask_ltoken)
             preds = self.get_predict(predicts=predict_prob, all_span_idxs=all_span_idxs_ltoken)
@@ -147,7 +147,7 @@ class ElectraSpanNER(ElectraPreTrainedModel):
         return loss
 
     #==============================================
-    def get_predict(self, predicts, all_span_idxs):
+    def get_predict(self, predicts, all_span_idxs, label_ids=None):
     #==============================================
         '''
             Decode 함수
@@ -188,6 +188,8 @@ class ElectraSpanNER(ElectraPreTrainedModel):
 
             decoded_pred = [self.ids2label[0] for _ in range(self.max_seq_len)]
             for span, label in batch_pred_span:
+                if 0 == label:
+                    continue
                 s_idx = span[0]
                 e_idx = span[1] + 1
                 for dec_idx in range(s_idx, e_idx):
