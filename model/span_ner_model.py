@@ -19,6 +19,7 @@ class ElectraSpanNER(ElectraPreTrainedModel):
         self.hidden_size = config.hidden_size
         self.n_class = config.num_labels
         self.ids2label = config.id2label
+        self.label2ids = config.label2id
 
         self.span_combi_mode = "x,y"
         self.token_len_emb_dim = 50
@@ -176,11 +177,11 @@ class ElectraSpanNER(ElectraPreTrainedModel):
                 e_idx = span[1] + 1
                 for dec_idx in range(s_idx, e_idx):
                     if 0 == label:
-                        decoded_pred[dec_idx] = self.ids2label["O"]
+                        decoded_pred[dec_idx] = self.label2ids["O"]
                     elif dec_idx == s_idx:
-                        decoded_pred[dec_idx] = "B-" + self.ids2label[label]
+                        decoded_pred[dec_idx] = "B-" + self.label2ids[label]
                     else:
-                        decoded_pred[dec_idx] = "I-" + self.ids2label[label]
+                        decoded_pred[dec_idx] = "I-" + self.label2ids[label]
             decoded_batches.append(decoded_pred)
         # end loop, batch
         return decoded_batches
