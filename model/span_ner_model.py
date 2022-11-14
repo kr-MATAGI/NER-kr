@@ -18,6 +18,7 @@ class ElectraSpanNER(ElectraPreTrainedModel):
         self.n_class = config.num_labels
         self.ids2label = config.id2label
         self.label2ids = config.label2id
+        self.etri_tags = config.etri_tags
 
         self.span_combi_mode = "x,y"
         self.token_len_emb_dim = 50
@@ -29,7 +30,7 @@ class ElectraSpanNER(ElectraPreTrainedModel):
         # self.morp_emb_dim = 100
         
         ''' 원본 Git에서는 Method 적용 개수에 따라 달라짐 '''
-        self.input_dim = self.hidden_size * 2 + self.token_len_emb_dim #+ self.span_len_emb_dim
+        self.input_dim = self.hidden_size * 2 + self.token_len_emb_dim + self.span_len_emb_dim
         self.model_dropout = 0.1
 
         # loss and softmax
@@ -69,7 +70,8 @@ class ElectraSpanNER(ElectraPreTrainedModel):
     #==============================================
     def forward(self,
                 all_span_lens, all_span_idxs_ltoken, real_span_mask_ltoken, input_ids,
-                token_type_ids=None, attention_mask=None, span_only_label=None, mode:str = "train"
+                token_type_ids=None, attention_mask=None, span_only_label=None, mode:str = "train",
+                label_ids=None
                 ):
     #==============================================
         """
@@ -101,13 +103,13 @@ class ElectraSpanNER(ElectraPreTrainedModel):
 
         ''' use span len, not use morp'''
         # n_span : span 개수
-        # span_len_rep = self.span_len_embedding(all_span_lens) # [batch, n_span, len_dim]
-        # span_len_rep = F.relu(span_len_rep) # [64, 502, 100]
-        # all_span_rep = torch.cat((all_span_rep, span_len_rep), dim=-1)
+        span_len_rep = self.span_len_embedding(all_span_lens) # [batch, n_span, len_dim]
+        span_len_rep = F.relu(span_len_rep) # [64, 502, 100]
+        all_span_rep = torch.cat((all_span_rep, span_len_rep), dim=-1)
         all_span_rep = self.span_embedding(all_span_rep) # [batch, n_span, n_class] : [64, 502, 16]
-
         predict_prob = self.softmax(all_span_rep)
 
+        preds = self.get_predict(predicts=predict_prob, all_span_idxs=all_span_idxs_ltoken, label_ids=label_ids)
         if "eval" == mode:
             loss = self.compute_loss(all_span_rep, span_only_label, real_span_mask_ltoken)
             preds = self.get_predict(predicts=predict_prob, all_span_idxs=all_span_idxs_ltoken)
@@ -144,7 +146,7 @@ class ElectraSpanNER(ElectraPreTrainedModel):
         return loss
 
     #==============================================
-    def get_predict(self, predicts, all_span_idxs):
+    def get_predict(self, predicts, all_span_idxs, label_ids=None):
     #==============================================
         '''
             Decode 함수
@@ -169,23 +171,35 @@ class ElectraSpanNER(ElectraPreTrainedModel):
             span_pair_list = sorted(span_pair_list, key=lambda x: x[1], reverse=True)
 
             for span_pair in span_pair_list:
-                if check_use_idx[span_pair[0][0]] or check_use_idx[span_pair[0][1]]:
+                is_break = False
+                curr_idxs = [i for i in range(span_pair[0][0], span_pair[0][1] + 1)]
+                for c_idx in curr_idxs:
+                    if check_use_idx[c_idx]:
+                        is_break = True
+                        break
+                if is_break:
                     continue
                 else:
+                    # print(span_pair[0], span_pair[1], self.ids2label[span_pair[-1]])
                     batch_pred_span.append((span_pair[0], span_pair[-1]))
                     for s_idx in range(span_pair[0][0], span_pair[0][1] + 1):
                         check_use_idx[s_idx] = True
+
             decoded_pred = [self.ids2label[0] for _ in range(self.max_seq_len)]
             for span, label in batch_pred_span:
                 s_idx = span[0]
                 e_idx = span[1] + 1
                 for dec_idx in range(s_idx, e_idx):
                     if 0 == label:
-                        decoded_pred[dec_idx] = self.ids2label[label]
+                        decoded_pred[dec_idx] = 0
                     elif dec_idx == s_idx:
                         decoded_pred[dec_idx] = "B-" + self.ids2label[label]
                     else:
                         decoded_pred[dec_idx] = "I-" + self.ids2label[label]
             decoded_batches.append(decoded_pred)
+            # print("\n===================")
+            # print(decoded_pred)
+            # print(label_ids[batch_idx])
+            # print("\n===================")
         # end loop, batch
         return decoded_batches
