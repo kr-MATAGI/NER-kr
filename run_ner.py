@@ -68,6 +68,7 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
                 "input_ids": batch["input_ids"].to(args.device),
                 "attention_mask": batch["attention_mask"].to(args.device),
                 "token_type_ids": batch["token_type_ids"].to(args.device),
+                "label_ids": batch["label_ids"].to(args.device),
                 # "pos_tag_ids": batch["pos_tag_ids"].to(args.device),
                 # "morp_ids": batch["morp_ids"].to(args.device),
                 # "ne_pos_one_hot": batch["ne_pos_one_hot"].to(args.device),
