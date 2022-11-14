@@ -175,7 +175,9 @@ class ElectraSpanNER(ElectraPreTrainedModel):
                 s_idx = span[0]
                 e_idx = span[1] + 1
                 for dec_idx in range(s_idx, e_idx):
-                    if dec_idx == s_idx:
+                    if 0 == label:
+                        decoded_pred[dec_idx] = "O"
+                    elif dec_idx == s_idx:
                         decoded_pred[dec_idx] = "B-" + self.ids2label[label]
                     else:
                         decoded_pred[dec_idx] = "I-" + self.ids2label[label]
