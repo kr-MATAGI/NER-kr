@@ -172,7 +172,7 @@ class ElectraSpanNER(ElectraPreTrainedModel):
                     batch_pred_span.append((span_pair[0], span_pair[-1]))
                     for s_idx in range(span_pair[0][0], span_pair[0][1] + 1):
                         check_use_idx[s_idx] = True
-            decoded_pred = [0 for _ in range(self.max_seq_len)]
+            decoded_pred = [self.ids2label[0] for _ in range(self.max_seq_len)]
             for span, label in batch_pred_span:
                 s_idx = span[0]
                 e_idx = span[1] + 1
