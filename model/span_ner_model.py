@@ -2,12 +2,10 @@ import torch
 import torch.nn as nn
 from transformers import ElectraModel, ElectraPreTrainedModel
 
-from model.classifier.span_classifier import  SingleLinearClassifier, MultiNonLinearClassifier
+from model.crf_layer import CRF
+from model.classifier.span_classifier import SingleLinearClassifier, MultiNonLinearClassifier
 from allennlp.modules.span_extractors import EndpointSpanExtractor
 from torch.nn import functional as F
-
-# For predict test
-from transformers import ElectraTokenizer
 
 #=======================================================
 class ElectraSpanNER(ElectraPreTrainedModel):
@@ -31,7 +29,7 @@ class ElectraSpanNER(ElectraPreTrainedModel):
         # self.morp_emb_dim = 100
         
         ''' 원본 Git에서는 Method 적용 개수에 따라 달라짐 '''
-        self.input_dim = self.hidden_size * 2 + self.token_len_emb_dim + self.span_len_emb_dim
+        self.input_dim = self.hidden_size * 2 + self.token_len_emb_dim #+ self.span_len_emb_dim
         self.model_dropout = 0.1
 
         # loss and softmax
@@ -103,9 +101,9 @@ class ElectraSpanNER(ElectraPreTrainedModel):
 
         ''' use span len, not use morp'''
         # n_span : span 개수
-        span_len_rep = self.span_len_embedding(all_span_lens) # [batch, n_span, len_dim]
-        span_len_rep = F.relu(span_len_rep) # [64, 502, 100]
-        all_span_rep = torch.cat((all_span_rep, span_len_rep), dim=-1)
+        # span_len_rep = self.span_len_embedding(all_span_lens) # [batch, n_span, len_dim]
+        # span_len_rep = F.relu(span_len_rep) # [64, 502, 100]
+        # all_span_rep = torch.cat((all_span_rep, span_len_rep), dim=-1)
         all_span_rep = self.span_embedding(all_span_rep) # [batch, n_span, n_class] : [64, 502, 16]
 
         predict_prob = self.softmax(all_span_rep)

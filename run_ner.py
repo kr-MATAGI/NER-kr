@@ -407,13 +407,13 @@ def main():
             load_corpus_span_ner_npy(args.dev_npy, mode="dev")
         test_npy, test_label_ids, test_all_span_idx, test_all_span_len, test_real_span_mask, test_span_only_label = \
             load_corpus_span_ner_npy(args.test_npy, mode="test")
-        print(f"train.shape - dataset: {train_npy.shape}, label_ids: {train_label_ids.shape}"
+        print(f"train.shape - dataset: {train_npy.shape}, label_ids: {train_label_ids.shape}, "
               f"all_span_idx: {train_all_span_idx.shape}, all_span_len: {train_all_span_len.shape}, "
               f"real_span_mask: {train_real_span_mask.shape}, span_only_label: {train_span_only_label.shape}")
-        print(f"dev.shape - dataset: {dev_npy.shape}, label_ids: {dev_label_ids.shape}"
+        print(f"dev.shape - dataset: {dev_npy.shape}, label_ids: {dev_label_ids.shape}, "
               f"all_span_idx: {dev_all_span_idx.shape}, all_span_len: {dev_all_span_len.shape}, "
               f"real_span_mask: {dev_real_span_mask.shape}, span_only_label: {dev_span_only_label.shape}")
-        print(f"test.shape - dataset: {test_npy.shape}, label_ids: {test_label_ids.shape}"
+        print(f"test.shape - dataset: {test_npy.shape}, label_ids: {test_label_ids.shape}, "
               f"all_span_idx: {test_all_span_idx.shape}, all_span_len: {test_all_span_len.shape}, "
               f"real_span_mask: {test_real_span_mask.shape}, span_only_label: {test_span_only_label.shape}")
     else:

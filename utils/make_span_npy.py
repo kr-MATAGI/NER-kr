@@ -23,6 +23,20 @@ from transformers import ElectraTokenizer
 from allennlp.data.dataset_readers.dataset_utils import enumerate_spans
 from torch.utils.data import Dataset
 
+# Global
+test_str_list = [
+    "29·미국·사진", "전창수(42) 두산타워 마케팅팀 차장", "샌드위치→역(逆)샌드위치→신(新)샌드위치….",
+    "홍준표·원희룡·나경원 후보가 '3강'을 형성하며 엎치락뒤치락해 왔다.", "P 불투르(Vulture) 인사위원회 위원장은",
+    "넙치·굴비·홍어·톳·꼬시래기·굴·홍합", "연준 의장이", "황병서 북한군 총정치국장이 올해 10월 4일",
+    "영업익 4482억 ‘깜짝’… LG전자 ‘부활의 노래’", "LG 우규민-삼성 웹스터(대구)",
+    "‘김종영 그 절대를 향한’ 전시회", "재산증가액이 3억5000만원이다.", "‘진실·화해를 위한 과거사 정리위원회’",
+    "용의자들은 25일 아침 9시께", "해외50여 개국에서 5500회 이상 공연하며 사물놀이",
+    "REDD는 열대우림 등 산림자원을 보호하는 개도국이나",
+    "2010년 12월부터 이미 가중 처벌을 시행하는 어린이 보호구역의 교통사고 발생 건수는",
+    "금리설계형의 경우 변동금리(6개월 변동 코픽스 연동형)는", "현재 중국의 공항은 400여 개다.",
+    "'중국 편'이라고 믿었던 박 대통령에게", "2001년 한·미 주둔군지위협정(소파·SOFA)"
+]
+
 #==========================================================================================
 def load_ne_entity_list(src_path: str = ""):
 #==========================================================================================
@@ -125,6 +139,14 @@ def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
     for proc_idx, src_item in enumerate(src_list):
         if 0 == (proc_idx % 1000):
             print(f"{proc_idx} Processing... {src_item.text}")
+
+        if debug_mode:
+            is_test_str = False
+            for test_str in test_str_list:
+                if test_str in src_item.text:
+                    is_test_str = True
+            if not is_test_str:
+                continue
 
         # Mecab
         mecab_res = mecab.pos(src_item.text)
@@ -390,5 +412,5 @@ if "__main__" == __name__:
     make_span_npy(
         tokenizer_name="monologg/koelectra-base-v3-discriminator",
         src_list=all_sent_list, seq_max_len=128, span_max_len=8,
-        debug_mode=False, save_npy_path="span_ner"
+        debug_mode=True, save_npy_path="span_ner"
     )
