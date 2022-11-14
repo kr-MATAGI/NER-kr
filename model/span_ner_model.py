@@ -109,7 +109,8 @@ class ElectraSpanNER(ElectraPreTrainedModel):
         all_span_rep = self.span_embedding(all_span_rep) # [batch, n_span, n_class] : [64, 502, 16]
         predict_prob = self.softmax(all_span_rep)
 
-        preds = self.get_predict(predicts=predict_prob, all_span_idxs=all_span_idxs_ltoken, label_ids=label_ids)
+        # For Test
+        # preds = self.get_predict(predicts=predict_prob, all_span_idxs=all_span_idxs_ltoken, label_ids=label_ids)
         if "eval" == mode:
             loss = self.compute_loss(all_span_rep, span_only_label, real_span_mask_ltoken)
             preds = self.get_predict(predicts=predict_prob, all_span_idxs=all_span_idxs_ltoken)
