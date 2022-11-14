@@ -237,7 +237,7 @@ def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
         # print(span_only_label_token)
         # print(all_span_len_list)
         # print(real_span_mask_token)
-        # print(all_span_idx_list)
+        print(all_span_idx_list)
 
         if max_num_span > len(span_only_label_token):
             diff_len = max_num_span - len(span_only_label_token)

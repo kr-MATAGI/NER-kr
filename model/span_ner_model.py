@@ -174,6 +174,8 @@ class ElectraSpanNER(ElectraPreTrainedModel):
             span_pair_list = sorted(span_pair_list, key=lambda x: x[1], reverse=True)
 
             for span_pair in span_pair_list:
+                if 0 == span_pair[-1]:
+                    continue
                 is_break = False
                 curr_idxs = [i for i in range(span_pair[0][0], span_pair[0][1] + 1)]
                 for c_idx in curr_idxs:
@@ -190,8 +192,7 @@ class ElectraSpanNER(ElectraPreTrainedModel):
 
             decoded_pred = [self.ids2label[0] for _ in range(self.max_seq_len)]
             for span, label in batch_pred_span:
-                if 0 == label:
-                    continue
+                # print(label, self.ids2label[label])
                 s_idx = span[0]
                 e_idx = span[1] + 1
                 for dec_idx in range(s_idx, e_idx):
