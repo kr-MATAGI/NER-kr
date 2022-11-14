@@ -20,11 +20,10 @@ class ElectraSpanNER(ElectraPreTrainedModel):
         self.n_class = config.num_labels
         self.ids2label = config.id2label
         self.label2ids = config.label2id
-        self.etri_label2ids = config.etri_label2id
 
         self.span_combi_mode = "x,y"
         self.token_len_emb_dim = 50
-        self.max_span_width = 10 # 원래는 4, NE가 4넘는게 많을 듯 보여 10 (max_spanLen)
+        self.max_span_width = 8 # 원래는 4, NE가 4넘는게 많을 듯 보여 10 (max_spanLen)
         self.max_seq_len = 128
 
         self.span_len_emb_dim = 100
@@ -36,7 +35,7 @@ class ElectraSpanNER(ElectraPreTrainedModel):
         self.model_dropout = 0.1
 
         # loss and softmax
-        self.cross_entropy = torch.nn.CrossEntropyLoss(reduction='none')
+        self.cross_entropy = torch.nn.CrossEntropyLoss() # origin reduction='none'
         self.softmax = torch.nn.Softmax(dim=-1) # for predict
 
         print("self.max_span_width: ", self.max_span_width)
@@ -56,6 +55,7 @@ class ElectraSpanNER(ElectraPreTrainedModel):
                                                              num_width_embeddings=self.max_span_width,
                                                              span_width_embedding_dim=self.token_len_emb_dim,
                                                              bucket_widths=True)
+
         ''' 이거 2개 사용안함 
         self.linear = nn.Linear(10, 1)
         self.score_func = nn.Softmax(dim=-1)
@@ -96,7 +96,11 @@ class ElectraSpanNER(ElectraPreTrainedModel):
         electra_outputs = electra_outputs.last_hidden_state  # [batch_size, seq_len, hidden_size]
 
         # [batch, n_span, input_dim] : [64, 502, 1586]
-        all_span_rep = self.endpoint_span_extractor(electra_outputs, all_span_idxs_ltoken.long())
+        '''
+            all_span_rep : [batch, n_span, output_dim]
+            
+        '''
+        all_span_rep = self.endpoint_span_extractor(electra_outputs, all_span_idxs_ltoken)
 
         ''' use span len, not use morp'''
         # n_span : span 개수
