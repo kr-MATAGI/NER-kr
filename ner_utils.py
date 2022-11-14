@@ -247,7 +247,10 @@ def load_ner_config_and_model(user_select: int, args, tag_dict):
         config.elmo_vocab_size = 13198 # @TODO: 하드 코딩 수정
     elif 12 == user_select:
         # ELECTRA SPAN NER
-        span_tag_dict = {'O': 0, 'FD': 1, 'EV': 2, 'DT': 3, 'TI': 4, 'MT': 5, 'AM': 6, 'LC': 7, 'CV': 8, 'PS': 9, 'TR': 10, 'TM': 11, 'AF': 12, 'PT': 13, 'OG': 14, 'QT': 15}
+        span_tag_dict = {'O': 0, 'FD': 1, 'EV': 2, 'DT': 3, 'TI': 4, 'MT': 5,
+                         'AM': 6, 'LC': 7, 'CV': 8, 'PS': 9, 'TR': 10,
+                         'TM': 11, 'AF': 12, 'PT': 13, 'OG': 14, 'QT': 15}
+
         span_tag_list = span_tag_dict.keys()
         print("SPAN_TAG_DICT: ", span_tag_list)
         config = ElectraConfig.from_pretrained("monologg/koelectra-base-v3-discriminator",

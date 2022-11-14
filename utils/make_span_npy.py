@@ -36,7 +36,7 @@ def load_ne_entity_list(src_path: str = ""):
     return all_sent_list
 
 #=======================================================================================
-def convert2tokenIdx(tokens, all_span_idxs, span_idxLab, max_len):
+def convert2tokenIdx(tokens, all_span_idxs, span_idxLab):
 #=======================================================================================
     # convert the all the span_idxs from word-level to token-level
     sidxs = [x1 for (x1, x2) in all_span_idxs]
@@ -186,8 +186,8 @@ def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
 
         span_idx_label_dict = make_span_idx_label_pair(src_item.ne_list, text_tokens)
         span_idx_new_label_dict = convert2tokenIdx(tokens=text_tokens, span_idxLab=span_idx_label_dict,
-                                                   all_span_idxs=all_span_idx_list, max_len=seq_max_len) # or Max Len
-        span_only_label_token = []
+                                                   all_span_idxs=all_span_idx_list)
+        span_only_label_token = [] # 만들어진 span 집합들의 label
         for idx_str, label in span_idx_new_label_dict.items():
             span_only_label_token.append(ne_ids2tag[label])
 
@@ -245,7 +245,7 @@ def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
         #     # For save Test
         #     break
 
-    save_span_npy(npy_dict, len(src_list), save_npy_path)
+    # save_span_npy(npy_dict, len(src_list), save_npy_path)
 
 #=======================================================================================
 def save_span_npy(npy_dict, src_list_len, save_path):

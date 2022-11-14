@@ -35,7 +35,7 @@ class ElectraSpanNER(ElectraPreTrainedModel):
         self.model_dropout = 0.1
 
         # loss and softmax
-        self.cross_entropy = torch.nn.CrossEntropyLoss() # origin reduction='none'
+        self.cross_entropy = torch.nn.CrossEntropyLoss(reduction='none') # 이거 none이여야 compute loss 동작
         self.softmax = torch.nn.Softmax(dim=-1) # for predict
 
         print("self.max_span_width: ", self.max_span_width)
@@ -60,7 +60,6 @@ class ElectraSpanNER(ElectraPreTrainedModel):
         self.linear = nn.Linear(10, 1)
         self.score_func = nn.Softmax(dim=-1)
         '''
-
         self.span_embedding = MultiNonLinearClassifier(self.input_dim,
                                                        self.n_class,
                                                        self.model_dropout)
@@ -98,9 +97,9 @@ class ElectraSpanNER(ElectraPreTrainedModel):
         # [batch, n_span, input_dim] : [64, 502, 1586]
         '''
             all_span_rep : [batch, n_span, output_dim]
-            
+            all_span_idxs_ltoken : [batch, n_span, 2]
         '''
-        all_span_rep = self.endpoint_span_extractor(electra_outputs, all_span_idxs_ltoken)
+        all_span_rep = self.endpoint_span_extractor(electra_outputs, all_span_idxs_ltoken.long())
 
         ''' use span len, not use morp'''
         # n_span : span 개수
@@ -110,6 +109,7 @@ class ElectraSpanNER(ElectraPreTrainedModel):
         all_span_rep = self.span_embedding(all_span_rep) # [batch, n_span, n_class] : [64, 502, 16]
 
         predict_prob = self.softmax(all_span_rep)
+
         if "eval" == mode:
             loss = self.compute_loss(all_span_rep, span_only_label, real_span_mask_ltoken)
             preds = self.get_predict(predicts=predict_prob, all_span_idxs=all_span_idxs_ltoken)
@@ -119,7 +119,7 @@ class ElectraSpanNER(ElectraPreTrainedModel):
             return loss
 
     #==============================================
-    def compute_loss(self, all_span_rep, span_label_ltoken, real_span_mask_ltoken):#, mode):
+    def compute_loss(self, all_span_rep, span_label_ltoken, real_span_mask_ltoken):
     #==============================================
         '''
         :param all_span_rep:
@@ -137,6 +137,7 @@ class ElectraSpanNER(ElectraPreTrainedModel):
         batch_size, n_span = span_label_ltoken.size()
         loss = self.cross_entropy(all_span_rep.view(-1, self.n_class),
                                   span_label_ltoken.view(-1))
+        # print(loss.shape)
         loss = loss.view(batch_size, n_span)
         loss = torch.masked_select(loss, real_span_mask_ltoken.bool())
         loss = torch.mean(loss)
