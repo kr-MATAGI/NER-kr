@@ -370,6 +370,6 @@ if "__main__" == __name__:
 
     make_span_npy(
         tokenizer_name="monologg/koelectra-base-v3-discriminator",
-        src_list=all_sent_list, seq_max_len=128, span_max_len=4,
+        src_list=all_sent_list, seq_max_len=128, span_max_len=8,
         debug_mode=False, save_npy_path="span_ner"
     )
