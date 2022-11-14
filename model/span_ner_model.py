@@ -147,7 +147,7 @@ class ElectraSpanNER(ElectraPreTrainedModel):
         return loss
 
     #==============================================
-    def get_predict(self, predicts, all_span_idxs, label_ids=None):
+    def get_predict(self, predicts, all_span_idxs):
     #==============================================
         '''
             Decode 함수
@@ -192,7 +192,7 @@ class ElectraSpanNER(ElectraPreTrainedModel):
                 e_idx = span[1] + 1
                 for dec_idx in range(s_idx, e_idx):
                     if 0 == label:
-                        decoded_pred[dec_idx] = 0
+                        decoded_pred[dec_idx] = self.ids2label[0]
                     elif dec_idx == s_idx:
                         decoded_pred[dec_idx] = "B-" + self.ids2label[label]
                     else:
