@@ -224,10 +224,9 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
         '''
         elmo_x, elmo_layer_1_out, elmo_layer_2_out = self.charELMo(sents)
         ''' elmo_x 써야 되는가 차원 안맞긴 한데 안써도 된다고 본거 같긴함 (optional)'''
-        elmo_repr = elmo_layer_1_out + elmo_layer_2_out
 
         # Concat
-        concat_embed = torch.concat([electra_outputs, elmo_repr], dim=-1)
+        concat_embed = torch.concat([electra_outputs, elmo_layer_2_out], dim=-1)
 
         # LSTM
         '''

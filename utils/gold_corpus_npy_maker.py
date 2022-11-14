@@ -252,22 +252,6 @@ def make_wordpiece_npy(
         tokenizer = ElectraTokenizer.from_pretrained(tokenizer_name)
 
     for proc_idx, src_item in enumerate(src_list):
-        # Test
-        # if "29·미국·사진" not in src_item.text:
-        #     continue
-        # if "전창수(42) 두산타워 마케팅팀 차장" not in src_item.text:
-        #     continue
-        # if '샌드위치→역(逆)샌드위치→신(新)샌드위치….' not in src_item.text:
-        #     continue
-        # if "그동안 각 언론사와 후보 진영이 실시한 여론조사에서도 홍준표·원희룡·나경원 후보가 '3강'을 형성하며 엎치락뒤치락해 왔다." not in src_item.text:
-        #     continue
-        # if "P 불투르(Vulture) 인사위원회 위원장은" not in src_item.text:
-        #     continue
-        # if "넙치·굴비·홍어·톳·꼬시래기·굴·홍합" not in src_item.text:
-        #     continue
-        # if "LG 우규민-삼성 웹스터(대구)" not in src_item.text:
-        #     continue
-
         if 0 == (proc_idx % 1000):
             print(f"{proc_idx} Processing... {src_item.text}")
         text_tokens = tokenizer.tokenize(src_item.text)

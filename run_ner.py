@@ -18,11 +18,11 @@ from tqdm import tqdm
 from ner_def import (
     ETRI_TAG, NER_MODEL_LIST,
 )
-from ner_datasets import NER_POS_Dataset, NER_Eojeol_Datasets
+from ner_datasets import NER_POS_Dataset, NER_Eojeol_Datasets, SpanNERDataset
 from ner_utils import (
     init_logger, print_parameters, load_corpus_npy_datasets,
     set_seed, show_ner_report, f1_pre_rec, load_ner_config_and_model,
-    load_model_checkpoints
+    load_model_checkpoints, load_corpus_span_ner_npy
 )
 
 ### Global variable
@@ -63,21 +63,28 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
     for batch in eval_pbar:
         model.eval()
         with torch.no_grad():
+            label_ids = batch["label_ids"]
             inputs = {
                 "input_ids": batch["input_ids"].to(args.device),
                 "attention_mask": batch["attention_mask"].to(args.device),
                 "token_type_ids": batch["token_type_ids"].to(args.device),
-                "labels": batch["labels"].to(args.device),
                 # "pos_tag_ids": batch["pos_tag_ids"].to(args.device),
                 # "morp_ids": batch["morp_ids"].to(args.device),
                 # "ne_pos_one_hot": batch["ne_pos_one_hot"].to(args.device),
                 # "josa_pos_one_hot": batch["josa_pos_one_hot"].to(args.device)
                 # "jamo_ids": batch["jamo_ids"].to(args.device),
                 # "jamo_boundary": batch["jamo_boundary"].to(args.device)
-                "sents": batch["sents"].to(args.device)
+                # "sents": batch["sents"].to(args.device)
+                "all_span_idxs_ltoken": batch["all_span_idx"].to(args.device),
+                "all_span_lens": batch["all_span_len"].to(args.device),
+                "real_span_mask_ltoken": batch["real_span_mask"].to(args.device),
+                "span_only_label": batch["span_only_label"].to(args.device),
+                "mode": "eval"
             }
 
-            if g_use_crf:
+            if 12 == g_user_select:
+                loss, predict = model(**inputs)
+            elif g_use_crf:
                 loss, outputs = model(**inputs)
                 loss = -1 * loss
             else:
@@ -91,8 +98,17 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
         tb_writer.add_scalar("Loss/val_" + str(train_epoch), eval_loss / nb_eval_steps, nb_eval_steps)
         eval_pbar.set_description("Eval Loss - %.04f" % (eval_loss / nb_eval_steps))
 
-        if g_use_crf:
-            conv_outputs = np.zeros_like(inputs["labels"].detach().cpu().numpy())
+        if 12 == g_user_select:
+            if preds is None:
+                preds = np.array(predict)
+                out_label_ids = label_ids.numpy()
+            else:
+                preds = np.append(preds, np.array(predict), axis=0)
+                out_label_ids = np.append(out_label_ids, label_ids.numpy(), axis=0)
+            print(f"\nPREDS.shape: {preds.shape}")
+            print(f"out_label_ids.shape: {out_label_ids.shape}")
+        elif g_use_crf:
+            conv_outputs = np.zeros_like(inputs["label_ids"].detach().cpu().numpy())
             max_seq_len = conv_outputs.shape[1]
 
             for oi_idx, out_item in enumerate(outputs):
@@ -102,7 +118,7 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
 
             if preds is None:
                 preds = np.array(conv_outputs)
-                out_label_ids = inputs["labels"].detach().cpu().numpy()
+                out_label_ids = inputs["label_ids"].detach().cpu().numpy()
             else:
                 preds = np.append(preds, np.array(conv_outputs), axis=0)
                 out_label_ids = np.append(out_label_ids, inputs["labels"].detach().cpu().numpy(), axis=0)
@@ -111,12 +127,12 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
             if preds is None:
                 preds = logits.detach().cpu().numpy()
                 preds = np.argmax(preds, axis=-1)
-                out_label_ids = inputs["labels"].detach().cpu().numpy()
+                out_label_ids = inputs["label_ids"].detach().cpu().numpy()
             else:
                 logits = logits.detach().cpu().numpy()
                 logits = np.argmax(logits, axis=-1)
                 preds = np.append(preds, logits, axis=0)
-                out_label_ids = np.append(out_label_ids, inputs["labels"].detach().cpu().numpy(), axis=0)
+                out_label_ids = np.append(out_label_ids, inputs["label_ids"].detach().cpu().numpy(), axis=0)
 
     logger.info("  Eval End !")
     eval_pbar.close()
@@ -182,9 +198,9 @@ def train(args, model, train_dataset, dev_dataset):
     # eps : 줄이기 전/후의 lr차이가 eps보다 작으면 무시한다.
     optimizer = torch.optim.AdamW(optimizer_grouped_parameters, lr=args.learning_rate, eps=args.adam_epsilon)
 
-    for n, p in model.named_parameters(): # @TODO: Check False
-        if "charELMo" in n:
-            p.requires_grad = False
+    # for n, p in model.named_parameters(): # @TODO: Check False
+    #     if "charELMo" in n:
+    #         p.requires_grad = False
 
     # @NOTE: optimizer에 설정된 learning_rate까지 선형으로 감소시킨다. (스케줄러)
     scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=int(t_total * args.warmup_proportion),
@@ -222,17 +238,24 @@ def train(args, model, train_dataset, dev_dataset):
                 "input_ids": batch["input_ids"].to(args.device),
                 "attention_mask": batch["attention_mask"].to(args.device),
                 "token_type_ids": batch["token_type_ids"].to(args.device),
-                "labels": batch["labels"].to(args.device),
+                # "label_ids": batch["label_ids"].to(args.device),
                 # "pos_tag_ids": batch["pos_tag_ids"].to(args.device),
                 # "morp_ids": batch["morp_ids"].to(args.device),
                 # "ne_pos_one_hot": batch["ne_pos_one_hot"].to(args.device),
                 # "josa_pos_one_hot": batch["josa_pos_one_hot"].to(args.device)
                 # "jamo_ids": batch["jamo_ids"].to(args.device),
                 # "jamo_boundary": batch["jamo_boundary"].to(args.device)
-                "sents": batch["sents"].to(args.device)
+                # "sents": batch["sents"].to(args.device)
+                "all_span_idxs_ltoken": batch["all_span_idx"].to(args.device),
+                "all_span_lens": batch["all_span_len"].to(args.device),
+                "real_span_mask_ltoken": batch["real_span_mask"].to(args.device),
+                "span_only_label": batch["span_only_label"].to(args.device),
+                "mode": "train"
             }
 
-            if g_use_crf:
+            if 12 == g_user_select:
+                loss = model(**inputs)
+            elif g_use_crf:
                 loss, outputs = model(**inputs)
                 loss = -1 * loss
             else:
@@ -308,6 +331,7 @@ def main():
     print(f"9. {NER_MODEL_LIST[9]}")
     print(f"10. {NER_MODEL_LIST[10]}")
     print(f"11. {NER_MODEL_LIST[11]}")
+    print(f"12. {NER_MODEL_LIST[12]}")
     print("=======================================")
     print(">>>> number: ")
 
@@ -348,6 +372,9 @@ def main():
     elif 11 == g_user_select:
         config_file_path = "./config/electra-mecab.json"
         g_use_crf = False
+    elif 12 == g_user_select:
+        config_file_path = "./config/electra-span-ner.json"
+        g_use_crf = False
 
     with open(config_file_path) as config_file:
         args = AttrDict(json.load(config_file))
@@ -372,22 +399,51 @@ def main():
     model.to(args.device)
 
     # load train/dev/test npy
-    train_npy, train_labels, train_sents = \
-        load_corpus_npy_datasets(args.train_npy, mode="train")
-    dev_npy, dev_labels, dev_sents = \
-        load_corpus_npy_datasets(args.dev_npy, mode="dev")
-    test_npy, test_labels, test_sents = \
-        load_corpus_npy_datasets(args.test_npy, mode="test")
-
-    print(f"train.shape - dataset: {train_npy.shape}, labels: {train_labels.shape}, sents: {len(train_sents)}")
-    print(f"dev.shape - dataset: {dev_npy.shape}, labels: {dev_labels.shape}, sents: {len(dev_sents)}")
-    print(f"test.shape - dataset: {test_npy.shape}, labels: {test_labels.shape}, sents: {len(test_sents)}")
+    if 12 == g_user_select:
+        train_npy, train_label_ids, train_all_span_idx, train_all_span_len, train_real_span_mask, train_span_only_label = \
+            load_corpus_span_ner_npy(args.train_npy, mode="train")
+        dev_npy, dev_label_ids, dev_all_span_idx, dev_all_span_len, dev_real_span_mask, dev_span_only_label = \
+            load_corpus_span_ner_npy(args.dev_npy, mode="dev")
+        test_npy, test_label_ids, test_all_span_idx, test_all_span_len, test_real_span_mask, test_span_only_label = \
+            load_corpus_span_ner_npy(args.test_npy, mode="test")
+        print(f"train.shape - dataset: {train_npy.shape}, label_ids: {train_label_ids.shape}"
+              f"all_span_idx: {train_all_span_idx.shape}, all_span_len: {train_all_span_len.shape}, "
+              f"real_span_mask: {train_real_span_mask.shape}, span_only_label: {train_span_only_label.shape}")
+        print(f"dev.shape - dataset: {dev_npy.shape}, label_ids: {dev_label_ids.shape}"
+              f"all_span_idx: {dev_all_span_idx.shape}, all_span_len: {dev_all_span_len.shape}, "
+              f"real_span_mask: {dev_real_span_mask.shape}, span_only_label: {dev_span_only_label.shape}")
+        print(f"test.shape - dataset: {test_npy.shape}, label_ids: {test_label_ids.shape}"
+              f"all_span_idx: {test_all_span_idx.shape}, all_span_len: {test_all_span_len.shape}, "
+              f"real_span_mask: {test_real_span_mask.shape}, span_only_label: {test_span_only_label.shape}")
+    else:
+        train_npy, train_labels, train_sents = \
+            load_corpus_npy_datasets(args.train_npy, mode="train")
+        dev_npy, dev_labels, dev_sents = \
+            load_corpus_npy_datasets(args.dev_npy, mode="dev")
+        test_npy, test_labels, test_sents = \
+            load_corpus_npy_datasets(args.test_npy, mode="test")
+        print(f"train.shape - dataset: {train_npy.shape}, labels: {train_labels.shape}, sents: {len(train_sents)}")
+        print(f"dev.shape - dataset: {dev_npy.shape}, labels: {dev_labels.shape}, sents: {len(dev_sents)}")
+        print(f"test.shape - dataset: {test_npy.shape}, labels: {test_labels.shape}, sents: {len(test_sents)}")
 
     # make train/dev/test dataset
     if (5 == g_user_select) or (9 == g_user_select):
         train_dataset = NER_Eojeol_Datasets(token_data=train_npy, labels=train_labels, eojeol_ids=None)
         dev_dataset = NER_Eojeol_Datasets(token_data=dev_npy, labels=dev_labels, eojeol_ids=None)
         test_dataset = NER_Eojeol_Datasets(token_data=test_npy, labels=test_labels, eojeol_ids=None)
+    elif 12 == g_user_select:
+        train_dataset = SpanNERDataset(data=train_npy, label_ids=train_label_ids,
+                                       span_only_label=train_span_only_label,
+                                       real_span_mask=train_real_span_mask, all_span_len=train_all_span_len,
+                                       all_span_idx=train_all_span_idx)
+        dev_dataset = SpanNERDataset(data=dev_npy, label_ids=dev_label_ids,
+                                     span_only_label=dev_span_only_label,
+                                     real_span_mask=dev_real_span_mask, all_span_len=dev_all_span_len,
+                                     all_span_idx=dev_all_span_idx)
+        test_dataset = SpanNERDataset(data=test_npy, label_ids=test_label_ids,
+                                      span_only_label=test_span_only_label,
+                                      real_span_mask=test_real_span_mask, all_span_len=test_all_span_len,
+                                      all_span_idx=test_all_span_idx)
     else:
         elmo_vocab = None
         with open("C:/Users/MATAGI/Desktop/Git/NER_Private/model/charELMo/char_elmo_vocab.pkl", mode="rb") as vocab_pkl:

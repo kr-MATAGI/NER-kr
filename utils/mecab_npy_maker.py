@@ -570,7 +570,7 @@ def make_mecab_wordpiece_npy(
         "labels": [],
         "attention_mask": [],
         "token_type_ids": [],
-        "pos_tag_ids": [],
+        # "pos_tag_ids": [],
         # "ne_one_hot": [],
         # "josa_one_hot": [],
         "sentences": []
@@ -586,20 +586,6 @@ def make_mecab_wordpiece_npy(
     else:
         tokenizer = ElectraTokenizer.from_pretrained(tokenizer_name)
 
-    # Test Sentences
-    test_str_list = [
-        "29·미국·사진", "전창수(42) 두산타워 마케팅팀 차장", "샌드위치→역(逆)샌드위치→신(新)샌드위치….",
-        "홍준표·원희룡·나경원 후보가 '3강'을 형성하며 엎치락뒤치락해 왔다.", "P 불투르(Vulture) 인사위원회 위원장은",
-        "넙치·굴비·홍어·톳·꼬시래기·굴·홍합", "연준 의장이", "황병서 북한군 총정치국장이 올해 10월 4일",
-        "영업익 4482억 ‘깜짝’… LG전자 ‘부활의 노래’", "LG 우규민-삼성 웹스터(대구)",
-        "‘김종영 그 절대를 향한’ 전시회", "재산증가액이 3억5000만원이다.", "‘진실·화해를 위한 과거사 정리위원회’",
-        "용의자들은 25일 아침 9시께", "해외50여 개국에서 5500회 이상 공연하며 사물놀이",
-        "REDD는 열대우림 등 산림자원을 보호하는 개도국이나",
-        "2010년 12월부터 이미 가중 처벌을 시행하는 어린이 보호구역의 교통사고 발생 건수는",
-        "금리설계형의 경우 변동금리(6개월 변동 코픽스 연동형)는", "현재 중국의 공항은 400여 개다.",
-        "'중국 편'이라고 믿었던 박 대통령에게", "2001년 한·미 주둔군지위협정(소파·SOFA)"
-    ]
-
     for proc_idx, src_item in enumerate(src_list):
         # Test
         if debug_mode:
@@ -613,9 +599,11 @@ def make_mecab_wordpiece_npy(
         if 0 == (proc_idx % 1000):
             print(f"{proc_idx} Processing... {src_item.text}")
 
-        ''' For CharELMo '''
-        npy_dict["sentences"].append(src_item.text.replace(" ", "_"))
+        # Init *_ids
+        text_tokens = tokenizer.tokenize(src_item.text)
+        label_ids = [ETRI_TAG["O"]] * len(text_tokens)
 
+        ''' 2020.11.10 주석
         # 매캡을 쓰면 모두의 말뭉치 morp의 word_id 정보는 사용할 수 없음
         # [ word, [(word, pos)] ]
         mecab_word_pair = convert_mecab_pos(sentence=src_item.text, src_word_list=src_item.word_list)
@@ -624,18 +612,19 @@ def make_mecab_wordpiece_npy(
         tok_pos_item_list = []
         for mecab_item in mecab_item_list:
             tok_pos_item_list.extend(mecab_item.tok_pos_list)
+        '''
 
         # NE - 토큰 단위
-        b_check_use = [False for _ in range(len(tok_pos_item_list))]
+        b_check_use = [False for _ in range(len(text_tokens))]
         for ne_idx, ne_item in enumerate(src_item.ne_list):
             ne_char_list = list(ne_item.text.replace(" ", ""))
             concat_item_list = []
-            for mec_idx, mecab_item in enumerate(tok_pos_item_list):
-                if b_check_use[mec_idx]:
+            for tok_idx in range(len(text_tokens)):
+                if b_check_use[tok_idx]:
                     continue
-                for sub_idx in range(mec_idx + 1, len(tok_pos_item_list)):
-                    concat_word = ["".join(x.tokens).replace("##", "") for x in tok_pos_item_list[mec_idx:sub_idx]]
-                    concat_item_list.append(("".join(concat_word), (mec_idx, sub_idx)))
+                for sub_idx in range(tok_idx + 1, len(text_tokens)):
+                    concat_word = ["".join(x).replace("##", "") for x in text_tokens[tok_idx:sub_idx]]
+                    concat_item_list.append(("".join(concat_word), (tok_idx, sub_idx)))
             concat_item_list = [x for x in concat_item_list if "".join(ne_char_list) in x[0]]
             concat_item_list.sort(key=lambda x: len(x[0]))
             if 0 >= len(concat_item_list):
@@ -645,9 +634,9 @@ def make_mecab_wordpiece_npy(
             for bio_idx in range(target_idx_pair[0], target_idx_pair[1]):
                 b_check_use[bio_idx] = True
                 if bio_idx == target_idx_pair[0]:
-                    tok_pos_item_list[bio_idx].ne = "B-" + ne_item.type
+                    label_ids[bio_idx] = ETRI_TAG["B-" + ne_item.type]
                 else:
-                    tok_pos_item_list[bio_idx].ne = "I-" + ne_item.type
+                    label_ids[bio_idx] = ETRI_TAG["I-" + ne_item.type]
 
         ne_pos_list = ["NNG", "NNP", "SN", "NNB", "NR"]
         ne_pos_label2id = {label: i for i, label in enumerate(ne_pos_list)}
@@ -655,12 +644,13 @@ def make_mecab_wordpiece_npy(
         josa_list = ["JKS", "JKC", "JKG", "JKO", "JKB", "JKV", "JKQ", "JX", "JC"]
         josa_label2id = {label: i for i, label in enumerate(josa_list)}
 
+        ''' 2020.11.10 주석
         text_tokens = []
         label_ids = []
         ne_one_hot_list = [] # 5
         josa_one_hot_list = [] # 9
         pos_ids = []
-        for tp_idx, tok_pos in enumerate(tok_pos_item_list):
+        for tp_idx, tok_pos in enumerate(text_tokens):
             for ft_idx, flat_tok in enumerate(tok_pos.tokens):
                 text_tokens.append(flat_tok)
 
@@ -694,6 +684,7 @@ def make_mecab_wordpiece_npy(
                     # empty_pos = [pos_tag2ids["O"]] * 10
                     # pos_ids.append(empty_pos)
                     label_ids.append(ETRI_TAG[tok_pos.ne.replace("B-", "I-")])
+        '''
 
         # 토큰 단위
         valid_token_len = 0
@@ -714,6 +705,7 @@ def make_mecab_wordpiece_npy(
         token_type_ids = [0] * token_max_len
 
         # POS
+        ''' 2022.11.10 주석
         pos_ids.insert(0, [pos_tag2ids["O"]] * 10)  # [CLS]
         if token_max_len <= len(pos_ids):
             pos_ids = pos_ids[:token_max_len-1]
@@ -722,6 +714,7 @@ def make_mecab_wordpiece_npy(
             pos_ids_size = len(pos_ids)
             for _ in range(token_max_len - pos_ids_size):
                 pos_ids.append([pos_tag2ids["O"]] * 10)
+        '''
 
         # Label
         label_ids.insert(0, ETRI_TAG["O"])
@@ -734,6 +727,7 @@ def make_mecab_wordpiece_npy(
                 label_ids.append(ETRI_TAG["O"])
 
         # NE, Josa one-hot
+        ''' 2022.11.10 주석
         ne_one_hot_list.insert(0, [0 for _ in range(ne_one_hot_size)])
         josa_one_hot_list.insert(0, [0 for _ in range(josa_one_hot_size)])
         if token_max_len <= len(ne_one_hot_list):
@@ -747,43 +741,45 @@ def make_mecab_wordpiece_npy(
             for _ in range(token_max_len - curr_size):
                 ne_one_hot_list.append([0 for _ in range(ne_one_hot_size)])
                 josa_one_hot_list.append([0 for _ in range(josa_one_hot_size)])
-
+        '''
 
         # Check Size
         assert len(input_ids) == token_max_len, f"{len(input_ids)} + {input_ids}"
         assert len(attention_mask) == token_max_len, f"{len(attention_mask)} + {attention_mask}"
         assert len(token_type_ids) == token_max_len, f"{len(token_type_ids)} + {token_type_ids}"
         assert len(label_ids) == token_max_len, f"{len(label_ids)} + {label_ids}"
+
+        ''' 2022.11.10 주석
         assert len(pos_ids) == token_max_len, f"{len(pos_ids)} + {pos_ids}"
         assert len(ne_one_hot_list) == token_max_len, f"{len(ne_one_hot_list)} + {ne_one_hot_list}"
         assert len(josa_one_hot_list) == token_max_len, f"{len(josa_one_hot_list)} + {josa_one_hot_list}"
+        '''
 
         npy_dict["input_ids"].append(input_ids)
         npy_dict["attention_mask"].append(attention_mask)
         npy_dict["token_type_ids"].append(token_type_ids)
         npy_dict["labels"].append(label_ids)
-        npy_dict["ne_one_hot"].append(ne_one_hot_list)
-        npy_dict["josa_one_hot"].append(josa_one_hot_list)
+        # npy_dict["ne_one_hot"].append(ne_one_hot_list)
+        # npy_dict["josa_one_hot"].append(josa_one_hot_list)
+        npy_dict["sentences"].append(src_item.text.replace(" ", "_"))
 
         # convert tag
         # pos_ids = convert_pos_tag_to_combi_tag(pos_ids, use_nikl=False)
-        npy_dict["pos_tag_ids"].append(pos_ids)
+        # npy_dict["pos_tag_ids"].append(pos_ids)
 
         if debug_mode:
-            print(src_item.text)
+            print("Sent: \n", src_item.text.replace(" ", "_"))
             print("Text Tokens: \n", text_tokens)
-            print("new_mecab_item_list: \n", mecab_item_list)
+            # print("new_mecab_item_list: \n", mecab_item_list)
             print("NE List: \n", src_item.ne_list)
-            debug_pos_tag_ids = [[pos_ids2tag[x] for x in pos_tag_item] for pos_tag_item in pos_ids]
-            for tok, ne_lab, pos, ne_oh, josa_oh in zip(text_tokens, label_ids, debug_pos_tag_ids,
-                                                        ne_one_hot_list, josa_one_hot_list):
+            # debug_pos_tag_ids = [[pos_ids2tag[x] for x in pos_tag_item] for pos_tag_item in pos_ids]
+            for tok, ne_lab in zip(text_tokens, label_ids):
                 if tok == "[PAD]":
                     break
-                print(tok, ne_ids2tag[ne_lab], pos, ne_oh, josa_oh)
+                print(tok, ne_ids2tag[ne_lab])
             input()
 
     save_mecab_wordpiece_npy(npy_dict, src_list_len=len(src_list), save_dir=save_model_dir)
-
 
 #==========================================================================================
 def save_mecab_wordpiece_npy(npy_dict: Dict[str, List], src_list_len, save_dir: str = None):
@@ -792,9 +788,10 @@ def save_mecab_wordpiece_npy(npy_dict: Dict[str, List], src_list_len, save_dir: 
     npy_dict["attention_mask"] = np.array(npy_dict["attention_mask"])
     npy_dict["token_type_ids"] = np.array(npy_dict["token_type_ids"])
     npy_dict["labels"] = np.array(npy_dict["labels"])
-    npy_dict["pos_tag_ids"] = np.array(npy_dict["pos_tag_ids"])
-    npy_dict["ne_one_hot"] = np.array(npy_dict["ne_one_hot"])
-    npy_dict["josa_one_hot"] = np.array(npy_dict["josa_one_hot"])
+
+    # npy_dict["pos_tag_ids"] = np.array(npy_dict["pos_tag_ids"])
+    # npy_dict["ne_one_hot"] = np.array(npy_dict["ne_one_hot"])
+    # npy_dict["josa_one_hot"] = np.array(npy_dict["josa_one_hot"])
 
     # 토큰 단위
     print(f"Unit: Tokens")
@@ -802,9 +799,10 @@ def save_mecab_wordpiece_npy(npy_dict: Dict[str, List], src_list_len, save_dir: 
     print(f"attention_mask.shape: {npy_dict['attention_mask'].shape}")
     print(f"token_type_ids.shape: {npy_dict['token_type_ids'].shape}")
     print(f"labels.shape: {npy_dict['labels'].shape}")
-    print(f"pos_tag_ids.shape: {npy_dict['pos_tag_ids'].shape}")
-    print(f"ne_one_hot.shape: {npy_dict['ne_one_hot'].shape}")
-    print(f"josa_one_hot.shape: {npy_dict['josa_one_hot'].shape}")
+    print(f"sents.len: {len(npy_dict['sentences'])}")
+    # print(f"pos_tag_ids.shape: {npy_dict['pos_tag_ids'].shape}")
+    # print(f"ne_one_hot.shape: {npy_dict['ne_one_hot'].shape}")
+    # print(f"josa_one_hot.shape: {npy_dict['josa_one_hot'].shape}")
 
     # train/dev/test 분할
     split_size = int(src_list_len * 0.1)
@@ -817,14 +815,16 @@ def save_mecab_wordpiece_npy(npy_dict: Dict[str, List], src_list_len, save_dir: 
                 npy_dict["token_type_ids"][:train_size]]
     train_np = np.stack(train_np, axis=-1)
     train_labels_np = npy_dict["labels"][:train_size]
-    train_pos_tag_np = npy_dict["pos_tag_ids"][:train_size]
-    train_ne_one_hot_np = npy_dict["ne_one_hot"][:train_size]
-    train_josa_one_hot_np = npy_dict["josa_one_hot"][:train_size]
+    train_sents_list = npy_dict["sentences"][:train_size]
+    # train_pos_tag_np = npy_dict["pos_tag_ids"][:train_size]
+    # train_ne_one_hot_np = npy_dict["ne_one_hot"][:train_size]
+    # train_josa_one_hot_np = npy_dict["josa_one_hot"][:train_size]
     print(f"train_np.shape: {train_np.shape}")
     print(f"train_labels_np.shape: {train_labels_np.shape}")
-    print(f"train_pos_tag_ids_np.shape: {train_pos_tag_np.shape}")
-    print(f"train_ne_one_hot_np.shape: {train_ne_one_hot_np.shape}")
-    print(f"train_josa_one_hot_np.shape: {train_josa_one_hot_np.shape}")
+    print(f"train_sents_list.shape: {len(train_sents_list)}")
+    # print(f"train_pos_tag_ids_np.shape: {train_pos_tag_np.shape}")
+    # print(f"train_ne_one_hot_np.shape: {train_ne_one_hot_np.shape}")
+    # print(f"train_josa_one_hot_np.shape: {train_josa_one_hot_np.shape}")
 
     # Dev
     dev_np = [npy_dict["input_ids"][train_size:valid_size],
@@ -832,14 +832,16 @@ def save_mecab_wordpiece_npy(npy_dict: Dict[str, List], src_list_len, save_dir: 
               npy_dict["token_type_ids"][train_size:valid_size]]
     dev_np = np.stack(dev_np, axis=-1)
     dev_labels_np = npy_dict["labels"][train_size:valid_size]
-    dev_pos_tag_np = npy_dict["pos_tag_ids"][train_size:valid_size]
-    dev_ne_one_hot_np = npy_dict["ne_one_hot"][train_size:valid_size]
-    dev_josa_one_hot_np = npy_dict["josa_one_hot"][train_size:valid_size]
+    dev_sents_list = npy_dict["sentences"][train_size:valid_size]
+    # dev_pos_tag_np = npy_dict["pos_tag_ids"][train_size:valid_size]
+    # dev_ne_one_hot_np = npy_dict["ne_one_hot"][train_size:valid_size]
+    # dev_josa_one_hot_np = npy_dict["josa_one_hot"][train_size:valid_size]
     print(f"dev_np.shape: {dev_np.shape}")
     print(f"dev_labels_np.shape: {dev_labels_np.shape}")
-    print(f"dev_pos_tag_ids_np.shape: {dev_pos_tag_np.shape}")
-    print(f"dev_ne_one_hot_np.shape: {dev_ne_one_hot_np.shape}")
-    print(f"dev_josa_one_hot_np.shape: {dev_josa_one_hot_np.shape}")
+    print(f"dev_sents_list.shape: {len(dev_sents_list)}")
+    # print(f"dev_pos_tag_ids_np.shape: {dev_pos_tag_np.shape}")
+    # print(f"dev_ne_one_hot_np.shape: {dev_ne_one_hot_np.shape}")
+    # print(f"dev_josa_one_hot_np.shape: {dev_josa_one_hot_np.shape}")
 
     # Test
     test_np = [npy_dict["input_ids"][valid_size:],
@@ -847,14 +849,16 @@ def save_mecab_wordpiece_npy(npy_dict: Dict[str, List], src_list_len, save_dir: 
                npy_dict["token_type_ids"][valid_size:]]
     test_np = np.stack(test_np, axis=-1)
     test_labels_np = npy_dict["labels"][valid_size:]
-    test_pos_tag_np = npy_dict["pos_tag_ids"][valid_size:]
-    test_ne_one_hot_np = npy_dict["ne_one_hot"][valid_size:]
-    test_josa_one_hot_np = npy_dict["josa_one_hot"][valid_size:]
+    test_sents_list = npy_dict["sentences"][valid_size:]
+    # test_pos_tag_np = npy_dict["pos_tag_ids"][valid_size:]
+    # test_ne_one_hot_np = npy_dict["ne_one_hot"][valid_size:]
+    # test_josa_one_hot_np = npy_dict["josa_one_hot"][valid_size:]
     print(f"test_np.shape: {test_np.shape}")
     print(f"test_labels_np.shape: {test_labels_np.shape}")
-    print(f"test_pos_tag_ids_np.shape: {test_pos_tag_np.shape}")
-    print(f"test_ne_one_hot_np.shape: {test_ne_one_hot_np.shape}")
-    print(f"test_josa_one_hot_np.shape: {test_josa_one_hot_np.shape}")
+    print(f"test_sents_list.shape: {len(test_sents_list)}")
+    # print(f"test_pos_tag_ids_np.shape: {test_pos_tag_np.shape}")
+    # print(f"test_ne_one_hot_np.shape: {test_ne_one_hot_np.shape}")
+    # print(f"test_josa_one_hot_np.shape: {test_josa_one_hot_np.shape}")
 
     root_path = "../corpus/npy/" + save_dir
     # save input_ids, attention_mask, token_type_ids
@@ -868,18 +872,26 @@ def save_mecab_wordpiece_npy(npy_dict: Dict[str, List], src_list_len, save_dir: 
     np.save(root_path+"/test_labels", test_labels_np)
 
     # save pos_tag_ids
-    np.save(root_path + "/train_pos_tag", train_pos_tag_np)
-    np.save(root_path + "/dev_pos_tag", dev_pos_tag_np)
-    np.save(root_path + "/test_pos_tag", test_pos_tag_np)
+    # np.save(root_path + "/train_pos_tag", train_pos_tag_np)
+    # np.save(root_path + "/dev_pos_tag", dev_pos_tag_np)
+    # np.save(root_path + "/test_pos_tag", test_pos_tag_np)
 
     # save NE, Josa One-hot
-    np.save(root_path + "/train_ne_one_hot", train_ne_one_hot_np)
-    np.save(root_path + "/dev_ne_one_hot", dev_ne_one_hot_np)
-    np.save(root_path + "/test_ne_one_hot", test_ne_one_hot_np)
+    # np.save(root_path + "/train_ne_one_hot", train_ne_one_hot_np)
+    # np.save(root_path + "/dev_ne_one_hot", dev_ne_one_hot_np)
+    # np.save(root_path + "/test_ne_one_hot", test_ne_one_hot_np)
 
-    np.save(root_path + "/train_josa_one_hot", train_josa_one_hot_np)
-    np.save(root_path + "/dev_josa_one_hot", dev_josa_one_hot_np)
-    np.save(root_path + "/test_josa_one_hot", test_josa_one_hot_np)
+    # np.save(root_path + "/train_josa_one_hot", train_josa_one_hot_np)
+    # np.save(root_path + "/dev_josa_one_hot", dev_josa_one_hot_np)
+    # np.save(root_path + "/test_josa_one_hot", test_josa_one_hot_np)
+
+    # Save Sentences - pickle
+    with open(root_path + "/train_sents.pkl", mode="wb") as train_sents_pkl:
+        pickle.dump(train_sents_list, train_sents_pkl)
+    with open(root_path + "/dev_sents.pkl", mode="wb") as dev_sents_pkl:
+        pickle.dump(dev_sents_list, dev_sents_pkl)
+    with open(root_path + "test_sents.pkl", mode="wb") as test_sents_pkl:
+        pickle.dump(test_sents_list, test_sents_pkl)
 
     print(f"Complete - Save all npy files !")
 
@@ -1292,8 +1304,7 @@ def make_mecab_morp_npy(
         tokenizer_name: str, src_list: List[Sentence],
         token_max_len: int = 128, debug_mode: bool = False,
         save_model_dir: str = None,
-        ne_one_hot_size: int = 5, josa_one_hot_size: int = 9,
-        char_dict: Dict[str, int] = None,
+        ne_one_hot_size: int = 5, josa_one_hot_size: int = 9
 ):
 #==========================================================================================
     npy_dict = {
@@ -1323,13 +1334,14 @@ def make_mecab_morp_npy(
 
     for proc_idx, src_item in enumerate(src_list):
         # Test
-        if debug_mode:
-            is_test_str = False
-            for test_str in test_str_list:
-                if test_str in src_item.text:
-                    is_test_str = True
-            if not is_test_str:
-                continue
+        # if debug_mode:
+        #     is_test_str = False
+        #     for test_str in test_str_list:
+        #         if test_str in src_item.text:
+        #             is_test_str = True
+        #     if not is_test_str:
+        #         pass
+        #         continue
 
         if 0 == (proc_idx % 1000):
             print(f"{proc_idx} Processing... {src_item.text}")
@@ -1437,10 +1449,10 @@ def make_mecab_morp_npy(
         token_type_ids = [0] * token_max_len
 
         # Make 초/중/종성 One-Hot
-        char_one_hot = make_jamo_one_hot(vocab_dict=char_dict,
-                                         vocab_size=len(char_dict),
-                                         sent=src_item.text.replace(" ", "_"),
-                                         seq_len=token_max_len)
+        # char_one_hot = make_jamo_one_hot(vocab_dict=char_dict,
+        #                                  vocab_size=len(char_dict),
+        #                                  sent=src_item.text.replace(" ", "_"),
+        #                                  seq_len=token_max_len)
         char_boundary = []
         for mtp in mecab_token_pair:
             for inner_item in mtp[0]:
@@ -1514,7 +1526,7 @@ def make_mecab_morp_npy(
         assert len(morp_ids) == token_max_len, f"{len(morp_ids)} + {morp_ids}"
         # assert len(ne_one_hot_list) == token_max_len, f"{len(ne_one_hot_list)} + {ne_one_hot_list}"
         # assert len(josa_one_hot_list) == token_max_len, f"{len(josa_one_hot_list)} + {josa_one_hot_list}"
-        assert len(char_one_hot) == token_max_len, f"{len(char_one_hot)} + {char_one_hot}"
+        # assert len(char_one_hot) == token_max_len, f"{len(char_one_hot)} + {char_one_hot}"
         assert len(char_boundary) == token_max_len, f"{len(char_boundary)} + {char_boundary}"
 
         # Insert npy_dict
@@ -1526,7 +1538,7 @@ def make_mecab_morp_npy(
         npy_dict["morp_ids"].append(morp_ids)
         # npy_dict["ne_one_hot"].append(ne_one_hot_list)
         # npy_dict["josa_one_hot"].append(josa_one_hot_list)
-        npy_dict["jamo_one_hot"].append(char_one_hot)
+        # npy_dict["jamo_one_hot"].append(char_one_hot)
         npy_dict["char_boundary"].append(char_boundary)
 
         # type check - pos_ids
@@ -1768,7 +1780,7 @@ if "__main__" == __name__:
     '''
 
     # make *.npy (use Mecab)
-    make_npy_mode = "wordpiece"
+    make_npy_mode = "morp"
     if "eojeol" == make_npy_mode:
         make_mecab_eojeol_npy(
             tokenizer_name="monologg/koelectra-base-v3-discriminator",
@@ -1779,12 +1791,12 @@ if "__main__" == __name__:
     elif "wordpiece" == make_npy_mode:
         make_mecab_wordpiece_npy(
             tokenizer_name="monologg/koelectra-base-v3-discriminator",
-            src_list=all_sent_list, token_max_len=128, debug_mode=True,
+            src_list=all_sent_list, token_max_len=128, debug_mode=False,
             save_model_dir="mecab_wordpiece_electra"
         )
     elif "morp" == make_npy_mode:
         make_mecab_morp_npy(
             tokenizer_name="monologg/koelectra-base-v3-discriminator",
-            src_list=all_sent_list, token_max_len=128,
-            debug_mode=False, save_model_dir="mecab_morp_electra"
+            src_list=all_sent_list, token_max_len=128, debug_mode=True,
+            save_model_dir="mecab_morp_electra"
         )

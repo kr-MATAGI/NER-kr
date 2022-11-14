@@ -22,6 +22,7 @@ from model.CNNBiF_model import ELECTRA_CNNBiF_Model
 from model.char_electra_lstm_crf import CHAR_ELECTRA_POS_LSTM
 from model.mecab_electra_lstm_crf import ELECTRA_MECAB
 from model.morp_electra_model import ELECTRA_MECAB_MORP
+from model.span_ner_model import ElectraSpanNER
 
 #===============================================================
 def print_parameters(args, logger):
@@ -62,6 +63,22 @@ def print_parameters(args, logger):
 
     logger.info(f"logging_steps: {args.logging_steps}")
     logger.info(f"save_steps: {args.save_steps}")
+
+#===============================================================
+def load_corpus_span_ner_npy(src_path: str, mode: str="train"):
+#===============================================================
+    root_path = "/".join(src_path.split("/")[:-1]) + "/" + mode
+
+    input_token_attn_npy = np.load(src_path)
+    label_ids = np.load(root_path + "_label_ids.npy")
+
+    all_span_idx = np.load(root_path + "_all_span_idx.npy")
+    all_span_len = np.load(root_path + "_all_span_len_list.npy")
+    real_span_mask = np.load(root_path + "_real_span_mask_token.npy")
+    span_only_label = np.load(root_path + "_span_only_label_token.npy")
+
+    return input_token_attn_npy, label_ids, all_span_idx, all_span_len, real_span_mask, span_only_label
+
 
 #===============================================================
 def load_corpus_npy_datasets(src_path: str, mode: str="train"):
@@ -228,6 +245,15 @@ def load_ner_config_and_model(user_select: int, args, tag_dict):
         config.pos_label2id = {la: k for k, la in MECAB_POS_TAG.items()}
         config.max_seq_len = 128
         config.elmo_vocab_size = 13198 # @TODO: 하드 코딩 수정
+    elif 12 == user_select:
+        # ELECTRA SPAN NER
+        span_tag_dict = {'O': 0, 'FD': 1, 'EV': 2, 'DT': 3, 'TI': 4, 'MT': 5, 'AM': 6, 'LC': 7, 'CV': 8, 'PS': 9, 'TR': 10, 'TM': 11, 'AF': 12, 'PT': 13, 'OG': 14, 'QT': 15}
+        span_tag_list = span_tag_dict.keys()
+        print("SPAN_TAG_DICT: ", span_tag_list)
+        config = ElectraConfig.from_pretrained("monologg/koelectra-base-v3-discriminator",
+                                               num_labels=len(span_tag_list),
+                                               id2label={idx: label for label, idx in span_tag_dict.items()},
+                                               label2id={label: idx for label, idx in span_tag_dict.items()})
 
     # model
     if 1 == user_select:
@@ -263,6 +289,9 @@ def load_ner_config_and_model(user_select: int, args, tag_dict):
     elif 11 == user_select:
         # ELECTRA+LSTM(MECAB)+[CRF] (MOR)
         model = ELECTRA_MECAB_MORP.from_pretrained(args.model_name_or_path, config=config)
+    elif 12 == user_select:
+        # ELECTRA SPAN NER
+        model = ElectraSpanNER.from_pretrained(args.model_name_or_path, config=config)
 
     return config, model
 

@@ -48,7 +48,6 @@ class NER_POS_Dataset(Dataset):
     def _char_elmo_sents_getitem(self, src_sents):
         X = []
         for sent in src_sents:
-            print("\nSent: ", sent)
             temp_X = []
             for char in sent:
                 if re.search(r"[A-Z]+", char):
@@ -57,7 +56,7 @@ class NER_POS_Dataset(Dataset):
                     temp_X.append(self.char_dic[char])
                 else:
                     temp_X.append(self.char_dic["[UNK]"])
-            print("TEMP_X: ", temp_X, "\n========================\n")
+
             if len(temp_X) >= self.seq_len:
                 temp_X = temp_X[:self.seq_len]
             else:
@@ -131,6 +130,43 @@ class NER_Eojeol_Datasets(Dataset):
             "pos_tag_ids": self.pos_tag_ids[idx],
             "eojeol_ids": self.eojeol_ids[idx],
             #"ls_ids": self.ls_ids[idx]
+        }
+
+        return items
+
+#===============================================================
+class SpanNERDataset(Dataset):
+#===============================================================
+    def __init__(
+            self,
+            data: np.ndarray, label_ids: np.ndarray,
+            all_span_idx:np.ndarray, all_span_len: np.ndarray,
+            real_span_mask: np.ndarray, span_only_label: np.ndarray
+    ):
+        self.input_ids = torch.LongTensor(data[:][:, :, 0])
+        self.attn_mask = torch.LongTensor(data[:][:, :, 1])
+        self.token_type_ids = torch.LongTensor(data[:][:, :, 2])
+        self.label_ids = torch.LongTensor(label_ids)
+
+        self.all_span_idx = torch.LongTensor(all_span_idx)
+        self.all_span_len = torch.LongTensor(all_span_len)
+        self.real_span_mask = torch.LongTensor(real_span_mask)
+        self.span_only_label = torch.LongTensor(span_only_label)
+
+    def __len__(self):
+        return self.input_ids.size()[0]
+
+    def __getitem__(self, idx):
+        items = {
+            "input_ids": self.input_ids[idx],
+            "attention_mask": self.attn_mask[idx],
+            "token_type_ids": self.token_type_ids[idx],
+            "label_ids": self.label_ids[idx],
+
+            "all_span_idx": self.all_span_idx[idx],
+            "all_span_len": self.all_span_len[idx],
+            "real_span_mask": self.real_span_mask[idx],
+            "span_only_label": self.span_only_label[idx]
         }
 
         return items
