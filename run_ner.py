@@ -105,6 +105,8 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
             else:
                 preds = np.append(preds, np.array(predict), axis=0)
                 out_label_ids = np.append(out_label_ids, label_ids.numpy(), axis=0)
+            print(predict) # For TEST
+            print(label_ids.numpy().tolist())
         elif g_use_crf:
             conv_outputs = np.zeros_like(inputs["label_ids"].detach().cpu().numpy())
             max_seq_len = conv_outputs.shape[1]

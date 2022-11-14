@@ -110,7 +110,8 @@ class ElectraSpanNER(ElectraPreTrainedModel):
         predict_prob = self.softmax(all_span_rep)
 
         # For Test
-        # preds = self.get_predict(predicts=predict_prob, all_span_idxs=all_span_idxs_ltoken, label_ids=label_ids)
+        preds = self.get_predict(predicts=predict_prob, all_span_idxs=all_span_idxs_ltoken, label_ids=label_ids)
+        print(len(preds))
         if "eval" == mode:
             loss = self.compute_loss(all_span_rep, span_only_label, real_span_mask_ltoken)
             preds = self.get_predict(predicts=predict_prob, all_span_idxs=all_span_idxs_ltoken)
@@ -181,7 +182,7 @@ class ElectraSpanNER(ElectraPreTrainedModel):
                 if is_break:
                     continue
                 else:
-                    # print(span_pair[0], span_pair[1], self.ids2label[span_pair[-1]])
+                    print(span_pair[0], span_pair[1], self.ids2label[span_pair[-1]])
                     batch_pred_span.append((span_pair[0], span_pair[-1]))
                     for s_idx in range(span_pair[0][0], span_pair[0][1] + 1):
                         check_use_idx[s_idx] = True
@@ -193,16 +194,14 @@ class ElectraSpanNER(ElectraPreTrainedModel):
                 s_idx = span[0]
                 e_idx = span[1] + 1
                 for dec_idx in range(s_idx, e_idx):
-                    if 0 == label:
-                        decoded_pred[dec_idx] = self.ids2label[0]
-                    elif dec_idx == s_idx:
+                    if dec_idx == s_idx:
                         decoded_pred[dec_idx] = "B-" + self.ids2label[label]
                     else:
                         decoded_pred[dec_idx] = "I-" + self.ids2label[label]
             decoded_batches.append(decoded_pred)
-            # print("\n===================")
-            # print(decoded_pred)
-            # print(label_ids[batch_idx])
-            # print("\n===================")
+            print("\n===================")
+            print(decoded_pred, len(decoded_pred))
+            print(label_ids[batch_idx])
+            print("\n===================")
         # end loop, batch
         return decoded_batches
