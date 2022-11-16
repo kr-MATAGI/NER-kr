@@ -109,8 +109,8 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
         self.dropout = nn.Dropout(self.dropout_rate)
 
         # CharELMo
-        self.charELMo = CharELMo(vocab_size=self.elmo_vocab_size, mode="repr")
-        self.charELMo.load_state_dict(torch.load("C:/Users/MATAGI/Desktop/Git/NER_Private/model/charELMo/16_model.pth"))
+        #self.charELMo = CharELMo(vocab_size=self.elmo_vocab_size, mode="repr")
+        #self.charELMo.load_state_dict(torch.load("C:/Users/MATAGI/Desktop/Git/NER_Private/model/charELMo/16_model.pth"))
 
         # Char-level Embedding
         '''
@@ -129,7 +129,7 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
         # LSTM Encoder
         # self.lstm_dim_size = config.hidden_size + ((self.pos_embed_out_dim // 2) * self.num_ne_pos) + \
         #                      (self.pos_embed_out_dim * self.num_josa_pos)
-        self.lstm_dim = config.hidden_size * 3
+        self.lstm_dim = config.hidden_size #* 3
         self.encoder = nn.LSTM(input_size=self.lstm_dim, hidden_size=(config.hidden_size // 2),
                                num_layers=1, batch_first=True, bidirectional=True)
 
@@ -149,7 +149,7 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
     #===================================
     def forward(self,
                 input_ids, token_type_ids, attention_mask,
-                labels=None, pos_tag_ids=None,
+                label_ids=None, pos_tag_ids=None,
                 morp_ids=None, ne_pos_one_hot=None, josa_pos_one_hot=None,
                 jamo_ids=None, jamo_boundary=None, sents=None
                 ):
@@ -222,11 +222,11 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
             elmo_layer_2_out : [batch_size, seq_len, elmo_lstm_hidden * 2]
             elmo_repr : [batch_size, seq_len, elmo_lstm_hidden * 2]
         '''
-        elmo_x, elmo_layer_1_out, elmo_layer_2_out = self.charELMo(sents)
+        #elmo_x, elmo_layer_1_out, elmo_layer_2_out = self.charELMo(sents)
         ''' elmo_x 써야 되는가 차원 안맞긴 한데 안써도 된다고 본거 같긴함 (optional)'''
 
         # Concat
-        concat_embed = torch.concat([electra_outputs, elmo_layer_2_out], dim=-1)
+        #concat_embed = torch.concat([electra_outputs, elmo_layer_2_out], dim=-1)
 
         # LSTM
         '''
@@ -234,7 +234,7 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
             hidden: [n_layers * n_directions, batch_size, hidden_dim]
             cell: [n_layers * n_directions, batch_size, hidden_dim]
         '''
-        enc_out, (enc_h_n, enc_c_n) = self.encoder(concat_embed) # [batch_size, seq_len, hidden_size]
+        enc_out, (enc_h_n, enc_c_n) = self.encoder(electra_outputs) # [batch_size, seq_len, hidden_size]
 
         # Attention
         # attention_mask = attention_mask.unsqueeze(1).unsqueeze(2)
@@ -246,9 +246,9 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
 
         # Get LossE
         loss = None
-        if labels is not None:
+        if label_ids is not None:
             loss_fct = nn.CrossEntropyLoss()
-            loss = loss_fct(logits.view(-1, self.config.num_labels), labels.view(-1))
+            loss = loss_fct(logits.view(-1, self.config.num_labels), label_ids.view(-1))
 
         return TokenClassifierOutput(
             loss=loss,

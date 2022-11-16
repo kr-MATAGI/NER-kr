@@ -12,7 +12,7 @@ class NER_POS_Dataset(Dataset):
     def __init__(
             self,
             data: np.ndarray, labels: np.ndarray,
-            sentences: List[str], char_dic: Dict[str, int], seq_len: int = 128
+            #sentences: List[str], char_dic: Dict[str, int], seq_len: int = 128
     ):
         self.input_ids = data[:][:, :, 0]
         self.attention_mask = data[:][:, :, 1]
@@ -73,7 +73,7 @@ class NER_POS_Dataset(Dataset):
             "input_ids": self.input_ids[idx],
             "attention_mask": self.attention_mask[idx],
             "token_type_ids": self.token_type_ids[idx],
-            "labels": self.labels[idx],
+            "label_ids": self.labels[idx],
             # "pos_tag_ids": self.pos_tag_ids[idx],
 
             # "morp_ids": self.morp_ids[idx],

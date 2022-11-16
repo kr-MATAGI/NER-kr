@@ -88,7 +88,7 @@ def load_corpus_npy_datasets(src_path: str, mode: str="train"):
     dataset_npy = np.load(src_path)
 
     # pos_tag_npy = np.load(root_path + "_pos_tag.npy")
-    labels_npy = np.load(root_path + "_labels.npy")
+    labels_npy = np.load(root_path + "_label_ids.npy")
     # morp_ids = np.load(root_path + "_morp_ids.npy")
     # jamo_ids = np.load(root_path + "_jamo_one_hot.npy")
     # jamo_boundary = np.load(root_path + "_boundary.npy")
