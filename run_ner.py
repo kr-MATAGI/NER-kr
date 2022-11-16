@@ -76,11 +76,12 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
                 # "jamo_ids": batch["jamo_ids"].to(args.device),
                 # "jamo_boundary": batch["jamo_boundary"].to(args.device)
                 # "sents": batch["sents"].to(args.device)
-                "all_span_idxs_ltoken": batch["all_span_idx"].to(args.device),
-                "all_span_lens": batch["all_span_len"].to(args.device),
-                "real_span_mask_ltoken": batch["real_span_mask"].to(args.device),
-                "span_only_label": batch["span_only_label"].to(args.device),
-                "mode": "eval"
+
+                # "all_span_idxs_ltoken": batch["all_span_idx"].to(args.device),
+                # "all_span_lens": batch["all_span_len"].to(args.device),
+                # "real_span_mask_ltoken": batch["real_span_mask"].to(args.device),
+                # "span_only_label": batch["span_only_label"].to(args.device),
+                # "mode": "eval"
             }
 
             if 12 == g_user_select:
@@ -106,8 +107,6 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
             else:
                 preds = np.append(preds, np.array(predict), axis=0)
                 out_label_ids = np.append(out_label_ids, label_ids.numpy(), axis=0)
-            print(predict) # For TEST
-            print(label_ids.numpy().tolist())
         elif g_use_crf:
             conv_outputs = np.zeros_like(inputs["label_ids"].detach().cpu().numpy())
             max_seq_len = conv_outputs.shape[1]
@@ -243,6 +242,7 @@ def train(args, model, train_dataset, dev_dataset):
                 "attention_mask": batch["attention_mask"].to(args.device),
                 "token_type_ids": batch["token_type_ids"].to(args.device),
                 "label_ids": batch["label_ids"].to(args.device),
+
                 # "pos_tag_ids": batch["pos_tag_ids"].to(args.device),
                 # "morp_ids": batch["morp_ids"].to(args.device),
                 # "ne_pos_one_hot": batch["ne_pos_one_hot"].to(args.device),
@@ -250,11 +250,12 @@ def train(args, model, train_dataset, dev_dataset):
                 # "jamo_ids": batch["jamo_ids"].to(args.device),
                 # "jamo_boundary": batch["jamo_boundary"].to(args.device)
                 # "sents": batch["sents"].to(args.device)
-                "all_span_idxs_ltoken": batch["all_span_idx"].to(args.device),
-                "all_span_lens": batch["all_span_len"].to(args.device),
-                "real_span_mask_ltoken": batch["real_span_mask"].to(args.device),
-                "span_only_label": batch["span_only_label"].to(args.device),
-                "mode": "train"
+
+                # "all_span_idxs_ltoken": batch["all_span_idx"].to(args.device),
+                # "all_span_lens": batch["all_span_len"].to(args.device),
+                # "real_span_mask_ltoken": batch["real_span_mask"].to(args.device),
+                # "span_only_label": batch["span_only_label"].to(args.device),
+                # "mode": "train"
             }
 
             if 12 == g_user_select:
@@ -420,15 +421,12 @@ def main():
               f"all_span_idx: {test_all_span_idx.shape}, all_span_len: {test_all_span_len.shape}, "
               f"real_span_mask: {test_real_span_mask.shape}, span_only_label: {test_span_only_label.shape}")
     else:
-        train_npy, train_labels, train_sents = \
-            load_corpus_npy_datasets(args.train_npy, mode="train")
-        dev_npy, dev_labels, dev_sents = \
-            load_corpus_npy_datasets(args.dev_npy, mode="dev")
-        test_npy, test_labels, test_sents = \
-            load_corpus_npy_datasets(args.test_npy, mode="test")
-        print(f"train.shape - dataset: {train_npy.shape}, labels: {train_labels.shape}, sents: {len(train_sents)}")
-        print(f"dev.shape - dataset: {dev_npy.shape}, labels: {dev_labels.shape}, sents: {len(dev_sents)}")
-        print(f"test.shape - dataset: {test_npy.shape}, labels: {test_labels.shape}, sents: {len(test_sents)}")
+        train_npy, train_labels = load_corpus_npy_datasets(args.train_npy, mode="train")
+        dev_npy, dev_labels = load_corpus_npy_datasets(args.dev_npy, mode="dev")
+        test_npy, test_labels = load_corpus_npy_datasets(args.test_npy, mode="test")
+        print(f"train.shape - dataset: {train_npy.shape}, labels: {train_labels.shape}")#, sents: {len(train_sents)}")
+        print(f"dev.shape - dataset: {dev_npy.shape}, labels: {dev_labels.shape}")#, sents: {len(dev_sents)}")
+        print(f"test.shape - dataset: {test_npy.shape}, labels: {test_labels.shape}")#, sents: {len(test_sents)}")
 
     # make train/dev/test dataset
     if (5 == g_user_select) or (9 == g_user_select):
@@ -453,9 +451,9 @@ def main():
         with open("C:/Users/MATAGI/Desktop/Git/NER_Private/model/charELMo/char_elmo_vocab.pkl", mode="rb") as vocab_pkl:
             elmo_vocab = pickle.load(vocab_pkl)
             print(f"[run_ner][__main__] Load Vocab : {len(elmo_vocab)}")
-        train_dataset = NER_POS_Dataset(data=train_npy, labels=train_labels, sentences=train_sents, char_dic=elmo_vocab)
-        dev_dataset = NER_POS_Dataset(data=dev_npy, labels=dev_labels, sentences=dev_sents, char_dic=elmo_vocab)
-        test_dataset = NER_POS_Dataset(data=test_npy, labels=test_labels, sentences=test_sents, char_dic=elmo_vocab)
+        train_dataset = NER_POS_Dataset(data=train_npy, labels=train_labels)#, sentences=train_sents, char_dic=elmo_vocab)
+        dev_dataset = NER_POS_Dataset(data=dev_npy, labels=dev_labels)#, sentences=dev_sents, char_dic=elmo_vocab)
+        test_dataset = NER_POS_Dataset(data=test_npy, labels=test_labels)#, sentences=test_sents, char_dic=elmo_vocab)
 
     if args.do_train:
         global_step, tr_loss = train(args, model, train_dataset, dev_dataset)

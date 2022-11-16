@@ -22,7 +22,7 @@ class ElectraSpanNER(ElectraPreTrainedModel):
 
         self.span_combi_mode = "x,y"
         self.token_len_emb_dim = 50
-        self.max_span_width = 8 # 원래는 4, NE가 4넘는게 많을 듯 보여 10 (max_spanLen)
+        self.max_span_width = 8 # 원래는 4, NE가 4넘는게 많을 듯 보여 8 (max_spanLen)
         self.max_seq_len = 128
 
         self.span_len_emb_dim = 100
@@ -110,7 +110,7 @@ class ElectraSpanNER(ElectraPreTrainedModel):
         predict_prob = self.softmax(all_span_rep)
 
         # For Test
-        # preds = self.get_predict(predicts=predict_prob, all_span_idxs=all_span_idxs_ltoken, label_ids=label_ids)
+        preds = self.get_predict(predicts=predict_prob, all_span_idxs=all_span_idxs_ltoken, label_ids=label_ids)
         # print(len(preds))
         if "eval" == mode:
             loss = self.compute_loss(all_span_rep, span_only_label, real_span_mask_ltoken)
@@ -140,11 +140,9 @@ class ElectraSpanNER(ElectraPreTrainedModel):
         batch_size, n_span = span_label_ltoken.size()
         loss = self.cross_entropy(all_span_rep.view(-1, self.n_class),
                                   span_label_ltoken.view(-1))
-        # print(loss.shape)
         loss = loss.view(batch_size, n_span)
         loss = torch.masked_select(loss, real_span_mask_ltoken.bool())
         loss = torch.mean(loss)
-        # predict = self.softmax(all_span_rep)
 
         return loss
 

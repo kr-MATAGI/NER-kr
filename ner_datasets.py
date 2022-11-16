@@ -19,10 +19,10 @@ class NER_POS_Dataset(Dataset):
         self.token_type_ids = data[:][:, :, 2]
         self.labels = labels
 
-        self.sentences = sentences
-        self.seq_len = seq_len
-        self.char_dic = char_dic
-        self.vocab_size = len(char_dic)
+        # self.sentences = sentences
+        # self.seq_len = seq_len
+        # self.char_dic = char_dic
+        # self.vocab_size = len(char_dic)
 
         # self.morp_ids = morp_ids
         # self.ne_pos_one_hot = ne_pos_one_hot
@@ -36,7 +36,7 @@ class NER_POS_Dataset(Dataset):
         self.token_type_ids = torch.tensor(self.token_type_ids, dtype=torch.long)
         self.labels = torch.tensor(self.labels, dtype=torch.long)
 
-        self.sentences = self._char_elmo_sents_getitem(self.sentences)
+        # self.sentences = self._char_elmo_sents_getitem(self.sentences)
 
         # self.morp_ids = torch.tensor(self.morp_ids, dtype=torch.long)
         # self.ne_pos_one_hot = torch.tensor(self.ne_pos_one_hot, dtype=torch.long)
@@ -83,7 +83,7 @@ class NER_POS_Dataset(Dataset):
             # "jamo_ids": self.jamo_ids[idx],
             # "jamo_boundary": self.jamo_boundary[idx]
             
-            "sents": self.sentences[idx]
+            # "sents": self.sentences[idx]
         }
 
         return items
