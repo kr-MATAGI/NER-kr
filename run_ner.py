@@ -71,8 +71,8 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
                 "label_ids": batch["label_ids"].to(args.device),
                 # "pos_tag_ids": batch["pos_tag_ids"].to(args.device),
                 # "morp_ids": batch["morp_ids"].to(args.device),
-                # "ne_pos_one_hot": batch["ne_pos_one_hot"].to(args.device),
-                # "josa_pos_one_hot": batch["josa_pos_one_hot"].to(args.device)
+                "ne_onehot": batch["ne_onehot"].to(args.device),
+                "josa_onehot": batch["josa_onehot"].to(args.device)
                 # "jamo_ids": batch["jamo_ids"].to(args.device),
                 # "jamo_boundary": batch["jamo_boundary"].to(args.device)
                 # "sents": batch["sents"].to(args.device)
@@ -245,8 +245,8 @@ def train(args, model, train_dataset, dev_dataset):
 
                 # "pos_tag_ids": batch["pos_tag_ids"].to(args.device),
                 # "morp_ids": batch["morp_ids"].to(args.device),
-                # "ne_pos_one_hot": batch["ne_pos_one_hot"].to(args.device),
-                # "josa_pos_one_hot": batch["josa_pos_one_hot"].to(args.device)
+                "ne_onehot": batch["ne_onehot"].to(args.device),
+                "josa_onehot": batch["josa_onehot"].to(args.device)
                 # "jamo_ids": batch["jamo_ids"].to(args.device),
                 # "jamo_boundary": batch["jamo_boundary"].to(args.device)
                 # "sents": batch["sents"].to(args.device)
@@ -405,21 +405,30 @@ def main():
 
     # load train/dev/test npy
     if 12 == g_user_select:
-        train_npy, train_label_ids, train_all_span_idx, train_all_span_len, train_real_span_mask, train_span_only_label = \
+        train_npy, train_label_ids, \
+        train_all_span_idx, train_all_span_len, train_real_span_mask, train_span_only_label, \
+        train_nn_onehot, train_josa_onehot = \
             load_corpus_span_ner_npy(args.train_npy, mode="train")
-        dev_npy, dev_label_ids, dev_all_span_idx, dev_all_span_len, dev_real_span_mask, dev_span_only_label = \
+        dev_npy, dev_label_ids, \
+        dev_all_span_idx, dev_all_span_len, dev_real_span_mask, dev_span_only_label,\
+        dev_nn_onehot, dev_josa_onehot = \
             load_corpus_span_ner_npy(args.dev_npy, mode="dev")
-        test_npy, test_label_ids, test_all_span_idx, test_all_span_len, test_real_span_mask, test_span_only_label = \
+        test_npy, test_label_ids, \
+        test_all_span_idx, test_all_span_len, test_real_span_mask, test_span_only_label,\
+        test_nn_onehot, test_josa_onehot = \
             load_corpus_span_ner_npy(args.test_npy, mode="test")
         print(f"train.shape - dataset: {train_npy.shape}, label_ids: {train_label_ids.shape}, "
               f"all_span_idx: {train_all_span_idx.shape}, all_span_len: {train_all_span_len.shape}, "
               f"real_span_mask: {train_real_span_mask.shape}, span_only_label: {train_span_only_label.shape}")
+        print(f"train_nn_onehot.shape: {train_nn_onehot.shape}, josa_onehot.shape: {train_josa_onehot.shape}")
         print(f"dev.shape - dataset: {dev_npy.shape}, label_ids: {dev_label_ids.shape}, "
               f"all_span_idx: {dev_all_span_idx.shape}, all_span_len: {dev_all_span_len.shape}, "
               f"real_span_mask: {dev_real_span_mask.shape}, span_only_label: {dev_span_only_label.shape}")
+        print(f"dev_nn_onehot.shape: {dev_nn_onehot.shape}, josa_onehot.shape: {dev_josa_onehot.shape}")
         print(f"test.shape - dataset: {test_npy.shape}, label_ids: {test_label_ids.shape}, "
               f"all_span_idx: {test_all_span_idx.shape}, all_span_len: {test_all_span_len.shape}, "
               f"real_span_mask: {test_real_span_mask.shape}, span_only_label: {test_span_only_label.shape}")
+        print(f"test_nn_onehot.shape: {test_nn_onehot.shape}, josa_onehot.shape: {test_josa_onehot.shape}")
     else:
         train_npy, train_labels = load_corpus_npy_datasets(args.train_npy, mode="train")
         dev_npy, dev_labels = load_corpus_npy_datasets(args.dev_npy, mode="dev")

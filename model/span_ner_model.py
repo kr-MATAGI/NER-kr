@@ -27,10 +27,12 @@ class ElectraSpanNER(ElectraPreTrainedModel):
 
         self.span_len_emb_dim = 100
         ''' morp는 origin에서 {'isupper': 1, 'islower': 2, 'istitle': 3, 'isdigit': 4, 'other': 5}'''
-        # self.morp_emb_dim = 100
+        self.pos_emb_dim = 50
+        self.n_pos = 14
         
         ''' 원본 Git에서는 Method 적용 개수에 따라 달라짐 '''
-        self.input_dim = self.hidden_size * 2 + self.token_len_emb_dim + self.span_len_emb_dim
+        self.input_dim = self.hidden_size * 2 + self.token_len_emb_dim + self.span_len_emb_dim + \
+                         (self.pos_emb_dim * self.n_pos)
         self.model_dropout = 0.1
 
         # loss and softmax
@@ -64,12 +66,12 @@ class ElectraSpanNER(ElectraPreTrainedModel):
                                                        self.model_dropout)
 
         self.span_len_embedding = nn.Embedding(self.max_span_width + 1, self.span_len_emb_dim, padding_idx=0)
-        # self.morp_embedding = nn.Embedding(len(args.morph2idx_list) + 1, self.morph_emb_dim, padding_idx=0)
-
+        self.pos_embedding = nn.Embedding(self.n_pos, self.pos_emb_dim)
 
     #==============================================
     def forward(self,
                 all_span_lens, all_span_idxs_ltoken, real_span_mask_ltoken, input_ids,
+                nn_onehot, josa_onehot,
                 token_type_ids=None, attention_mask=None, span_only_label=None, mode:str = "train",
                 label_ids=None
                 ):
@@ -105,13 +107,17 @@ class ElectraSpanNER(ElectraPreTrainedModel):
         # n_span : span 개수
         span_len_rep = self.span_len_embedding(all_span_lens) # [batch, n_span, len_dim]
         span_len_rep = F.relu(span_len_rep) # [64, 502, 100]
-        all_span_rep = torch.cat((all_span_rep, span_len_rep), dim=-1)
+
+        pos_onehot_concat = torch.concat([nn_onehot, josa_onehot], -1)
+        span_morp_rep = self.pos_embedding(pos_onehot_concat)
+        span_len_rep = F.relu(span_morp_rep)
+
+        all_span_rep = torch.cat((all_span_rep, span_len_rep, span_morp_rep), dim=-1)
         all_span_rep = self.span_embedding(all_span_rep) # [batch, n_span, n_class] : [64, 502, 16]
         predict_prob = self.softmax(all_span_rep)
 
         # For Test
-        preds = self.get_predict(predicts=predict_prob, all_span_idxs=all_span_idxs_ltoken, label_ids=label_ids)
-        # print(len(preds))
+        # preds = self.get_predict(predicts=predict_prob, all_span_idxs=all_span_idxs_ltoken, label_ids=label_ids)
         if "eval" == mode:
             loss = self.compute_loss(all_span_rep, span_only_label, real_span_mask_ltoken)
             preds = self.get_predict(predicts=predict_prob, all_span_idxs=all_span_idxs_ltoken,

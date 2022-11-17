@@ -77,7 +77,12 @@ def load_corpus_span_ner_npy(src_path: str, mode: str="train"):
     real_span_mask = np.load(root_path + "_real_span_mask_token.npy")
     span_only_label = np.load(root_path + "_span_only_label_token.npy")
 
-    return input_token_attn_npy, label_ids, all_span_idx, all_span_len, real_span_mask, span_only_label
+    nn_onehot = np.load(root_path + "_nn_onehot.npy")
+    josa_onehot = np.load(root_path + "_josa_onehot.npy")
+
+    return input_token_attn_npy, label_ids, \
+           all_span_idx, all_span_len, real_span_mask, span_only_label, \
+           nn_onehot, josa_onehot
 
 
 #===============================================================

@@ -141,7 +141,8 @@ class SpanNERDataset(Dataset):
             self,
             data: np.ndarray, label_ids: np.ndarray,
             all_span_idx:np.ndarray, all_span_len: np.ndarray,
-            real_span_mask: np.ndarray, span_only_label: np.ndarray
+            real_span_mask: np.ndarray, span_only_label: np.ndarray,
+            nn_onehot: np.ndarray, josa_onehot: np.ndarray
     ):
         self.input_ids = torch.LongTensor(data[:][:, :, 0])
         self.attn_mask = torch.LongTensor(data[:][:, :, 1])
@@ -152,6 +153,9 @@ class SpanNERDataset(Dataset):
         self.all_span_len = torch.LongTensor(all_span_len)
         self.real_span_mask = torch.LongTensor(real_span_mask)
         self.span_only_label = torch.LongTensor(span_only_label)
+
+        self.nn_onehot = torch.LongTensor(nn_onehot)
+        self.josa_onehot = torch.LongTensor(josa_onehot)
 
     def __len__(self):
         return self.input_ids.size()[0]
@@ -166,7 +170,10 @@ class SpanNERDataset(Dataset):
             "all_span_idx": self.all_span_idx[idx],
             "all_span_len": self.all_span_len[idx],
             "real_span_mask": self.real_span_mask[idx],
-            "span_only_label": self.span_only_label[idx]
+            "span_only_label": self.span_only_label[idx],
+
+            "nn_onehot": self.nn_onehot[idx],
+            "josa_onehot": self.josa_onehot[idx]
         }
 
         return items

@@ -50,7 +50,7 @@ def load_ne_entity_list(src_path: str = ""):
     return all_sent_list
 
 #=======================================================================================
-def convert2tokenIdx(tokens, all_span_idxs, span_idxLab):
+def convert2tokenIdx(all_span_idxs, span_idxLab):
 #=======================================================================================
     # convert the all the span_idxs from word-level to token-level
     sidxs = [x1 for (x1, x2) in all_span_idxs]
@@ -102,9 +102,34 @@ def make_span_idx_label_pair(ne_list, text_tokens):
     return ret_dict
 
 #=======================================================================================
+def make_span_nn_josa_onehot(all_span_idx_list, nn_onehot, josa_onehot):
+#=======================================================================================
+    ret_nn_onehot_list = []
+    ret_josa_onehot_list = []
+
+    sidxs = [x1 for (x1, x2) in all_span_idx_list]
+    eidxs = [x2 for (x1, x2) in all_span_idx_list]
+    for s_i, e_i in zip(sidxs, eidxs):
+        merge_nn_onehot = [0 for _ in range(5)] # nn[5]
+        merge_josa_onehot = [0 for _ in range(9)] # josa[9] 개수
+        for curr_idx in range(s_i, e_i+1):
+            filter_nn_onehot = np.where(1 == np.array(nn_onehot[curr_idx]))[0]
+            filter_josa_onehot = np.where(1 == np.array(josa_onehot[curr_idx]))[0]
+
+            for nn_idx in filter_nn_onehot:
+                merge_nn_onehot[nn_idx] = 1
+            for josa_idx in filter_josa_onehot:
+                merge_josa_onehot[josa_idx] = 1
+        ret_nn_onehot_list.append(merge_nn_onehot)
+        ret_josa_onehot_list.append(merge_josa_onehot)
+    return ret_nn_onehot_list, ret_josa_onehot_list
+
+#=======================================================================================
 def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
                   seq_max_len: int = 128, debug_mode: bool = False,
-                  span_max_len: int = 10, save_npy_path: str = None):
+                  span_max_len: int = 10, save_npy_path: str = None,
+                  save_pos_onehot: bool = False
+                  ):
 #=======================================================================================
     span_minus = int((span_max_len + 1) * span_max_len / 2)
     max_num_span = int(seq_max_len * span_max_len - span_minus)
@@ -117,7 +142,10 @@ def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
         "all_span_len_list": [],
         "real_span_mask_token": [],
         "span_only_label_token": [],
-        "all_span_idx_list": []
+        "all_span_idx_list": [],
+
+        "nn_span_onehot": [],
+        "josa_span_onehot": [],
     }
 
     # shuffle
@@ -151,9 +179,14 @@ def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
         # Mecab
         mecab_res = mecab.pos(src_item.text)
         text_tokens = []
-        for mecab_item in mecab_res:
+        token_pos_list = []
+        for m_idx, mecab_item in enumerate(mecab_res):
             tokens = tokenizer.tokenize(mecab_item[0])
             text_tokens.extend(tokens)
+            
+            # 0 index에는 [CLS] 토큰이 있어야 한다.
+            for _ in range(len(tokens)):
+                token_pos_list.append(mecab_item[1].split("+"))
 
         # Text Tokens
         valid_token_len = 0
@@ -192,6 +225,51 @@ def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
                 else:
                     label_ids[bio_idx] = ETRI_TAG["I-" + ne_item.type]
 
+        # nn, josa one hot
+        '''
+            아래 코드 이후 
+            모든 Span 별로 가지고 있는 pos을 one-hot으로 표현할 수 있어야 한다.
+                1) 명사, 조사가 포함되어 있는지 (2,) or (1,) (1,)
+                2) 각 품사별로 존재 하는지 (9, )  
+        '''
+        nn_pos_list = ["NNG", "NNP", "SN", "NNB", "NR"]
+        nn_pos_label2id = {label: i for i, label in enumerate(nn_pos_list)}
+
+        josa_list = ["JKS", "JKC", "JKG", "JKO", "JKB", "JKV", "JKQ", "JX", "JC"]
+        josa_label2id = {label: i for i, label in enumerate(josa_list)}
+
+        nn_one_hot_list = []
+        josa_one_hot_list = []
+        for tp_idx, token_pos in enumerate(token_pos_list):
+            filter_pos = [x if "UNKNOWN" != x and "NA" != x and "UNA" != x and "VSV" != x else "O"
+                          for x in token_pos]
+
+            nn_one_hot = [0 for _ in range(len(nn_pos_list))]
+            josa_one_hot = [0 for _ in range(len(josa_list))]
+            for ne_key, ne_pos_ids in nn_pos_label2id.items():
+                if ne_key in filter_pos:
+                    nn_one_hot[ne_pos_ids] = 1
+            for josa_key, josa_pos_ids in josa_label2id.items():
+                if josa_key in filter_pos:
+                    josa_one_hot[josa_pos_ids] = 1
+
+            nn_one_hot_list.append(nn_one_hot)
+            josa_one_hot_list.append(josa_one_hot)
+
+        nn_one_hot_list.insert(0, [0 for _ in range(len(nn_pos_list))])
+        josa_one_hot_list.insert(0, [0 for _ in range(len(josa_list))])
+        if seq_max_len <= len(nn_one_hot_list):
+            nn_one_hot_list = nn_one_hot_list[:seq_max_len - 1]
+            nn_one_hot_list.append([0 for _ in range(len(nn_pos_list))])
+
+            josa_one_hot_list = josa_one_hot_list[:seq_max_len - 1]
+            josa_one_hot_list.append([0 for _ in range(len(josa_list))])
+        else:
+            curr_size = len(nn_one_hot_list)
+            for _ in range(seq_max_len - curr_size):
+                nn_one_hot_list.append([0 for _ in range(len(nn_pos_list))])
+                josa_one_hot_list.append([0 for _ in range(len(josa_list))])
+
         if seq_max_len <= len(label_ids):
             label_ids = label_ids[:seq_max_len - 1]
             label_ids.append(ETRI_TAG["O"])
@@ -201,16 +279,16 @@ def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
                 label_ids.append(ETRI_TAG["O"])
 
         # Span NER
-        context_split = [x[0] for x in mecab_res]
+        # context_split = [x[0] for x in mecab_res]
         all_span_idx_list = enumerate_spans(text_tokens, offset=0, max_span_width=span_max_len)
         all_span_len_list = []
         for idx_pair in all_span_idx_list:
             s_idx, e_idx = idx_pair
             span_len = e_idx - s_idx + 1
             all_span_len_list.append(span_len)
-
+        
         span_idx_label_dict = make_span_idx_label_pair(src_item.ne_list, text_tokens)
-        span_idx_new_label_dict = convert2tokenIdx(tokens=text_tokens, span_idxLab=span_idx_label_dict,
+        span_idx_new_label_dict = convert2tokenIdx(span_idxLab=span_idx_label_dict,
                                                    all_span_idxs=all_span_idx_list)
         span_only_label_token = [] # 만들어진 span 집합들의 label
         for idx_str, label in span_idx_new_label_dict.items():
@@ -237,7 +315,7 @@ def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
         # print(span_only_label_token)
         # print(all_span_len_list)
         # print(real_span_mask_token)
-        print(all_span_idx_list)
+        # print(all_span_idx_list)
 
         if max_num_span > len(span_only_label_token):
             diff_len = max_num_span - len(span_only_label_token)
@@ -252,6 +330,11 @@ def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
             diff_len = max_num_span - len(all_span_idx_list)
             all_span_idx_list += [(0, 0)] * diff_len
 
+        '''span 별 가지는 nn, josa one-hot으로 나타냄'''
+        all_nn_span_onehot, all_josa_span_onehot = make_span_nn_josa_onehot(all_span_idx_list=all_span_idx_list,
+                                                                            nn_onehot=nn_one_hot_list,
+                                                                            josa_onehot=josa_one_hot_list)
+
         assert len(input_ids) == seq_max_len, f"{len(input_ids)}"
         assert len(attention_mask) == seq_max_len, f"{len(attention_mask)}"
         assert len(token_type_ids) == seq_max_len, f"{len(token_type_ids)}"
@@ -261,16 +344,23 @@ def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
         assert len(all_span_idx_list) == max_num_span, f"{len(all_span_idx_list)}"
         assert len(all_span_len_list) == max_num_span, f"{len(all_span_len_list)}"
         assert len(real_span_mask_token) == max_num_span, f"{len(real_span_mask_token)}"
+        assert len(all_nn_span_onehot) == max_num_span, f"{len(all_nn_span_onehot)}"
+        assert len(all_josa_span_onehot) == max_num_span, f"{len(all_josa_span_onehot)}"
 
-        npy_dict["input_ids"].append(input_ids)
-        npy_dict["attention_mask"].append(attention_mask)
-        npy_dict["token_type_ids"].append(token_type_ids)
-        npy_dict["label_ids"].append(label_ids)
+        if not save_pos_onehot:
+            npy_dict["input_ids"].append(input_ids)
+            npy_dict["attention_mask"].append(attention_mask)
+            npy_dict["token_type_ids"].append(token_type_ids)
+            npy_dict["label_ids"].append(label_ids)
 
-        npy_dict["span_only_label_token"].append(span_only_label_token)
-        npy_dict["all_span_len_list"].append(all_span_len_list)
-        npy_dict["real_span_mask_token"].append(real_span_mask_token)
-        npy_dict["all_span_idx_list"].append(all_span_idx_list)
+            npy_dict["span_only_label_token"].append(span_only_label_token)
+            npy_dict["all_span_len_list"].append(all_span_len_list)
+            npy_dict["real_span_mask_token"].append(real_span_mask_token)
+            npy_dict["all_span_idx_list"].append(all_span_idx_list)
+
+        else:
+            npy_dict["nn_span_onehot"].append(all_nn_span_onehot)
+            npy_dict["josa_span_onehot"].append(all_josa_span_onehot)
 
         if debug_mode:
             print(span_idx_label_dict)
@@ -285,10 +375,10 @@ def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
         #     # For save Test
         #     break
 
-    save_span_npy(npy_dict, len(src_list), save_npy_path)
+    save_span_npy(npy_dict, len(src_list), save_npy_path, save_pos_onehot)
 
 #=======================================================================================
-def save_span_npy(npy_dict, src_list_len, save_path):
+def save_span_npy(npy_dict, src_list_len, save_path, save_onehot):
 #=======================================================================================
     npy_dict["input_ids"] = np.array(npy_dict["input_ids"])
     npy_dict["attention_mask"] = np.array(npy_dict["attention_mask"])
@@ -299,6 +389,8 @@ def save_span_npy(npy_dict, src_list_len, save_path):
     npy_dict["all_span_len_list"] = np.array(npy_dict["all_span_len_list"])
     npy_dict["real_span_mask_token"] = np.array(npy_dict["real_span_mask_token"])
     npy_dict["all_span_idx_list"] = np.array(npy_dict["all_span_idx_list"])
+    npy_dict["nn_span_onehot"] = np.array(npy_dict["nn_span_onehot"])
+    npy_dict["josa_span_onehot"] = np.array(npy_dict["josa_span_onehot"])
 
     print(f"input_ids.shape: {npy_dict['input_ids'].shape}")
     print(f"attention_mask.shape: {npy_dict['attention_mask'].shape}")
@@ -306,9 +398,12 @@ def save_span_npy(npy_dict, src_list_len, save_path):
     print(f"label_ids.shape: {npy_dict['label_ids'].shape}")
 
     print(f"span_only_label_token.shape: {npy_dict['span_only_label_token'].shape}")
-    print(f"all_span_len_list.len: {npy_dict['all_span_len_list'].shape}")
-    print(f"real_span_mask_token.len: {npy_dict['real_span_mask_token'].shape}")
-    print(f"all_span_idx_list.len: {npy_dict['all_span_idx_list'].shape}")
+    print(f"all_span_len_list.shape: {npy_dict['all_span_len_list'].shape}")
+    print(f"real_span_mask_token.shape: {npy_dict['real_span_mask_token'].shape}")
+    print(f"all_span_idx_list.shape: {npy_dict['all_span_idx_list'].shape}")
+
+    print(f"nn_span_onehot.shape: {npy_dict['nn_span_onehot'].shape}")
+    print(f"josa_span_onehot.shape: {npy_dict['josa_span_onehot'].shape}")
 
     split_size = int(src_list_len * 0.1)
     train_size = split_size * 7
@@ -325,13 +420,20 @@ def save_span_npy(npy_dict, src_list_len, save_path):
     train_all_span_len_list_np = npy_dict["all_span_len_list"][:train_size]
     train_real_span_mask_token_np = npy_dict["real_span_mask_token"][:train_size]
     train_all_span_idx_list_np = npy_dict["all_span_idx_list"][:train_size]
+
+    train_nn_span_onehot_np = npy_dict["nn_span_onehot"][:train_size]
+    train_josa_span_onehot_np = npy_dict["josa_span_onehot"][:train_size]
+
     print(f"train_np.shape: {train_np.shape}")
     print(f"train_label_ids.shape: {train_label_ids_np.shape}")
 
     print(f"train_span_only_label_token_np.shape: {train_span_only_label_token_np.shape}")
-    print(f"train_all_span_len_list_np.len: {train_all_span_len_list_np.shape}")
-    print(f"train_real_span_mask_token_np.len: {train_real_span_mask_token_np.shape}")
-    print(f"train_all_span_idx_list_np.len: {train_all_span_idx_list_np.shape}")
+    print(f"train_all_span_len_list_np.shape: {train_all_span_len_list_np.shape}")
+    print(f"train_real_span_mask_token_np.shape: {train_real_span_mask_token_np.shape}")
+    print(f"train_all_span_idx_list_np.shape: {train_all_span_idx_list_np.shape}")
+
+    print(f"train_nn_span_onehot_np.shape: {train_nn_span_onehot_np.shape}")
+    print(f"train_josa_span_onehot_np.shape: {train_josa_span_onehot_np.shape}")
 
     # Dev
     dev_np = [npy_dict["input_ids"][train_size:dev_size],
@@ -345,13 +447,20 @@ def save_span_npy(npy_dict, src_list_len, save_path):
     dev_all_span_len_list_np = npy_dict["all_span_len_list"][train_size:dev_size]
     dev_real_span_mask_token_np = npy_dict["real_span_mask_token"][train_size:dev_size]
     dev_all_span_idx_list_np = npy_dict["all_span_idx_list"][train_size:dev_size]
+
+    dev_nn_span_onehot_np = npy_dict["nn_span_onehot"][train_size:dev_size]
+    dev_josa_span_onehot_np = npy_dict["josa_span_onehot"][train_size:dev_size]
+
     print(f"dev_np.shape: {dev_np.shape}")
     print(f"dev_label_ids.shape: {dev_label_ids_np.shape}")
 
     print(f"dev_span_only_label_token_np.shape: {dev_span_only_label_token_np.shape}")
-    print(f"dev_all_span_len_list_np.len: {dev_all_span_len_list_np.shape}")
-    print(f"dev_real_span_mask_token_np.len: {dev_real_span_mask_token_np.shape}")
-    print(f"dev_all_span_idx_list_np.len: {dev_all_span_idx_list_np.shape}")
+    print(f"dev_all_span_len_list_np.shape: {dev_all_span_len_list_np.shape}")
+    print(f"dev_real_span_mask_token_np.shape: {dev_real_span_mask_token_np.shape}")
+    print(f"dev_all_span_idx_list_np.shape: {dev_all_span_idx_list_np.shape}")
+
+    print(f"dev_nn_span_onehot_np.shape: {dev_nn_span_onehot_np.shape}")
+    print(f"dev_josa_span_onehot_np.shape: {dev_josa_span_onehot_np.shape}")
 
     # Test
     test_np = [npy_dict["input_ids"][dev_size:],
@@ -365,40 +474,56 @@ def save_span_npy(npy_dict, src_list_len, save_path):
     test_all_span_len_list_np = npy_dict["all_span_len_list"][dev_size:]
     test_real_span_mask_token_np = npy_dict["real_span_mask_token"][dev_size:]
     test_all_span_idx_list_np = npy_dict["all_span_idx_list"][dev_size:]
+
+    test_nn_span_onehot_np = npy_dict["nn_span_onehot"][dev_size:]
+    test_josa_span_onehot_np = npy_dict["josa_span_onehot"][dev_size:]
+
     print(f"test_np.shape: {test_np.shape}")
     print(f"test_label_ids.shape: {test_label_ids_np.shape}")
 
     print(f"test_span_only_label_token_np.shape: {test_span_only_label_token_np.shape}")
-    print(f"test_all_span_len_list_np.len: {test_all_span_len_list_np.shape}")
-    print(f"test_real_span_mask_token_np.len: {test_real_span_mask_token_np.shape}")
-    print(f"test_all_span_idx_list_np.len: {test_all_span_idx_list_np.shape}")
+    print(f"test_all_span_len_list_np.shape: {test_all_span_len_list_np.shape}")
+    print(f"test_real_span_mask_token_np.shape: {test_real_span_mask_token_np.shape}")
+    print(f"test_all_span_idx_list_np.shape: {test_all_span_idx_list_np.shape}")
+
+    print(f"test_nn_span_onehot_np.shape: {test_nn_span_onehot_np.shape}")
+    print(f"test_josa_span_onehot_np.shape: {test_josa_span_onehot_np.shape}")
 
     # Save
     root_path = "../corpus/npy/" + save_path
     # save input_ids, attention_mask, token_type_ids
-    np.save(root_path + "/train", train_np)
-    np.save(root_path + "/dev", dev_np)
-    np.save(root_path + "/test", test_np)
+    if not save_onehot:
+        np.save(root_path + "/train", train_np)
+        np.save(root_path + "/dev", dev_np)
+        np.save(root_path + "/test", test_np)
 
-    np.save(root_path + "/train_span_only_label_token", train_span_only_label_token_np)
-    np.save(root_path + "/dev_span_only_label_token", dev_span_only_label_token_np)
-    np.save(root_path + "/test_span_only_label_token", test_span_only_label_token_np)
+        np.save(root_path + "/train_span_only_label_token", train_span_only_label_token_np)
+        np.save(root_path + "/dev_span_only_label_token", dev_span_only_label_token_np)
+        np.save(root_path + "/test_span_only_label_token", test_span_only_label_token_np)
 
-    np.save(root_path + "/train_all_span_len_list", train_all_span_len_list_np)
-    np.save(root_path + "/dev_all_span_len_list", dev_all_span_len_list_np)
-    np.save(root_path + "/test_all_span_len_list", test_all_span_len_list_np)
+        np.save(root_path + "/train_all_span_len_list", train_all_span_len_list_np)
+        np.save(root_path + "/dev_all_span_len_list", dev_all_span_len_list_np)
+        np.save(root_path + "/test_all_span_len_list", test_all_span_len_list_np)
 
-    np.save(root_path + "/train_label_ids", train_label_ids_np)
-    np.save(root_path + "/dev_label_ids", dev_label_ids_np)
-    np.save(root_path + "/test_label_ids", test_label_ids_np)
+        np.save(root_path + "/train_label_ids", train_label_ids_np)
+        np.save(root_path + "/dev_label_ids", dev_label_ids_np)
+        np.save(root_path + "/test_label_ids", test_label_ids_np)
 
-    np.save(root_path + "/train_real_span_mask_token", train_real_span_mask_token_np)
-    np.save(root_path + "/dev_real_span_mask_token", dev_real_span_mask_token_np)
-    np.save(root_path + "/test_real_span_mask_token", test_real_span_mask_token_np)
+        np.save(root_path + "/train_real_span_mask_token", train_real_span_mask_token_np)
+        np.save(root_path + "/dev_real_span_mask_token", dev_real_span_mask_token_np)
+        np.save(root_path + "/test_real_span_mask_token", test_real_span_mask_token_np)
 
-    np.save(root_path + "/train_all_span_idx", train_all_span_idx_list_np)
-    np.save(root_path + "/dev_all_span_idx", dev_all_span_idx_list_np)
-    np.save(root_path + "/test_all_span_idx", test_all_span_idx_list_np)
+        np.save(root_path + "/train_all_span_idx", train_all_span_idx_list_np)
+        np.save(root_path + "/dev_all_span_idx", dev_all_span_idx_list_np)
+        np.save(root_path + "/test_all_span_idx", test_all_span_idx_list_np)
+    else:
+        np.save(root_path + "/train_nn_onehot", train_nn_span_onehot_np)
+        np.save(root_path + "/dev_nn_onehot", dev_nn_span_onehot_np)
+        np.save(root_path + "/test_nn_onehot", test_nn_span_onehot_np)
+
+        np.save(root_path + "/train_josa_onehot", train_josa_span_onehot_np)
+        np.save(root_path + "/dev_josa_onehot", dev_josa_span_onehot_np)
+        np.save(root_path + "/test_josa_onehot", test_josa_span_onehot_np)
 
     print("save complete")
 
@@ -412,5 +537,5 @@ if "__main__" == __name__:
     make_span_npy(
         tokenizer_name="monologg/koelectra-base-v3-discriminator",
         src_list=all_sent_list, seq_max_len=128, span_max_len=8,
-        debug_mode=True, save_npy_path="span_ner"
+        debug_mode=False, save_npy_path="span_ner", save_pos_onehot=True
     )
