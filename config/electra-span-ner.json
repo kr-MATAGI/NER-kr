@@ -1,7 +1,7 @@
 {
   "task": "custom",
   "data_dir": "data",
-  "ckpt_dir": "ckpt-electra-mecab-span-add-pos-dim100-ner-1117",
+  "ckpt_dir": "ckpt-electra-mecab-span-add-pos-and-transEnc-ner-1117",
   "train_npy": "./corpus/npy/span_ner/train.npy",
   "dev_npy": "./corpus/npy/span_ner/dev.npy",
   "test_npy": "./corpus/npy/span_ner/test.npy",
@@ -22,7 +22,7 @@
   "no_cuda": false,
   "model_type": "monologg/koelectra-base-v3-discriminator",
   "model_name_or_path": "monologg/koelectra-base-v3-discriminator",
-  "output_dir": "electra-electra-mecab-span-add-pos-dim100-ner-1117",
+  "output_dir": "electra-electra-mecab-span-add-pos-and-transEnc-ner-1117",
   "seed": 42,
   "train_batch_size": 32,
   "eval_batch_size": 128,
