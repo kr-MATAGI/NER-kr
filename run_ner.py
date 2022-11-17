@@ -69,19 +69,18 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
                 "attention_mask": batch["attention_mask"].to(args.device),
                 "token_type_ids": batch["token_type_ids"].to(args.device),
                 "label_ids": batch["label_ids"].to(args.device),
-                # "pos_tag_ids": batch["pos_tag_ids"].to(args.device),
+                "pos_ids": batch["pos_ids"].to(args.device),
+
                 # "morp_ids": batch["morp_ids"].to(args.device),
-                "ne_onehot": batch["ne_onehot"].to(args.device),
-                "josa_onehot": batch["josa_onehot"].to(args.device)
                 # "jamo_ids": batch["jamo_ids"].to(args.device),
                 # "jamo_boundary": batch["jamo_boundary"].to(args.device)
                 # "sents": batch["sents"].to(args.device)
 
-                # "all_span_idxs_ltoken": batch["all_span_idx"].to(args.device),
-                # "all_span_lens": batch["all_span_len"].to(args.device),
-                # "real_span_mask_ltoken": batch["real_span_mask"].to(args.device),
-                # "span_only_label": batch["span_only_label"].to(args.device),
-                # "mode": "eval"
+                "all_span_idxs_ltoken": batch["all_span_idx"].to(args.device),
+                "all_span_lens": batch["all_span_len"].to(args.device),
+                "real_span_mask_ltoken": batch["real_span_mask"].to(args.device),
+                "span_only_label": batch["span_only_label"].to(args.device),
+                "mode": "eval"
             }
 
             if 12 == g_user_select:
@@ -176,7 +175,6 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
 
     return results
 
-
 ### Train
 #===============================================================
 def train(args, model, train_dataset, dev_dataset):
@@ -243,19 +241,18 @@ def train(args, model, train_dataset, dev_dataset):
                 "token_type_ids": batch["token_type_ids"].to(args.device),
                 "label_ids": batch["label_ids"].to(args.device),
 
+                "pos_ids": batch["pos_ids"].to(args.device),
                 # "pos_tag_ids": batch["pos_tag_ids"].to(args.device),
                 # "morp_ids": batch["morp_ids"].to(args.device),
-                "ne_onehot": batch["ne_onehot"].to(args.device),
-                "josa_onehot": batch["josa_onehot"].to(args.device)
                 # "jamo_ids": batch["jamo_ids"].to(args.device),
                 # "jamo_boundary": batch["jamo_boundary"].to(args.device)
                 # "sents": batch["sents"].to(args.device)
 
-                # "all_span_idxs_ltoken": batch["all_span_idx"].to(args.device),
-                # "all_span_lens": batch["all_span_len"].to(args.device),
-                # "real_span_mask_ltoken": batch["real_span_mask"].to(args.device),
-                # "span_only_label": batch["span_only_label"].to(args.device),
-                # "mode": "train"
+                "all_span_idxs_ltoken": batch["all_span_idx"].to(args.device),
+                "all_span_lens": batch["all_span_len"].to(args.device),
+                "real_span_mask_ltoken": batch["real_span_mask"].to(args.device),
+                "span_only_label": batch["span_only_label"].to(args.device),
+                "mode": "train"
             }
 
             if 12 == g_user_select:
@@ -406,29 +403,23 @@ def main():
     # load train/dev/test npy
     if 12 == g_user_select:
         train_npy, train_label_ids, \
-        train_all_span_idx, train_all_span_len, train_real_span_mask, train_span_only_label, \
-        train_nn_onehot, train_josa_onehot = \
+        train_all_span_idx, train_all_span_len, train_real_span_mask, train_span_only_label, train_pos_ids = \
             load_corpus_span_ner_npy(args.train_npy, mode="train")
         dev_npy, dev_label_ids, \
-        dev_all_span_idx, dev_all_span_len, dev_real_span_mask, dev_span_only_label,\
-        dev_nn_onehot, dev_josa_onehot = \
+        dev_all_span_idx, dev_all_span_len, dev_real_span_mask, dev_span_only_label, dev_pos_ids = \
             load_corpus_span_ner_npy(args.dev_npy, mode="dev")
         test_npy, test_label_ids, \
-        test_all_span_idx, test_all_span_len, test_real_span_mask, test_span_only_label,\
-        test_nn_onehot, test_josa_onehot = \
+        test_all_span_idx, test_all_span_len, test_real_span_mask, test_span_only_label, test_pos_ids = \
             load_corpus_span_ner_npy(args.test_npy, mode="test")
-        print(f"train.shape - dataset: {train_npy.shape}, label_ids: {train_label_ids.shape}, "
+        print(f"train.shape - dataset: {train_npy.shape}, label_ids: {train_label_ids.shape}, pos_ids: {train_pos_ids.shape}"
               f"all_span_idx: {train_all_span_idx.shape}, all_span_len: {train_all_span_len.shape}, "
               f"real_span_mask: {train_real_span_mask.shape}, span_only_label: {train_span_only_label.shape}")
-        print(f"train_nn_onehot.shape: {train_nn_onehot.shape}, josa_onehot.shape: {train_josa_onehot.shape}")
-        print(f"dev.shape - dataset: {dev_npy.shape}, label_ids: {dev_label_ids.shape}, "
+        print(f"dev.shape - dataset: {dev_npy.shape}, label_ids: {dev_label_ids.shape}, pos_ids: {dev_pos_ids.shape}"
               f"all_span_idx: {dev_all_span_idx.shape}, all_span_len: {dev_all_span_len.shape}, "
               f"real_span_mask: {dev_real_span_mask.shape}, span_only_label: {dev_span_only_label.shape}")
-        print(f"dev_nn_onehot.shape: {dev_nn_onehot.shape}, josa_onehot.shape: {dev_josa_onehot.shape}")
-        print(f"test.shape - dataset: {test_npy.shape}, label_ids: {test_label_ids.shape}, "
+        print(f"test.shape - dataset: {test_npy.shape}, label_ids: {test_label_ids.shape}, pos_ids: {test_pos_ids.shape}"
               f"all_span_idx: {test_all_span_idx.shape}, all_span_len: {test_all_span_len.shape}, "
               f"real_span_mask: {test_real_span_mask.shape}, span_only_label: {test_span_only_label.shape}")
-        print(f"test_nn_onehot.shape: {test_nn_onehot.shape}, josa_onehot.shape: {test_josa_onehot.shape}")
     else:
         train_npy, train_labels = load_corpus_npy_datasets(args.train_npy, mode="train")
         dev_npy, dev_labels = load_corpus_npy_datasets(args.dev_npy, mode="dev")
@@ -443,18 +434,15 @@ def main():
         dev_dataset = NER_Eojeol_Datasets(token_data=dev_npy, labels=dev_labels, eojeol_ids=None)
         test_dataset = NER_Eojeol_Datasets(token_data=test_npy, labels=test_labels, eojeol_ids=None)
     elif 12 == g_user_select:
-        train_dataset = SpanNERDataset(data=train_npy, label_ids=train_label_ids,
-                                       span_only_label=train_span_only_label,
-                                       real_span_mask=train_real_span_mask, all_span_len=train_all_span_len,
-                                       all_span_idx=train_all_span_idx)
-        dev_dataset = SpanNERDataset(data=dev_npy, label_ids=dev_label_ids,
-                                     span_only_label=dev_span_only_label,
-                                     real_span_mask=dev_real_span_mask, all_span_len=dev_all_span_len,
-                                     all_span_idx=dev_all_span_idx)
-        test_dataset = SpanNERDataset(data=test_npy, label_ids=test_label_ids,
-                                      span_only_label=test_span_only_label,
-                                      real_span_mask=test_real_span_mask, all_span_len=test_all_span_len,
-                                      all_span_idx=test_all_span_idx)
+        train_dataset = SpanNERDataset(data=train_npy, label_ids=train_label_ids, pos_ids=train_pos_ids,
+                                       span_only_label=train_span_only_label, real_span_mask=train_real_span_mask,
+                                       all_span_len=train_all_span_len, all_span_idx=train_all_span_idx)
+        dev_dataset = SpanNERDataset(data=dev_npy, label_ids=dev_label_ids, pos_ids=dev_pos_ids,
+                                     span_only_label=dev_span_only_label, real_span_mask=dev_real_span_mask,
+                                     all_span_len=dev_all_span_len, all_span_idx=dev_all_span_idx)
+        test_dataset = SpanNERDataset(data=test_npy, label_ids=test_label_ids, pos_ids=test_pos_ids,
+                                      span_only_label=test_span_only_label, real_span_mask=test_real_span_mask,
+                                      all_span_len=test_all_span_len, all_span_idx=test_all_span_idx)
     else:
         # elmo_vocab = None
         # with open("C:/Users/MATAGI/Desktop/Git/NER_Private/model/charELMo/char_elmo_vocab.pkl", mode="rb") as vocab_pkl:
