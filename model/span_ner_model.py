@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from transformers import ElectraModel, ElectraPreTrainedModel
 
-from model.crf_layer import CRF
+from model.transformer_encoder import Trans_Encoder, Enc_Config
 from model.classifier.span_classifier import SingleLinearClassifier, MultiNonLinearClassifier
 from allennlp.modules.span_extractors import EndpointSpanExtractor
 from torch.nn import functional as F
@@ -28,7 +28,7 @@ class ElectraSpanNER(ElectraPreTrainedModel):
 
         self.span_len_emb_dim = 100
         ''' morp는 origin에서 {'isupper': 1, 'islower': 2, 'istitle': 3, 'isdigit': 4, 'other': 5}'''
-        self.pos_emb_dim = 50
+        self.pos_emb_dim = 100
         self.n_pos = 14
         
         ''' 원본 Git에서는 Method 적용 개수에 따라 달라짐 '''
@@ -42,10 +42,15 @@ class ElectraSpanNER(ElectraPreTrainedModel):
 
         print("self.max_span_width: ", self.max_span_width)
         print("self.tokenLen_emb_dim: ", self.token_len_emb_dim)
-        print("self.input_dim: ", self.input_dim) # 1586
+        print("self.pos_emb_dim.dim: ", self.pos_emb_dim)
+        print("self.input_dim: ", self.input_dim)
 
         # Model
         self.electra = ElectraModel.from_pretrained("monologg/koelectra-base-v3-discriminator", config=config)
+
+        # Transformer
+        self.enc_config = Enc_Config(config.vocab_size)
+        self.trans_enc = Trans_Encoder(self.enc_config)
 
         ''' 이거 2개 사용안함
         self.start_outputs = nn.Linear(self.hidden_size, 1)
@@ -96,12 +101,15 @@ class ElectraSpanNER(ElectraPreTrainedModel):
 
         electra_outputs = electra_outputs.last_hidden_state  # [batch_size, seq_len, hidden_size]
 
+        # Transformer Encoder
+        tran_enc_out = self.trans_enc(electra_outputs)
+
         # [batch, n_span, input_dim] : [64, 502, 1586]
         '''
             all_span_rep : [batch, n_span, output_dim]
             all_span_idxs_ltoken : [batch, n_span, 2]
         '''
-        all_span_rep = self.endpoint_span_extractor(electra_outputs, all_span_idxs_ltoken.long())
+        all_span_rep = self.endpoint_span_extractor(tran_enc_out, all_span_idxs_ltoken.long())
 
         ''' use span len, not use morp'''
         # n_span : span 개수
