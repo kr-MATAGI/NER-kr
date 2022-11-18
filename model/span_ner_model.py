@@ -117,7 +117,7 @@ class ElectraSpanNER(ElectraPreTrainedModel):
 
         ''' use span len, not use morp'''
         # n_span : span 개수
-        span_len_rep = self.span_len_embedding(all_span_lens, attention_mask) # [batch, n_span, len_dim]
+        span_len_rep = self.span_len_embedding(all_span_lens) # [batch, n_span, len_dim]
         span_len_rep = F.relu(span_len_rep) # [64, 502, 100]
 
         # [batch, n_span, num_pos]
