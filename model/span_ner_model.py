@@ -102,7 +102,10 @@ class ElectraSpanNER(ElectraPreTrainedModel):
         electra_outputs = electra_outputs.last_hidden_state  # [batch_size, seq_len, hidden_size]
 
         # Transformer Encoder
-        tran_enc_out = self.trans_enc(electra_outputs)
+        tran_attention_mask = attention_mask.unsqueeze(1).unsqueeze(2)  # [64, 1, 1, max_eojeol_len]
+        tran_attention_mask = tran_attention_mask.to(dtype=next(self.parameters()).dtype)  # fp16 compatibility
+        tran_attention_mask = (1.0 - tran_attention_mask) * -10000.0
+        tran_enc_out = self.trans_enc(electra_outputs, tran_attention_mask)
 
         # [batch, n_span, input_dim] : [64, 502, 1586]
         '''
@@ -113,7 +116,7 @@ class ElectraSpanNER(ElectraPreTrainedModel):
 
         ''' use span len, not use morp'''
         # n_span : span 개수
-        span_len_rep = self.span_len_embedding(all_span_lens) # [batch, n_span, len_dim]
+        span_len_rep = self.span_len_embedding(all_span_lens, attention_mask) # [batch, n_span, len_dim]
         span_len_rep = F.relu(span_len_rep) # [64, 502, 100]
 
         # [batch, n_span, num_pos]
