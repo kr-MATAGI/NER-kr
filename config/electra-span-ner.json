@@ -1,7 +1,7 @@
 {
   "task": "custom",
   "data_dir": "data",
-  "ckpt_dir": "ckpt-electra-mecab-span-add-pos100-and-nng-nnp-merge-ner-1117",
+  "ckpt_dir": "ckpt-electra-mecab-span-and-nng-nnp-merge-span-limit-6-del-jkvq-1117",
   "train_npy": "./corpus/npy/span_ner/train.npy",
   "dev_npy": "./corpus/npy/span_ner/dev.npy",
   "test_npy": "./corpus/npy/span_ner/test.npy",
@@ -22,11 +22,11 @@
   "no_cuda": false,
   "model_type": "monologg/koelectra-base-v3-discriminator",
   "model_name_or_path": "monologg/koelectra-base-v3-discriminator",
-  "output_dir": "electra-electra-mecab-span-add-pos100-and-nng-nnp-merge-ner-1117",
+  "output_dir": "electra-mecab-span-and-nng-nnp-merge-span-limit-6-del-jkvq-1117",
   "seed": 42,
   "train_batch_size": 64,
   "eval_batch_size": 128,
-  "logging_steps": 3284,
+  "logging_steps": 8210,
   "save_steps": 1642,
   "learning_rate": 5e-5,
   "n_gpu": 1

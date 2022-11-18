@@ -20,6 +20,7 @@ from torch.utils.data import Dataset
 
 # Global
 test_str_list = [
+    "문건 유출에 관여한 것으로 보이는 서울경찰청 정보1분실 직원 한모"
     "29·미국·사진", "전창수(42) 두산타워 마케팅팀 차장", "샌드위치→역(逆)샌드위치→신(新)샌드위치….",
     "홍준표·원희룡·나경원 후보가 '3강'을 형성하며 엎치락뒤치락해 왔다.", "P 불투르(Vulture) 인사위원회 위원장은",
     "넙치·굴비·홍어·톳·꼬시래기·굴·홍합", "연준 의장이", "황병서 북한군 총정치국장이 올해 10월 4일",
@@ -486,6 +487,6 @@ if "__main__" == __name__:
 
     make_span_npy(
         tokenizer_name="monologg/koelectra-base-v3-discriminator",
-        src_list=all_sent_list, seq_max_len=128, span_max_len=8,
+        src_list=all_sent_list, seq_max_len=128, span_max_len=6,
         debug_mode=False, save_npy_path="span_ner"
     )

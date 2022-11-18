@@ -24,7 +24,7 @@ class ElectraSpanNER(ElectraPreTrainedModel):
 
         self.span_combi_mode = "x,y"
         self.token_len_emb_dim = 50
-        self.max_span_width = 8 # 원래는 4, NE가 4넘는게 많을 듯 보여 8 (max_spanLen)
+        self.max_span_width = 6 # 원본 깃에는 4
         self.max_seq_len = 128
 
         self.span_len_emb_dim = 100
@@ -220,7 +220,7 @@ class ElectraSpanNER(ElectraPreTrainedModel):
         mecab_tag2ids = {v: k for k, v in MECAB_POS_TAG.items()} # origin, 1: "NNG"
         target_tag_list = [ # NN은 NNG/NNP 통합
             "NNG", "NNP", "SN", "NNB", "NR",
-            "JKS", "JKC", "JKG", "JKO", "JKB", "JKV", "JKQ", "JX", "JC"
+            "JKS", "JKC", "JKG", "JKO", "JKB", "JX", "JC" # JKV(호격 조사), JKQ(인용격 조사)
         ]
         ''' 해당 되는 것의 pos_ids의 새로운 idx '''
         target_tag2ids = {mecab_tag2ids[x]: i for i, x in enumerate(target_tag_list)}
