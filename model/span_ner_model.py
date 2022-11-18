@@ -48,10 +48,6 @@ class ElectraSpanNER(ElectraPreTrainedModel):
         # Model
         self.electra = ElectraModel.from_pretrained("monologg/koelectra-base-v3-discriminator", config=config)
 
-        # Transformer
-        self.enc_config = Enc_Config(config.vocab_size)
-        self.trans_enc = Trans_Encoder(self.enc_config)
-
         ''' 이거 2개 사용안함
         self.start_outputs = nn.Linear(self.hidden_size, 1)
         self.end_outputs = nn.Linear(self.hidden_size, 1)
@@ -101,19 +97,12 @@ class ElectraSpanNER(ElectraPreTrainedModel):
 
         electra_outputs = electra_outputs.last_hidden_state  # [batch_size, seq_len, hidden_size]
 
-        # Transformer Encoder
-        tran_attention_mask = copy.deepcopy(attention_mask.unsqueeze(1).unsqueeze(2))
-        tran_attention_mask = tran_attention_mask.to(dtype=next(self.parameters()).dtype)  # fp16 compatibility
-        tran_attention_mask = (1.0 - tran_attention_mask) * -10000.0
-        tran_enc_out = self.trans_enc(electra_outputs, tran_attention_mask)
-        tran_enc_out = tran_enc_out[-1]
-
         # [batch, n_span, input_dim] : [64, 502, 1586]
         '''
             all_span_rep : [batch, n_span, output_dim]
             all_span_idxs_ltoken : [batch, n_span, 2]
         '''
-        all_span_rep = self.endpoint_span_extractor(tran_enc_out, all_span_idxs_ltoken.long())
+        all_span_rep = self.endpoint_span_extractor(electra_outputs, all_span_idxs_ltoken.long())
 
         ''' use span len, not use morp'''
         # n_span : span 개수
