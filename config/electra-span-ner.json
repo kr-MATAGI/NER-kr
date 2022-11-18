@@ -24,10 +24,10 @@
   "model_name_or_path": "monologg/koelectra-base-v3-discriminator",
   "output_dir": "electra-electra-mecab-span-add-pos100-and-transEnc-ner-1117",
   "seed": 42,
-  "train_batch_size": 64,
+  "train_batch_size": 32,
   "eval_batch_size": 128,
-  "logging_steps": 3284,
-  "save_steps": 1642,
+  "logging_steps": 6466,
+  "save_steps": 3233,
   "learning_rate": 5e-5,
   "n_gpu": 1
 }
