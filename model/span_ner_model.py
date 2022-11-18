@@ -1,3 +1,4 @@
+import copy
 import torch
 import torch.nn as nn
 from transformers import ElectraModel, ElectraPreTrainedModel
@@ -101,7 +102,7 @@ class ElectraSpanNER(ElectraPreTrainedModel):
         electra_outputs = electra_outputs.last_hidden_state  # [batch_size, seq_len, hidden_size]
 
         # Transformer Encoder
-        tran_attention_mask = attention_mask.unsqueeze(1).unsqueeze(2)  # [64, 1, 1, max_eojeol_len]
+        tran_attention_mask = copy.deepcopy(attention_mask.unsqueeze(1).unsqueeze(2))
         tran_attention_mask = tran_attention_mask.to(dtype=next(self.parameters()).dtype)  # fp16 compatibility
         tran_attention_mask = (1.0 - tran_attention_mask) * -10000.0
         tran_enc_out = self.trans_enc(electra_outputs, tran_attention_mask)
