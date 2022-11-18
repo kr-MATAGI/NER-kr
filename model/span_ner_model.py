@@ -32,8 +32,7 @@ class ElectraSpanNER(ElectraPreTrainedModel):
         self.n_pos = 14
         
         ''' 원본 Git에서는 Method 적용 개수에 따라 달라짐 '''
-        self.input_dim = self.hidden_size * 2 + self.token_len_emb_dim + self.span_len_emb_dim + \
-                         (self.pos_emb_dim * self.n_pos)
+        self.input_dim = self.hidden_size * 2 + self.token_len_emb_dim + self.span_len_emb_dim + (self.pos_emb_dim * self.n_pos)
         self.model_dropout = 0.1
 
         # loss and softmax
@@ -106,6 +105,7 @@ class ElectraSpanNER(ElectraPreTrainedModel):
         tran_attention_mask = tran_attention_mask.to(dtype=next(self.parameters()).dtype)  # fp16 compatibility
         tran_attention_mask = (1.0 - tran_attention_mask) * -10000.0
         tran_enc_out = self.trans_enc(electra_outputs, tran_attention_mask)
+        tran_enc_out = tran_enc_out[-1]
 
         # [batch, n_span, input_dim] : [64, 502, 1586]
         '''
