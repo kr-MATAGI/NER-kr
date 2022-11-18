@@ -30,7 +30,7 @@ class ElectraSpanNER(ElectraPreTrainedModel):
         self.span_len_emb_dim = 100
         ''' morp는 origin에서 {'isupper': 1, 'islower': 2, 'istitle': 3, 'isdigit': 4, 'other': 5}'''
         self.pos_emb_dim = 100
-        self.n_pos = 14 # NNP, NNG 통합
+        self.n_pos = 13 # NNP, NNG 통합
         
         ''' 원본 Git에서는 Method 적용 개수에 따라 달라짐 '''
         self.input_dim = self.hidden_size * 2 + self.token_len_emb_dim + self.span_len_emb_dim + (self.pos_emb_dim * self.n_pos)
