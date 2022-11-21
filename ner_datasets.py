@@ -11,13 +11,15 @@ class NER_POS_Dataset(Dataset):
 #===============================================================
     def __init__(
             self,
-            data: np.ndarray, labels: np.ndarray,
+            data: np.ndarray, labels: np.ndarray, pos_ids: np.ndarray
             #sentences: List[str], char_dic: Dict[str, int], seq_len: int = 128
     ):
         self.input_ids = data[:][:, :, 0]
         self.attention_mask = data[:][:, :, 1]
         self.token_type_ids = data[:][:, :, 2]
         self.labels = labels
+
+        self.pos_ids = pos_ids
 
         # self.sentences = sentences
         # self.seq_len = seq_len
@@ -35,6 +37,8 @@ class NER_POS_Dataset(Dataset):
         self.attention_mask = torch.tensor(self.attention_mask, dtype=torch.long)
         self.token_type_ids = torch.tensor(self.token_type_ids, dtype=torch.long)
         self.labels = torch.tensor(self.labels, dtype=torch.long)
+
+        self.pos_ids = torch.tensor(self.pos_ids, dtype=torch.long)
 
         # self.sentences = self._char_elmo_sents_getitem(self.sentences)
 
@@ -74,7 +78,7 @@ class NER_POS_Dataset(Dataset):
             "attention_mask": self.attention_mask[idx],
             "token_type_ids": self.token_type_ids[idx],
             "label_ids": self.labels[idx],
-            # "pos_tag_ids": self.pos_tag_ids[idx],
+            "pos_ids": self.pos_ids[idx]
 
             # "morp_ids": self.morp_ids[idx],
             # "ne_pos_one_hot": self.ne_pos_one_hot[idx],

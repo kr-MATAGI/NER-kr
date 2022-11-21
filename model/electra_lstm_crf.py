@@ -47,7 +47,7 @@ class ELECTRA_POS_LSTM(ElectraPreTrainedModel):
     #===================================
     def forward(self,
                 input_ids, token_type_ids, attention_mask,
-                labels=None, pos_tag_ids=None, eojeol_ids=None
+                label_ids=None, pos_ids=None
     ):
     #===================================
         # pos embedding
@@ -87,8 +87,8 @@ class ELECTRA_POS_LSTM(ElectraPreTrainedModel):
         # )
 
         # crf
-        if labels is not None:
-            log_likelihood, sequence_of_tags = self.crf(emissions=logits, tags=labels, mask=attention_mask.bool(),
+        if label_ids is not None:
+            log_likelihood, sequence_of_tags = self.crf(emissions=logits, tags=label_ids, mask=attention_mask.bool(),
                                                         reduction="mean"), self.crf.decode(logits, mask=attention_mask.bool())
             return log_likelihood, sequence_of_tags
         else:
