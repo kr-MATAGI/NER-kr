@@ -329,7 +329,7 @@ def make_wordpiece_npy(
 
         if max_token_len <= len(pos_tag_ids):
             pos_tag_ids = pos_tag_ids[:max_token_len - 1]
-            pos_tag_ids.append([0] * max_token_len)
+            pos_tag_ids.append([0] * max_pos_nums)
         else:
             diff_len = max_token_len - len(pos_tag_ids)
             pos_tag_ids += [[pos_tag2ids["O"]] * max_pos_nums] * diff_len
