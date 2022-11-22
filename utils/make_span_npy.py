@@ -33,6 +33,13 @@ test_str_list = [
     "'중국 편'이라고 믿었던 박 대통령에게", "2001년 한·미 주둔군지위협정(소파·SOFA)"
 ]
 
+symbol_tags = [
+    "SF", "SE", # (마침표, 물음표, 느낌표), 줄임표
+    "SSO", "SSC", # 여는 괄호, 닫는 괄호
+    "SC", "SY", # 구분자, (붙임표, 기타 기호)
+    "SL", # 외국어
+]
+
 #==========================================================================================
 def load_ne_entity_list(src_path: str = ""):
 #==========================================================================================
@@ -128,19 +135,6 @@ def convert_morp_connected_tokens(
 #=======================================================================================
     ret_conv_morp_tokens = []
 
-    symbol_tags = ["SF", # 마침표, 물음표, 느낌표
-    "SP", # 쉼표, 가운뎃점, 콜론, 빗금
-    "SS", # 따옴표, 괄호표, 줄표
-    "SE", # 줄임표
-    "SO", # 붙임표(물결)
-    "SW", # 기타 기호
-    "SL", # 외국어
-    "SH", # 한자
-    "SN", # 숫자
-    "NA", "NF", "NV", # 분석불능범주, 명사추정범주, 용언추정범주
-    "NAP", # 개인정보를 가린거
-    ]
-
     # print("sent_level_: ", sent_lvl_pos)
     # print("word_level_: ", word_lvl_pos)
     b_check_use = [[False] * len(word_pos) for word_pos in word_lvl_pos]
@@ -158,7 +152,8 @@ def convert_morp_connected_tokens(
                         break
                     else:
                         is_find = True
-                        new_morp_tokens[-1] = True
+                        if ret_conv_morp_tokens[-1][-2] not in symbol_tags:
+                            new_morp_tokens[-1] = True
                         b_check_use[w_idx][m_idx] = True
                         break
             if is_find:
@@ -224,6 +219,8 @@ def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
         for word_morp in src_item.text.split(" "):
             word_lvl_morps.append(mecab.pos(word_morp))
         conv_mecab_res = convert_morp_connected_tokens(mecab_res, word_lvl_morps)
+        # print(conv_mecab_res)
+        # print(tokenizer.tokenize(src_item.text))
 
         text_tokens = []
         token_pos_list = []
@@ -558,5 +555,5 @@ if "__main__" == __name__:
     make_span_npy(
         tokenizer_name="monologg/koelectra-base-v3-discriminator",
         src_list=all_sent_list, seq_max_len=128, span_max_len=6,
-        debug_mode=True, save_npy_path="span_ner"
+        debug_mode=False, save_npy_path="span_ner"
     )
