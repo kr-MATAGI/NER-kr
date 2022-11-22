@@ -329,18 +329,10 @@ def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
         token_type_ids = [0] * seq_max_len
 
         # TEST - UNK 세보기
-        '''
         for tok in input_ids:
             total_tok_cnt += 1
             if 1 == tok:
                 unk_tok_cnt += 1
-        if proc_idx + 1 == len(src_list):
-            print("Total Tok Count: ", total_tok_cnt)
-            print("[UNK] Count: ", unk_tok_cnt)
-            exit()
-        else:
-            continue
-        '''
 
         # Span Len
         all_span_idx_list = all_span_idx_list[:max_num_span]
@@ -415,6 +407,8 @@ def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
         #     # For save Test
         #     break
 
+    print("Total Tok Count: ", total_tok_cnt)
+    print("[UNK] Count: ", unk_tok_cnt)
     save_span_npy(npy_dict, len(src_list), save_npy_path)
 
 #=======================================================================================
