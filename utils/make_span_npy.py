@@ -32,12 +32,14 @@ test_str_list = [
     "금리설계형의 경우 변동금리(6개월 변동 코픽스 연동형)는", "현재 중국의 공항은 400여 개다.",
     "'중국 편'이라고 믿었던 박 대통령에게", "2001년 한·미 주둔군지위협정(소파·SOFA)"
 ]
+test_str_list = [
+    "신영자산운용의 '신영마라톤증권투자신탁(주식)A'의 "
+]
 
 symbol_tags = [
     "SF", "SE", # (마침표, 물음표, 느낌표), 줄임표
     "SSO", "SSC", # 여는 괄호, 닫는 괄호
     "SC", "SY", # 구분자, (붙임표, 기타 기호)
-    "SL", # 외국어
 ]
 
 #==========================================================================================
@@ -152,7 +154,8 @@ def convert_morp_connected_tokens(
                         break
                     else:
                         is_find = True
-                        if ret_conv_morp_tokens[-1][-2] not in symbol_tags:
+                        if 0 < len(ret_conv_morp_tokens) and \
+                                ret_conv_morp_tokens[-1][-2] not in symbol_tags:
                             new_morp_tokens[-1] = True
                         b_check_use[w_idx][m_idx] = True
                         break
@@ -222,10 +225,12 @@ def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
         # print(conv_mecab_res)
         # print(tokenizer.tokenize(src_item.text))
 
+        origin_tokens = []
         text_tokens = []
         token_pos_list = []
         for m_idx, mecab_item in enumerate(conv_mecab_res):
             tokens = tokenizer.tokenize(mecab_item[0])
+            origin_tokens.extend(tokens)
 
             if mecab_item[-1]:
                 for tok in tokens:
@@ -233,11 +238,15 @@ def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
             else:
                 text_tokens.extend(tokens)
 
-            # text_tokens.extend(tokens)
-            
             # 0 index에는 [CLS] 토큰이 있어야 한다.
             for _ in range(len(tokens)):
                 token_pos_list.append(mecab_item[1].split("+"))
+        origin_token_ids = tokenizer.convert_tokens_to_ids(origin_tokens)
+        conv_token_ids = tokenizer.convert_tokens_to_ids(text_tokens)
+        for tok_idx, (ori_tok, conv_tok) in enumerate(zip(origin_token_ids, conv_token_ids)):
+            if 1 == conv_tok and 1 != ori_tok:
+                # print(text_tokens[tok_idx], origin_tokens[tok_idx])
+                text_tokens[tok_idx] = origin_tokens[tok_idx]
 
         # morp_ids
         mecab_type_len = len(MECAB_POS_TAG.keys())
@@ -394,6 +403,7 @@ def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
         if debug_mode:
             print(span_idx_label_dict)
             print(span_idx_new_label_dict)
+            print(tokenizer.tokenize(src_item.text))
             for i, (t, l, p) in enumerate(zip(text_tokens[1:], label_ids[1:], token_pos_list)):
                 if "[PAD]" == t:
                     break
@@ -406,7 +416,9 @@ def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
 
     print("Total Tok Count: ", total_tok_cnt)
     print("[UNK] Count: ", unk_tok_cnt)
-    save_span_npy(npy_dict, len(src_list), save_npy_path)
+
+    if not debug_mode:
+        save_span_npy(npy_dict, len(src_list), save_npy_path)
 
 #=======================================================================================
 def save_span_npy(npy_dict, src_list_len, save_path):
@@ -555,5 +567,5 @@ if "__main__" == __name__:
     make_span_npy(
         tokenizer_name="monologg/koelectra-base-v3-discriminator",
         src_list=all_sent_list, seq_max_len=128, span_max_len=8,
-        debug_mode=False, save_npy_path="span_ner"
+        debug_mode=True, save_npy_path="span_ner"
     )
