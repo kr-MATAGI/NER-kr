@@ -120,6 +120,53 @@ def make_span_nn_josa_onehot(all_span_idx_list, nn_onehot, josa_onehot):
         ret_josa_onehot_list.append(merge_josa_onehot)
     return ret_nn_onehot_list, ret_josa_onehot_list
 
+
+#=======================================================================================
+def convert_morp_connected_tokens(
+        sent_lvl_pos: Tuple[str, str], word_lvl_pos: List[Tuple[str, str]]
+):
+#=======================================================================================
+    ret_conv_morp_tokens = []
+
+    symbol_tags = ["SF", # 마침표, 물음표, 느낌표
+    "SP", # 쉼표, 가운뎃점, 콜론, 빗금
+    "SS", # 따옴표, 괄호표, 줄표
+    "SE", # 줄임표
+    "SO", # 붙임표(물결)
+    "SW", # 기타 기호
+    "SL", # 외국어
+    "SH", # 한자
+    "SN", # 숫자
+    "NA", "NF", "NV", # 분석불능범주, 명사추정범주, 용언추정범주
+    "NAP", # 개인정보를 가린거
+    ]
+
+    # print("sent_level_: ", sent_lvl_pos)
+    # print("word_level_: ", word_lvl_pos)
+    b_check_use = [[False] * len(word_pos) for word_pos in word_lvl_pos]
+    for sent_pos in sent_lvl_pos:
+        is_find = False
+        new_morp_tokens = [sent_pos[0], sent_pos[1], False] # -1 index는 ##이 붙는지 여부
+        for w_idx, word_pos in enumerate(word_lvl_pos):
+            for m_idx, morp in enumerate(word_pos):
+                if b_check_use[w_idx][m_idx]:
+                    continue
+                if sent_pos[0] == morp[0]:
+                    if 0 == m_idx or morp[1] in symbol_tags:
+                        is_find = True
+                        b_check_use[w_idx][m_idx] = True
+                        break
+                    else:
+                        is_find = True
+                        new_morp_tokens[-1] = True
+                        b_check_use[w_idx][m_idx] = True
+                        break
+            if is_find:
+                break
+        ret_conv_morp_tokens.append(new_morp_tokens)
+
+    return ret_conv_morp_tokens
+
 #=======================================================================================
 def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
                   seq_max_len: int = 128, debug_mode: bool = False,
@@ -156,6 +203,8 @@ def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
     mecab = Mecab()
     tokenizer = ElectraTokenizer.from_pretrained(tokenizer_name)
 
+    total_tok_cnt = 0
+    unk_tok_cnt = 0 # [UNK] 나오는거 Count
     for proc_idx, src_item in enumerate(src_list):
         if 0 == (proc_idx % 1000):
             print(f"{proc_idx} Processing... {src_item.text}")
@@ -170,10 +219,23 @@ def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
 
         # Mecab
         mecab_res = mecab.pos(src_item.text)
+        word_lvl_morps = []
+
+        for word_morp in src_item.text.split(" "):
+            word_lvl_morps.append(mecab.pos(word_morp))
+        conv_mecab_res = convert_morp_connected_tokens(mecab_res, word_lvl_morps)
+
         text_tokens = []
         token_pos_list = []
-        for m_idx, mecab_item in enumerate(mecab_res):
+        for m_idx, mecab_item in enumerate(conv_mecab_res):
             tokens = tokenizer.tokenize(mecab_item[0])
+
+            if mecab_item[-1]:
+                for tok in tokens:
+                    text_tokens.append("##"+tok)
+            else:
+                text_tokens.extend(tokens)
+
             text_tokens.extend(tokens)
             
             # 0 index에는 [CLS] 토큰이 있어야 한다.
@@ -265,6 +327,20 @@ def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
         input_ids = tokenizer.convert_tokens_to_ids(text_tokens)
         attention_mask = ([1] * valid_token_len) + ([0] * (seq_max_len - valid_token_len))
         token_type_ids = [0] * seq_max_len
+
+        # TEST - UNK 세보기
+        '''
+        for tok in input_ids:
+            total_tok_cnt += 1
+            if 1 == tok:
+                unk_tok_cnt += 1
+        if proc_idx + 1 == len(src_list):
+            print("Total Tok Count: ", total_tok_cnt)
+            print("[UNK] Count: ", unk_tok_cnt)
+            exit()
+        else:
+            continue
+        '''
 
         # Span Len
         all_span_idx_list = all_span_idx_list[:max_num_span]
