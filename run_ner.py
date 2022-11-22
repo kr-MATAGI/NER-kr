@@ -120,7 +120,7 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
                 out_label_ids = inputs["label_ids"].detach().cpu().numpy()
             else:
                 preds = np.append(preds, np.array(conv_outputs), axis=0)
-                out_label_ids = np.append(out_label_ids, inputs["labels"].detach().cpu().numpy(), axis=0)
+                out_label_ids = np.append(out_label_ids, inputs["label_ids"].detach().cpu().numpy(), axis=0)
         else:
             # Not CRF
             if preds is None:
