@@ -18,9 +18,9 @@ class ELECTRA_POS_LSTM(ElectraPreTrainedModel):
         self.dropout_rate = 0.1
 
         # pos tag embedding
-        self.pos_embedding_1 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
-        self.pos_embedding_2 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
-        self.pos_embedding_3 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
+        # self.pos_embedding_1 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
+        # self.pos_embedding_2 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
+        # self.pos_embedding_3 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
 
         '''
             @ Note
