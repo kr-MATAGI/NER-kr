@@ -221,7 +221,8 @@ class ElectraSpanNER(ElectraPreTrainedModel):
         mecab_tag2ids = {v: k for k, v in MECAB_POS_TAG.items()} # origin, 1: "NNG"
         target_tag_list = [ # NN은 NNG/NNP 통합
             "NNG", "NNP", "SN", "NNB", "NR", "NNBC",
-            "JKS", "JKC", "JKG", "JKO", "JKB", "JX", "JC", "JKV", "JKQ"
+            "JKS", "JKC", "JKG", "JKO", "JKB", "JX", "JC", "JKV", "JKQ",
+            "XSN"
         ]
         ''' 해당 되는 것의 pos_ids의 새로운 idx '''
         target_tag2ids = {mecab_tag2ids[x]: i for i, x in enumerate(target_tag_list)}
