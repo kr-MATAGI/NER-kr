@@ -1,7 +1,7 @@
 {
   "task": "custom",
   "data_dir": "data",
-  "ckpt_dir": "ckpt-electra-mecab-span-merge-nng-nnp-and-new-tokens-add-nnbc-posembed-1204",
+  "ckpt_dir": "ckpt-electra-mecab-span-merge-nng-nnp-and-new-tokens-add-nnbc-posembed200-1204",
   "train_npy": "./corpus/npy/span_ner/train.npy",
   "dev_npy": "./corpus/npy/span_ner/dev.npy",
   "test_npy": "./corpus/npy/span_ner/test.npy",
@@ -22,7 +22,7 @@
   "no_cuda": false,
   "model_type": "monologg/koelectra-base-v3-discriminator",
   "model_name_or_path": "monologg/koelectra-base-v3-discriminator",
-  "output_dir": "electra-mecab-span-merge-nng-nnp-and-and-new-tokens-add-nnbc-posembed-1204",
+  "output_dir": "electra-mecab-span-merge-nng-nnp-and-and-new-tokens-add-nnbc-posembed200-1204",
   "seed": 42,
   "train_batch_size": 32,
   "eval_batch_size": 128,
