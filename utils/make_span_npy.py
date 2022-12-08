@@ -39,6 +39,11 @@ symbol_tags = [
     "SC", "SY", # 구분자, (붙임표, 기타 기호)
 ]
 
+concat_tags = [
+    "JKS", "JKC", "JKG", "JKO", # 주격 조사, 보격 조사, 관형격 조사, 목적격 조사 
+    "JKB", "JKV", "JKQ", "JX", "JC",  # 부사격 조사, 호격 조사, 인용격 조사, 접속 조사, 보조사, 접속 조사
+]
+
 #==========================================================================================
 def load_ne_entity_list(src_path: str = ""):
 #==========================================================================================
@@ -139,11 +144,12 @@ def convert_morp_connected_tokens(
     b_check_use = [[False] * len(word_pos) for word_pos in word_lvl_pos]
     for sent_pos in sent_lvl_pos:
         is_find = False
-        new_morp_tokens = [sent_pos[0], sent_pos[1], False] # -1 index는 ##이 붙는지 여부
+        new_morp_tokens = [sent_pos[0], sent_pos[1], False] # index_2는 ##이 붙는지 여부
         for w_idx, word_pos in enumerate(word_lvl_pos):
             for m_idx, morp in enumerate(word_pos):
                 if b_check_use[w_idx][m_idx]:
                     continue
+
                 if sent_pos[0] == morp[0]:
                     if 0 == m_idx or morp[1] in symbol_tags:
                         is_find = True
@@ -151,14 +157,18 @@ def convert_morp_connected_tokens(
                         break
                     else:
                         is_find = True
-                        if 0 < len(ret_conv_morp_tokens) and \
-                                ret_conv_morp_tokens[-1][-2] not in symbol_tags:
+                        if 0 < len(ret_conv_morp_tokens) and ret_conv_morp_tokens[-1][-2] not in symbol_tags:
                             new_morp_tokens[-1] = True
                         b_check_use[w_idx][m_idx] = True
                         break
             if is_find:
                 break
         ret_conv_morp_tokens.append(new_morp_tokens)
+
+        ''' 조사에 ## 안 붙는거 수정 12.08 '''
+        for idx, morp_tokens in enumerate(ret_conv_morp_tokens):
+            if 0 < idx and morp_tokens[1] in concat_tags and ret_conv_morp_tokens[idx-1][-2] not in symbol_tags:
+                morp_tokens[-1] = True
 
     return ret_conv_morp_tokens
 
@@ -564,5 +574,5 @@ if "__main__" == __name__:
     make_span_npy(
         tokenizer_name="monologg/koelectra-base-v3-discriminator",
         src_list=all_sent_list, seq_max_len=128, span_max_len=8,
-        debug_mode=True, save_npy_path="span_ner"
+        debug_mode=False, save_npy_path="span_ner"
     )
