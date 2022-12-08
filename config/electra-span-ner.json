@@ -1,7 +1,7 @@
 {
   "task": "custom",
   "data_dir": "data",
-  "ckpt_dir": "ckpt-electra-mecab-span-only-use-merge-nng-nnp-and-josa-1208",
+  "ckpt_dir": "ckpt-electra-mecab-span-newtokens-josa-sharp-sharp-1208",
   "train_npy": "./corpus/npy/span_ner/train.npy",
   "dev_npy": "./corpus/npy/span_ner/dev.npy",
   "test_npy": "./corpus/npy/span_ner/test.npy",
@@ -22,12 +22,12 @@
   "no_cuda": false,
   "model_type": "monologg/koelectra-base-v3-discriminator",
   "model_name_or_path": "monologg/koelectra-base-v3-discriminator",
-  "output_dir": "electra-mecab-span-only-use-merge-nng-nnp-and-josa-1208",
+  "output_dir": "electra-mecab-span-newtokens-josa-sharp-sharp-1208",
   "seed": 42,
-  "train_batch_size": 32,
+  "train_batch_size": 64,
   "eval_batch_size": 128,
-  "logging_steps": 16415,
-  "save_steps": 3283,
+  "logging_steps": 8210,
+  "save_steps": 1642,
   "learning_rate": 5e-5,
   "n_gpu": 1
 }
