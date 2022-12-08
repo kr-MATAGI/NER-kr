@@ -1255,8 +1255,6 @@ def check_nikl_and_mecab_difference(dic_pkl_path: str = ""):
         else:
             search_dict[mecab_pos].append((nng_val.sent_text, nng_val.nikl_morp, mecab_morp_pos_pair))
 
-
-
     for sent, lhs, rhs in search_dict[search_target]:
         print("Sent: ", sent)
         print("NIKL: ", lhs)
@@ -1739,12 +1737,13 @@ if "__main__" == __name__:
     #         char_lvl_dict = pickle.load(char_dict_pkl)
     # print(f"vocab_size: {len(char_lvl_dict)}")
 
-    '''
+
     # Mecab하고 모두의 말뭉치 비교
     compare_mecab_and_gold_corpus(src_corpus_list=all_sent_list)
     check_nikl_and_mecab_difference(dic_pkl_path="./mecab_cmp/mecab_compare_dict.pkl")
     check_count_morp(src_sent_list=all_sent_list)
     exit()
+    '''
     mecab_pos_unk_count(all_sent_list)
     exit()
     '''

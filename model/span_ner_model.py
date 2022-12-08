@@ -29,8 +29,8 @@ class ElectraSpanNER(ElectraPreTrainedModel):
 
         self.span_len_emb_dim = 100
         ''' morp는 origin에서 {'isupper': 1, 'islower': 2, 'istitle': 3, 'isdigit': 4, 'other': 5}'''
-        self.pos_emb_dim = 200
-        self.n_pos = 14 # 일반명사/고유명사 통합, NNBC
+        self.pos_emb_dim = 100
+        self.n_pos = 12 # 일반명사/고유명사 분리
         
         ''' 원본 Git에서는 Method 적용 개수에 따라 달라짐 '''
         self.input_dim = self.hidden_size * 2 + self.token_len_emb_dim + self.span_len_emb_dim + (self.pos_emb_dim * self.n_pos)
@@ -220,7 +220,7 @@ class ElectraSpanNER(ElectraPreTrainedModel):
 
         mecab_tag2ids = {v: k for k, v in MECAB_POS_TAG.items()} # origin, 1: "NNG"
         target_tag_list = [ # NN은 NNG/NNP 통합
-            "NNG", "NNP", "SN", "NNB", "NR", "NNBC",
+            "NNG", "NNP", "SN", #"NNB", "NR", "NNBC",
             "JKS", "JKC", "JKG", "JKO", "JKB", "JX", "JC", "JKV", "JKQ",
         ]
         ''' 해당 되는 것의 pos_ids의 새로운 idx '''
@@ -239,10 +239,14 @@ class ElectraSpanNER(ElectraPreTrainedModel):
                     for token_pos in curr_pos_ids[start_index:end_index+1]:
                         for key in target_keys:
                             if 1 == token_pos[key]:
+                                '''
                                 if 0 == key or 1 == key:
                                     span_pos[0] = 1
                                 else:
                                     span_pos[target_tag2ids[key]-1] = 1
+                                '''
+                                span_pos[target_tag2ids[key]] = 1
+
                     #     print(token_pos, start_index, end_index, curr_pos_ids[start_index:end_index+1].size())
                     # print("SPAN POS: ", span_pos)
                     # input()

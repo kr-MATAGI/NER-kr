@@ -1,7 +1,7 @@
 {
   "task": "custom",
   "data_dir": "data",
-  "ckpt_dir": "ckpt-electra-lstm-crf-new-tokenization-1123",
+  "ckpt_dir": "ckpt-electra-lstm-crf-morp-aware",
   "train_npy": "./corpus/npy/electra/train.npy",
   "dev_npy": "./corpus/npy/electra/dev.npy",
   "test_npy": "./corpus/npy/electra/test.npy",
@@ -22,7 +22,7 @@
   "no_cuda": false,
   "model_type": "monologg/koelectra-base-v3-discriminator",
   "model_name_or_path": "monologg/koelectra-base-v3-discriminator",
-  "output_dir": "ckpt-electra-lstm-crf-new-tokenization-1123",
+  "output_dir": "ckpt-electra-lstm-crf-morp-aware",
   "seed": 42,
   "train_batch_size": 64,
   "eval_batch_size": 128,
