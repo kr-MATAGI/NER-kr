@@ -23,7 +23,7 @@ class ElectraSpanNER(ElectraPreTrainedModel):
         self.etri_tags = config.etri_tags
 
         self.span_combi_mode = "x,y"
-        self.token_len_emb_dim = 100 # 12.09 늘려서 테스트
+        self.token_len_emb_dim = 50 # 12.09 늘려서 테스트
         self.max_span_width = 8 # 원본 깃에는 4
         self.max_seq_len = 128
 

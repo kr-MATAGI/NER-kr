@@ -1,4 +1,6 @@
 import random
+from audioop import add
+
 import numpy as np
 import pickle
 
@@ -166,16 +168,93 @@ def convert_morp_connected_tokens(
         ret_conv_morp_tokens.append(new_morp_tokens)
 
         ''' 조사에 ## 안 붙는거 수정 12.08 '''
-        for idx, morp_tokens in enumerate(ret_conv_morp_tokens):
-            if 0 < idx and morp_tokens[1] in concat_tags and ret_conv_morp_tokens[idx-1][-2] not in symbol_tags:
-                morp_tokens[-1] = True
+        # for idx, morp_tokens in enumerate(ret_conv_morp_tokens):
+        #     if 0 < idx and morp_tokens[1] in concat_tags and ret_conv_morp_tokens[idx-1][-2] not in symbol_tags:
+        #         morp_tokens[-1] = True
 
     return ret_conv_morp_tokens
 
 #=======================================================================================
+def make_adapter_input(src_list: List[Sentence], tokenizer, max_length: int = 128):
+#=======================================================================================
+    input_ids_list: List = []
+    attention_mask_list: List = []
+    token_type_ids_list: List = []
+    for src_idx, src_item in enumerate(src_list):
+        if 0 == (src_idx % 10000):
+            print(f"[make_adapter_input] {src_idx} - {src_item.text}")
+        encoded = tokenizer.encode_plus(
+            src_item.text,
+            None,
+            add_special_tokens=True,
+            max_length=max_length,
+            truncation=True,
+            padding="max_length"
+        )
+
+        input_ids = encoded["input_ids"]
+        attention_mask = encoded["attention_mask"]
+        token_type_ids = encoded["token_type_ids"]
+
+        assert max_length == len(input_ids), f"input_ids.len: {len(input_ids)}"
+        assert max_length == len(attention_mask), f"attention_mask: {len(attention_mask)}"
+        assert max_length == len(token_type_ids), f"token_type_ids: {len(token_type_ids)}"
+
+        input_ids_list.append(input_ids)
+        attention_mask_list.append(attention_mask)
+        token_type_ids_list.append(token_type_ids)
+
+    print("[make_adapter_input] Total Data:")
+    print(f"input_ids.size: {len(input_ids_list)}")
+    print(f"attention_mask.size: {len(attention_mask_list)}")
+    print(f"token_type_ids.size: {len(token_type_ids_list)}")
+
+    # Split Train/Dev/Test
+    split_size = int(len(src_list) * 0.1)
+    train_size = split_size * 7
+    dev_size = train_size + split_size
+
+    train_input_ids = np.array(input_ids_list[:train_size])
+    train_attention_mask = np.array(attention_mask_list[:train_size])
+    train_token_type_ids = np.array(token_type_ids_list[:train_size])
+    print("[make_adapter_input] Train data size:")
+    print(f"input_ids: {train_input_ids.shape}, attention_mask: {train_attention_mask.shape}, "
+          f"token_type_ids: {train_token_type_ids.shape}")
+
+    dev_input_ids = np.array(input_ids_list[train_size:dev_size])
+    dev_attention_mask = np.array(attention_mask_list[train_size:dev_size])
+    dev_token_type_ids = np.array(token_type_ids_list[train_size:dev_size])
+    print("[make_adapter_input] Dev data size:")
+    print(f"input_ids: {dev_input_ids.shape}, attention_mask: {dev_attention_mask.shape}, "
+          f"token_type_ids: {dev_token_type_ids.shape}")
+
+    test_input_ids = np.array(input_ids_list[dev_size:])
+    test_attention_mask = np.array(attention_mask_list[dev_size:])
+    test_token_type_ids = np.array(token_type_ids_list[dev_size:])
+    print("[make_adapter_input] Test data size:")
+    print(f"input_ids: {test_input_ids.shape}, attention_mask: {test_attention_mask.shape}, "
+          f"token_type_ids: {test_token_type_ids.shape}")
+
+    # Save
+    save_dir = "../corpus/npy/adapter/"
+    mode_list = ["train", "dev", "test"]
+    save_input_ids = [train_input_ids, dev_input_ids, test_input_ids]
+    save_attention_mask = [train_attention_mask, dev_attention_mask, test_attention_mask]
+    save_token_type_ids = [train_token_type_ids, dev_token_type_ids, test_token_type_ids]
+
+    for mode, save_data in zip(mode_list, save_input_ids):
+        np.save(save_dir+mode+"_input_ids", save_data)
+    for mode, save_data in zip(mode_list, save_attention_mask):
+        np.save(save_dir+mode+"_attention_mask", save_data)
+    for mode, save_data in zip(mode_list, save_token_type_ids):
+        np.save(save_dir+mode+"_token_type_ids", save_data)
+    print("[make_adapter_input] Save Complete !")
+
+#=======================================================================================
 def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
                   seq_max_len: int = 128, debug_mode: bool = False,
-                  span_max_len: int = 10, save_npy_path: str = None
+                  span_max_len: int = 10, save_npy_path: str = None,
+                  b_make_adapter_input: bool = False
                   ):
 #=======================================================================================
     span_minus = int((span_max_len + 1) * span_max_len / 2)
@@ -207,6 +286,11 @@ def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
 
     mecab = Mecab()
     tokenizer = ElectraTokenizer.from_pretrained(tokenizer_name)
+
+    # For K-Adapter
+    make_adapter_input(src_list=src_list, tokenizer=tokenizer, max_length=seq_max_len)
+    if b_make_adapter_input:
+        return
 
     total_tok_cnt = 0
     unk_tok_cnt = 0 # [UNK] 나오는거 Count
@@ -574,5 +658,5 @@ if "__main__" == __name__:
     make_span_npy(
         tokenizer_name="monologg/koelectra-base-v3-discriminator",
         src_list=all_sent_list, seq_max_len=128, span_max_len=8,
-        debug_mode=True, save_npy_path="span_ner"
+        debug_mode=False, save_npy_path="span_ner", b_make_adapter_input=True
     )
