@@ -332,6 +332,7 @@ def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
             # 0 index에는 [CLS] 토큰이 있어야 한다.
             for _ in range(len(tokens)):
                 token_pos_list.append(mecab_item[1].split("+"))
+
         origin_token_ids = tokenizer.convert_tokens_to_ids(origin_tokens)
         conv_token_ids = tokenizer.convert_tokens_to_ids(text_tokens)
         for tok_idx, (ori_tok, conv_tok) in enumerate(zip(origin_token_ids, conv_token_ids)):
