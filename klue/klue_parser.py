@@ -34,7 +34,7 @@ def create_ner_examples(src_path: str, tokenizer):
             original_clean_labels.append(tag)
 
         for char_tok, char_label in zip(original_clean_tokens, original_clean_labels):
-            
+
 
         return examples
 

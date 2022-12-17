@@ -288,8 +288,8 @@ def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
     tokenizer = ElectraTokenizer.from_pretrained(tokenizer_name)
 
     # For K-Adapter
-    make_adapter_input(src_list=src_list, tokenizer=tokenizer, max_length=seq_max_len)
     if b_make_adapter_input:
+        make_adapter_input(src_list=src_list, tokenizer=tokenizer, max_length=seq_max_len)
         return
 
     total_tok_cnt = 0
@@ -659,5 +659,5 @@ if "__main__" == __name__:
     make_span_npy(
         tokenizer_name="monologg/koelectra-base-v3-discriminator",
         src_list=all_sent_list, seq_max_len=128, span_max_len=8,
-        debug_mode=False, save_npy_path="span_ner", b_make_adapter_input=True
+        debug_mode=True, save_npy_path="span_ner", b_make_adapter_input=False
     )
