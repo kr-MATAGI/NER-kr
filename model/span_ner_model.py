@@ -53,6 +53,7 @@ class ElectraSpanNER(ElectraPreTrainedModel):
         self.start_outputs = nn.Linear(self.hidden_size, 1)
         self.end_outputs = nn.Linear(self.hidden_size, 1)
         '''
+
         self.endpoint_span_extractor = EndpointSpanExtractor(input_dim=self.hidden_size,
                                                              combination=self.span_combi_mode,
                                                              num_width_embeddings=self.max_span_width,
@@ -218,10 +219,13 @@ class ElectraSpanNER(ElectraPreTrainedModel):
         device = all_span_idx_list.device
 
         mecab_tag2ids = {v: k for k, v in MECAB_POS_TAG.items()} # origin, 1: "NNG"
-        target_tag_list = [ # NN은 NNG/NNP 통합
-            "NNG", "NNP", "SN", "NNB", "NR", "NNBC",
-            "JKS", "JKC", "JKG", "JKO", "JKB", "JX", "JC", "JKV", "JKQ",
-        ]
+        # target_tag_list = [ # NN은 NNG/NNP 통합
+        #     "NNG", "NNP", "SN", "NNB", "NR", "NNBC",
+        #     "JKS", "JKC", "JKG", "JKO", "JKB", "JX", "JC", "JKV", "JKQ",
+        # ]
+
+        target_tag_list = [t for t in mecab_tag2ids.keys() if "O" != t]
+
         ''' 해당 되는 것의 pos_ids의 새로운 idx '''
         target_tag2ids = {mecab_tag2ids[x]: i for i, x in enumerate(target_tag_list)}
         target_keys = target_tag2ids.keys()
