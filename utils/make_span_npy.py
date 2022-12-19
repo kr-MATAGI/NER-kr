@@ -549,7 +549,7 @@ def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
 def save_only_pos_ids(npy_dict, src_list_len, save_path):
 #=======================================================================================
     npy_dict["pos_ids"] = np.array(npy_dict["pos_ids"])
-    print(f"[save_only_pos_ids] pos_ids.shape: {npy_dict['pos_ids']}")
+    print(f"[save_only_pos_ids] pos_ids.shape: {npy_dict['pos_ids'].shape}")
 
     split_size = int(src_list_len * 0.1)
     train_size = split_size * 7
