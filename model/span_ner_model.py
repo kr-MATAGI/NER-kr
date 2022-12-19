@@ -30,8 +30,8 @@ class ElectraSpanNER(ElectraPreTrainedModel):
         self.span_len_emb_dim = 100
         ''' morp는 origin에서 {'isupper': 1, 'islower': 2, 'istitle': 3, 'isdigit': 4, 'other': 5}'''
         self.pos_emb_dim = 100
-        # self.n_pos = 14 # 일반/교유 명사 통합
-        self.n_pos = 43 # 모든 품사 사용
+        self.n_pos = 14 # 일반/교유 명사 통합
+        # self.n_pos = 43 # 모든 품사 사용
 
         ''' 원본 Git에서는 Method 적용 개수에 따라 달라짐 '''
         self.input_dim = self.hidden_size * 2 + self.token_len_emb_dim + self.span_len_emb_dim + (self.pos_emb_dim * self.n_pos)
@@ -70,6 +70,14 @@ class ElectraSpanNER(ElectraPreTrainedModel):
 
         self.span_len_embedding = nn.Embedding(self.max_span_width + 1, self.span_len_emb_dim, padding_idx=0)
         self.pos_embedding = nn.Embedding(self.n_pos, self.pos_emb_dim)
+
+        ''' 
+            12.19 Test - Flag가 아닌 앞에서 Span 범위에서 먼저 등장하는 3개 정도만 Embedding해서 사용
+            이거 근데 8개가 span prediction limit라 3개는 좀 부족할거 같은데 
+        '''
+        self.pos_embedding_1 = nn.Embedding(self.n_pos, self.pos_emb_dim)
+        self.pos_embedding_2 = nn.Embedding(self.n_pos, self.pos_emb_dim)
+        self.pos_embedding_3 = nn.Embedding(self.n_pos, self.pos_emb_dim)
 
     #==============================================
     def forward(self,
@@ -111,8 +119,12 @@ class ElectraSpanNER(ElectraPreTrainedModel):
         span_len_rep = F.relu(span_len_rep) # [64, 502, 100]
 
         # [batch, n_span, num_pos]
-        all_span_pos_ids = self.make_pos_embedding(pos_ids=pos_ids, all_span_idx_list=all_span_idxs_ltoken)
-        span_morp_rep = self.pos_embedding(all_span_pos_ids) # [batch, n_span, num_pos, pos_emb_dim]
+        ''' Flag POS Embedding '''
+        # all_span_pos_ids = self.make_pos_embedding(pos_ids=pos_ids, all_span_idx_list=all_span_idxs_ltoken)
+        span_morp_rep = self.pos_embedding(pos_ids) # [batch, n_span, num_pos, pos_emb_dim]
+        ''' POS nn.Embedding '''
+        # pos_nn_embedding = self.make_nn_pos_embedding(pos_ids, all_span_idxs_ltoken)
+
         span_morp_rep = F.relu(span_morp_rep)
         morp_rep_size = span_morp_rep.size()
         span_morp_rep = span_morp_rep.reshape(morp_rep_size[0], morp_rep_size[1], -1)
@@ -219,43 +231,67 @@ class ElectraSpanNER(ElectraPreTrainedModel):
         device = all_span_idx_list.device
 
         mecab_tag2ids = {v: k for k, v in MECAB_POS_TAG.items()} # origin, 1: "NNG"
-        # target_tag_list = [ # NN은 NNG/NNP 통합
-        #     "NNG", "NNP", "SN", "NNB", "NR", "NNBC",
-        #     "JKS", "JKC", "JKG", "JKO", "JKB", "JX", "JC", "JKV", "JKQ",
-        # ]
+        target_tag_list = [ # NN은 NNG/NNP 통합
+            "NNG", "NNP", "SN", "NNB", "NR", "NNBC",
+            "JKS", "JKC", "JKG", "JKO", "JKB", "JX", "JC", "JKV", "JKQ",
+        ]
 
-        target_tag_list = [t for t in mecab_tag2ids.keys() if "O" != t]
+        # target_tag_list = [t for t in mecab_tag2ids.keys() if "O" != t]
 
         ''' 해당 되는 것의 pos_ids의 새로운 idx '''
+        # {1: 0, 2: 1, 43: 2, 3: 3, 5: 4, 4: 5, 16: 6, 17: 7, 18: 8, 19: 9, 20: 10, 23: 11, 24: 12, 21: 13, 22: 14}
         target_tag2ids = {mecab_tag2ids[x]: i for i, x in enumerate(target_tag_list)}
-        target_keys = target_tag2ids.keys()
         batch_pos_onehot = torch.zeros((batch_size, n_span, self.n_pos), device=device, dtype=torch.long)
-        span_idx = 0
         for batch_idx in range(batch_size):
             curr_pos_ids = pos_ids[batch_idx] # [seq_len, mecab_pos]
+            span_idx = 0
 
             for start_index in range(self.max_seq_len):
                 last_end_index = min(start_index + self.max_span_width, self.max_seq_len)
                 first_end_index = min(start_index, self.max_seq_len)
                 for end_index in range(first_end_index, last_end_index):
                     span_pos = torch.zeros(self.n_pos, device=device, dtype=torch.long)
-                    for token_pos in curr_pos_ids[start_index:end_index+1]:
-                        for key in target_keys:
-                            if 1 == token_pos[key]:
-                                ''' 일반/고유 명사 통합시 사용 '''
-                                if 0 == key or 1 == key:
-                                   span_pos[0] = 1
-                                else:
-                                   span_pos[target_tag2ids[key]-1] = 1
-
-                                # span_pos[target_tag2ids[key]] = 1
-
-                    #     print(token_pos, start_index, end_index, curr_pos_ids[start_index:end_index+1].size())
-                    # print("SPAN POS: ", span_pos)
-                    # input()
+                    filter_pos = torch.where(1 == curr_pos_ids[start_index:end_index])
+                    for f_p in filter_pos[0]:
+                        if f_p.item() in target_tag2ids.keys():
+                            if 1 == f_p.item() or 0 == f_p.item():
+                                span_pos[0] = 1
+                            else:
+                                span_pos[target_tag2ids[f_p.item()] - 1] = 1
                     batch_pos_onehot[batch_idx, span_idx] = span_pos
                     span_idx += 1
-                    if n_span >= span_idx:
-                        return batch_pos_onehot
+                    if n_span <= span_idx:
+                        break
+                if n_span <= span_idx:
+                    break
 
         return batch_pos_onehot
+
+    #==============================================
+    def make_nn_pos_embedding(self, pos_ids, all_span_idx_list):
+    #==============================================
+        batch_size, n_span, _ = all_span_idx_list.size()
+        device = all_span_idx_list.device
+
+        mecab_tag2ids = {v: k for k, v in MECAB_POS_TAG.items()}  # origin, 1: "NNG"
+        target_tag_list = [t for t in mecab_tag2ids.keys() if "O" != t]
+
+        ''' 사용할 POS의 개수가 3개 이므로 '''
+        batch_pos_ids = torch.zeros((batch_size, n_span, 3), device=device, dtype=torch.long)
+        for batch_idx in range(batch_size):
+            curr_pos_ids = pos_ids[batch_idx]
+            curr_span_pos_ids = torch.zeros((n_span, 3), device=device, dtype=torch.long)
+            for start_index in range(self.max_seq_len):
+                last_end_index = min(start_index + self.max_span_width, self.max_seq_len)
+                first_end_index = min(start_index, self.max_seq_len)
+
+                for end_index in range(first_end_index, last_end_index):
+                    add_pos_cnt = 0
+                    add_pos_ids = torch.zeros(3, device=device, dtype=torch.long)
+                    for token_pos in curr_pos_ids[start_index:end_index+1]:
+                        filter_pos = torch.where(1 == token_pos)
+                        for f_p in filter_pos[0]:
+                            if 2 < add_pos_cnt:
+                                break
+                            add_pos_ids[add_pos_cnt] = f_p.item()
+                            add_pos_cnt += 1

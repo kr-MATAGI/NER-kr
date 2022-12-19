@@ -254,7 +254,8 @@ def make_adapter_input(src_list: List[Sentence], tokenizer, max_length: int = 12
 def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
                   seq_max_len: int = 128, debug_mode: bool = False,
                   span_max_len: int = 10, save_npy_path: str = None,
-                  b_make_adapter_input: bool = False
+                  b_make_adapter_input: bool = False,
+                  b_make_only_pos_ids: bool = False, target_n_pos: int = 14, target_tag_list: List = []
                   ):
 #=======================================================================================
     span_minus = int((span_max_len + 1) * span_max_len / 2)
@@ -346,10 +347,12 @@ def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
         pos_ids = [[0 for _ in range(mecab_type_len)]] # [CLS]
         for tok_pos in token_pos_list:
             curr_pos = [0 for _ in range(mecab_type_len)]
+            # curr_add_idx = 1
             for pos in tok_pos:
                 filter_pos = pos if "UNKNOWN" != pos and "NA" != pos and "UNA" != pos and "VSV" != pos else "O"
                 pos_idx = mecab_tag2id[filter_pos]
                 curr_pos[pos_idx] = 1
+                # curr_add_idx += 1
             pos_ids.append(curr_pos)
 
         if seq_max_len <= len(pos_ids):
@@ -413,7 +416,7 @@ def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
             s_idx, e_idx = idx_pair
             span_len = e_idx - s_idx + 1
             all_span_len_list.append(span_len)
-        
+
         span_idx_label_dict = make_span_idx_label_pair(src_item.ne_list, text_tokens)
         span_idx_new_label_dict = convert2tokenIdx(span_idxLab=span_idx_label_dict,
                                                    all_span_idxs=all_span_idx_list)
@@ -463,6 +466,33 @@ def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
             diff_len = max_num_span - len(all_span_idx_list)
             all_span_idx_list += [(0, 0)] * diff_len
 
+        # 모델에서 POS Embedding 만드는거 속도 느려서 미리 전처리
+        if b_make_only_pos_ids:
+            mecab_tag2ids = {v: k for k, v in MECAB_POS_TAG.items()}  # origin, 1: "NNG"
+            # {1: 0, 2: 1, 43: 2, 3: 3, 5: 4, 4: 5, 16: 6, 17: 7, 18: 8, 19: 9, 20: 10, 23: 11, 24: 12, 21: 13, 22: 14}
+            target_tag2ids = {mecab_tag2ids[x]: i for i, x in enumerate(target_tag_list)}
+            pos_npy = []
+            for start_idx, end_idx in all_span_idx_list:
+                span_pos = [0 for _ in range(target_n_pos)]
+                for pos_oh in pos_ids[start_idx:end_idx + 1]:
+                    filter_pos = np.where(1 == np.array(pos_oh))
+                    for f_p in filter_pos[0]:
+                        if f_p.item() in target_tag2ids.keys():
+                            if 1 == f_p.item() or 0 == f_p.item():
+                                span_pos[0] = 1
+                            else:
+                                span_pos[target_tag2ids[f_p.item()] - 1] = 1
+                pos_npy.append(span_pos)
+
+            if max_num_span > len(pos_npy):
+                diff_len = max_num_span - len(pos_npy)
+                pos_npy += [[0 for _ in range(target_n_pos)]] * diff_len
+
+            assert len(pos_npy) == max_num_span, f"{len(pos_npy)}"
+            npy_dict["pos_ids"].append(pos_npy)
+            continue
+        # end, b_make_only_pos_ids
+
         '''span 별 가지는 nn, josa one-hot으로 나타냄'''
         # all_nn_span_onehot, all_josa_span_onehot = make_span_nn_josa_onehot(all_span_idx_list=all_span_idx_list,
         #                                                                     nn_onehot=nn_one_hot_list,
@@ -472,25 +502,26 @@ def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
         assert len(attention_mask) == seq_max_len, f"{len(attention_mask)}"
         assert len(token_type_ids) == seq_max_len, f"{len(token_type_ids)}"
         assert len(label_ids) == seq_max_len, f"{len(label_ids)}"
+        assert len(pos_ids) == seq_max_len, f"{len(pos_ids)}"
 
         assert len(span_only_label_token) == max_num_span, f"{len(span_only_label_token)}"
         assert len(all_span_idx_list) == max_num_span, f"{len(all_span_idx_list)}"
         assert len(all_span_len_list) == max_num_span, f"{len(all_span_len_list)}"
         assert len(real_span_mask_token) == max_num_span, f"{len(real_span_mask_token)}"
+        assert len(pos_npy) == max_num_span, f"{len(pos_npy)}"
 
-        assert len(pos_ids) == seq_max_len, f"{len(pos_ids)}"
+        if not b_make_only_pos_ids:
+            npy_dict["input_ids"].append(input_ids)
+            npy_dict["attention_mask"].append(attention_mask)
+            npy_dict["token_type_ids"].append(token_type_ids)
+            npy_dict["label_ids"].append(label_ids)
 
-        npy_dict["input_ids"].append(input_ids)
-        npy_dict["attention_mask"].append(attention_mask)
-        npy_dict["token_type_ids"].append(token_type_ids)
-        npy_dict["label_ids"].append(label_ids)
+            npy_dict["span_only_label_token"].append(span_only_label_token)
+            npy_dict["all_span_len_list"].append(all_span_len_list)
+            npy_dict["real_span_mask_token"].append(real_span_mask_token)
+            npy_dict["all_span_idx_list"].append(all_span_idx_list)
 
-        npy_dict["span_only_label_token"].append(span_only_label_token)
-        npy_dict["all_span_len_list"].append(all_span_len_list)
-        npy_dict["real_span_mask_token"].append(real_span_mask_token)
-        npy_dict["all_span_idx_list"].append(all_span_idx_list)
-
-        npy_dict["pos_ids"].append(pos_ids)
+            npy_dict["pos_ids"].append(pos_ids)
 
         if debug_mode:
             print(span_idx_label_dict)
@@ -509,8 +540,36 @@ def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
     print("Total Tok Count: ", total_tok_cnt)
     print("[UNK] Count: ", unk_tok_cnt)
 
+    if b_make_only_pos_ids:
+        save_only_pos_ids(npy_dict, len(src_list), save_npy_path)
+        return
+
     if not debug_mode:
         save_span_npy(npy_dict, len(src_list), save_npy_path)
+#=======================================================================================
+def save_only_pos_ids(npy_dict, src_list_len, save_path):
+#=======================================================================================
+    npy_dict["pos_ids"] = np.array(npy_dict["pos_ids"])
+    print(f"[save_only_pos_ids] pos_ids.shape: {npy_dict['pos_ids']}")
+
+    split_size = int(src_list_len * 0.1)
+    train_size = split_size * 7
+    dev_size = train_size + split_size
+
+    train_pos_ids_np = npy_dict["pos_ids"][:train_size]
+    dev_pos_ids_np = npy_dict["pos_ids"][train_size:dev_size]
+    test_pos_ids_np = npy_dict["pos_ids"][dev_size:]
+
+    print(f"train_pos_ids.shape: {train_pos_ids_np.shape}")
+    print(f"dev_pos_ids_np.shape: {dev_pos_ids_np.shape}")
+    print(f"test_pos_ids_np.shape: {test_pos_ids_np.shape}")
+
+    root_path = "../corpus/npy/" + save_path
+    np.save(root_path + "/train_pos_ids", train_pos_ids_np)
+    np.save(root_path + "/dev_pos_ids", dev_pos_ids_np)
+    np.save(root_path + "/test_pos_ids", test_pos_ids_np)
+
+    print("[save_only_pos_ids] save complete")
 
 #=======================================================================================
 def save_span_npy(npy_dict, src_list_len, save_path):
@@ -656,8 +715,14 @@ if "__main__" == __name__:
     pkl_src_path = "../corpus/pkl/NIKL_ne_pos.pkl"
     all_sent_list = load_ne_entity_list(src_path=pkl_src_path)
 
+    target_n_pos = 14
+    target_tag_list = [  # NN은 NNG/NNP 통합
+        "NNG", "NNP", "SN", "NNB", "NR", "NNBC",
+        "JKS", "JKC", "JKG", "JKO", "JKB", "JX", "JC", "JKV", "JKQ",
+    ]
     make_span_npy(
         tokenizer_name="monologg/koelectra-base-v3-discriminator",
         src_list=all_sent_list, seq_max_len=128, span_max_len=8,
-        debug_mode=True, save_npy_path="span_ner", b_make_adapter_input=False
+        debug_mode=False, save_npy_path="span_ner", b_make_adapter_input=False,
+        b_make_only_pos_ids=True, target_n_pos=target_n_pos, target_tag_list=target_tag_list
     )
