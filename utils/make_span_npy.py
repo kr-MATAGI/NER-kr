@@ -344,14 +344,14 @@ def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
         # morp_ids
         mecab_type_len = len(MECAB_POS_TAG.keys())
         mecab_tag2id = {v: k for k, v in MECAB_POS_TAG.items()}
-        pos_ids = [[0 for _ in range(mecab_type_len)]] # [CLS]
+        pos_ids = [[]] # [CLS]
         for tok_pos in token_pos_list:
-            curr_pos = [0 for _ in range(mecab_type_len)]
+            curr_pos = []
             # curr_add_idx = 1
             for pos in tok_pos:
                 filter_pos = pos if "UNKNOWN" != pos and "NA" != pos and "UNA" != pos and "VSV" != pos else "O"
-                pos_idx = mecab_tag2id[filter_pos]
-                curr_pos[pos_idx] = 1
+                # pos_idx = mecab_tag2id[filter_pos]
+                curr_pos.append(mecab_tag2id[filter_pos])
                 # curr_add_idx += 1
             pos_ids.append(curr_pos)
 
@@ -474,14 +474,13 @@ def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
             pos_npy = []
             for start_idx, end_idx in all_span_idx_list:
                 span_pos = [0 for _ in range(target_n_pos)]
-                for pos_oh in pos_ids[start_idx:end_idx + 1]:
-                    filter_pos = np.where(1 == np.array(pos_oh))
-                    for f_p in filter_pos[0]:
-                        if f_p.item() in target_tag2ids.keys():
-                            if 1 == f_p.item() or 0 == f_p.item():
+                for pos in pos_ids[start_idx:end_idx + 1]:
+                    for pos_item in pos: # @TODO: Plz Check
+                        if pos_item in target_tag2ids.keys():
+                            if 0 == pos_item or 1 == pos_item:
                                 span_pos[0] = 1
                             else:
-                                span_pos[target_tag2ids[f_p.item()] - 1] = 1
+                                span_pos[target_tag2ids[pos_item] - 1] = 1
                 pos_npy.append(span_pos)
 
             if max_num_span > len(pos_npy):

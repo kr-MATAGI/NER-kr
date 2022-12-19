@@ -286,10 +286,10 @@ def create_features(examples, tokenizer, target_n_pos, target_tag_list,
         npy_dict["pos_ids"].append(pos_target_onehot)
 
     # Save npy
-    save_span_npy(npy_dict, len(examples), save_path="./npy")
+    save_span_npy(npy_dict, save_path="../corpus/npy/klue_ner")
 
 #=======================================================================================
-def save_span_npy(npy_dict, src_list_len, save_path):
+def save_span_npy(npy_dict, save_path):
 #=======================================================================================
     npy_dict["input_ids"] = np.array(npy_dict["input_ids"])
     npy_dict["attention_mask"] = np.array(npy_dict["attention_mask"])
