@@ -1,7 +1,7 @@
 {
   "task": "custom",
   "data_dir": "data",
-  "ckpt_dir": "ckpt-electra-mecab-span-all-pos-flagbit-1217",
+  "ckpt_dir": "ckpt-electra-mecab-span-all-pos-flagbit-merge-nngnnp-1219",
   "train_npy": "./corpus/npy/span_ner/train.npy",
   "dev_npy": "./corpus/npy/span_ner/dev.npy",
   "test_npy": "./corpus/npy/span_ner/test.npy",
@@ -22,7 +22,7 @@
   "no_cuda": false,
   "model_type": "monologg/koelectra-base-v3-discriminator",
   "model_name_or_path": "monologg/koelectra-base-v3-discriminator",
-  "output_dir": "electra-mecab-span-all-pos-flagbit-1217",
+  "output_dir": "electra-mecab-span-all-pos-flagbit--merge-nngnnp-1219",
   "seed": 42,
   "train_batch_size": 64,
   "eval_batch_size": 128,
