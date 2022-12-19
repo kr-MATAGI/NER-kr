@@ -243,13 +243,12 @@ class ElectraSpanNER(ElectraPreTrainedModel):
                         for key in target_keys:
                             if 1 == token_pos[key]:
                                 ''' 일반/고유 명사 통합시 사용 '''
-                                #if 0 == key or 1 == key:
-                                #    span_pos[0] = 1
-                                #else:
-                                #    span_pos[target_tag2ids[key]-1] = 1
+                                if 0 == key or 1 == key:
+                                   span_pos[0] = 1
+                                else:
+                                   span_pos[target_tag2ids[key]-1] = 1
 
-                                span_pos[target_tag2ids[key]] = 1
-
+                                # span_pos[target_tag2ids[key]] = 1
 
                     #     print(token_pos, start_index, end_index, curr_pos_ids[start_index:end_index+1].size())
                     # print("SPAN POS: ", span_pos)
