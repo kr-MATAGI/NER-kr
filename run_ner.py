@@ -407,7 +407,7 @@ def main():
             load_corpus_span_ner_npy(args.train_npy, mode="train", is_load_klue=True)
         dev_npy, dev_label_ids, \
         dev_all_span_idx, dev_all_span_len, dev_real_span_mask, dev_span_only_label, dev_pos_ids = \
-            load_corpus_span_ner_npy(args.dev_npy, mode="dev", is_load_klue=True)
+            load_corpus_span_ner_npy(args.dev_npy, mode="dev", is_load_klue=False)
         test_npy, test_label_ids, \
         test_all_span_idx, test_all_span_len, test_real_span_mask, test_span_only_label, test_pos_ids = \
             load_corpus_span_ner_npy(args.test_npy, mode="test", is_load_klue=False)
