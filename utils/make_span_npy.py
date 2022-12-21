@@ -1,5 +1,6 @@
 import random
 import time
+import copy
 
 import numpy as np
 import pickle
@@ -131,11 +132,33 @@ def make_span_nn_josa_onehot(all_span_idx_list, nn_onehot, josa_onehot):
 
 
 #=======================================================================================
-def convert_morp_connected_tokens(sent_lvl_pos: Tuple[str, str]):
+def convert_morp_connected_tokens(sent_lvl_pos: Tuple[str, str], src_text: str):
 #=======================================================================================
     ret_conv_morp_tokens = []
 
-    for eojeol in sent_lvl_pos:
+    # 어절별 글자 수 체크해서 띄워쓰기 적기
+    split_text = src_text.split(" ")
+    char_cnt_list = [len(st) for st in split_text]
+
+    total_eojeol_morp = []
+    use_check = [False for _ in range(len(sent_lvl_pos))]
+    for char_cnt in char_cnt_list:
+        eojeol_morp = []
+        curr_char_cnt = 0
+        for ej_idx, eojeol in enumerate(sent_lvl_pos):
+            if char_cnt == curr_char_cnt:
+                total_eojeol_morp.append(copy.deepcopy(eojeol_morp))
+                eojeol_morp.clear()
+                break
+            if use_check[ej_idx]:
+                continue
+            eojeol_morp.append(eojeol)
+            curr_char_cnt += len(eojeol[0])
+            use_check[ej_idx] = True
+        if 0 < len(eojeol_morp):
+            total_eojeol_morp.append(eojeol_morp)
+
+    for eojeol in total_eojeol_morp:
         for mp_idx, morp in enumerate(eojeol): # morp (마케팅, NNG)
             if 0 == mp_idx or morp[1] in g_SYMBOL_TAGS:
                 ret_conv_morp_tokens.append((morp[0], morp[1], False))
@@ -282,9 +305,9 @@ def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
                 continue
 
         # Mecab
-        mecab_res = mecab.pos(src_item.text, False)
+        mecab_res = mecab.pos(src_item.text)
         # [('전창수', 'NNP', False), ('(', 'SSO', False), ('42', 'SN', False)]
-        conv_mecab_res = convert_morp_connected_tokens(mecab_res)
+        conv_mecab_res = convert_morp_connected_tokens(mecab_res, src_text=src_item.text)
 
         origin_tokens = []
         text_tokens = []
