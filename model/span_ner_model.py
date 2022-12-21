@@ -49,21 +49,12 @@ class ElectraSpanNER(ElectraPreTrainedModel):
         # Model
         self.electra = ElectraModel.from_pretrained("monologg/koelectra-base-v3-discriminator", config=config)
 
-        ''' 이거 2개 사용안함
-        self.start_outputs = nn.Linear(self.hidden_size, 1)
-        self.end_outputs = nn.Linear(self.hidden_size, 1)
-        '''
-
         self.endpoint_span_extractor = EndpointSpanExtractor(input_dim=self.hidden_size,
                                                              combination=self.span_combi_mode,
                                                              num_width_embeddings=self.max_span_width,
                                                              span_width_embedding_dim=self.token_len_emb_dim,
                                                              bucket_widths=True)
 
-        ''' 이거 2개 사용안함 
-        self.linear = nn.Linear(10, 1)
-        self.score_func = nn.Softmax(dim=-1)
-        '''
         self.span_embedding = MultiNonLinearClassifier(self.input_dim,
                                                        self.n_class,
                                                        self.model_dropout)

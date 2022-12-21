@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 from transformers import ElectraModel, ElectraPreTrainedModel
 from transformers.modeling_outputs import TokenClassifierOutput
@@ -14,13 +15,8 @@ class ELECTRA_POS_LSTM(ElectraPreTrainedModel):
         self.max_seq_len = config.max_seq_len
         self.num_labels = config.num_labels
         self.num_pos_labels = config.num_pos_labels
-        self.pos_embed_out_dim = 128
+        self.pos_embed_out_dim = 100
         self.dropout_rate = 0.1
-
-        # pos tag embedding
-        # self.pos_embedding_1 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
-        # self.pos_embedding_2 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
-        # self.pos_embedding_3 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
 
         '''
             @ Note
@@ -30,12 +26,16 @@ class ELECTRA_POS_LSTM(ElectraPreTrainedModel):
                 Use from_pretrained() to load the model weights.
         '''
         self.electra = ElectraModel.from_pretrained("monologg/koelectra-base-v3-discriminator", config=config)
-        self.dropout = nn.Dropout(self.dropout_rate)
 
         # LSTM
         self.lstm_dim_size = config.hidden_size #+ (self.pos_embed_out_dim * 3)
         self.lstm = nn.LSTM(input_size=self.lstm_dim_size, hidden_size=(self.lstm_dim_size)//2,
                             num_layers=1, batch_first=True, bidirectional=True)
+
+        # pos tag embedding
+        # self.pos_embedding_1 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
+        # self.pos_embedding_2 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
+        # self.pos_embedding_3 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
 
         # Classifier
         self.classifier = nn.Linear(self.lstm_dim_size, config.num_labels)
@@ -52,13 +52,19 @@ class ELECTRA_POS_LSTM(ElectraPreTrainedModel):
     #===================================
         # pos embedding
         # pos_tag_ids : [batch_size, seq_len, num_pos_tags]
-        # pos_tag_1 = pos_ids[:, :, 0] # [batch_size, seq_len]
-        # pos_tag_2 = pos_ids[:, :, 1] # [batch_size, seq_len]
-        # pos_tag_3 = pos_ids[:, :, 2] # [batch_size, seq_len]
+        '''
+        pos_tag_1 = pos_ids[:, :, 0] # [batch_size, seq_len]
+        pos_tag_2 = pos_ids[:, :, 1] # [batch_size, seq_len]
+        pos_tag_3 = pos_ids[:, :, 2] # [batch_size, seq_len]
 
-        # pos_embed_1 = self.pos_embedding_1(pos_tag_1) # [batch_size, seq_len, pos_tag_embed]
-        # pos_embed_2 = self.pos_embedding_2(pos_tag_2)  # [batch_size, seq_len, pos_tag_embed]
-        # pos_embed_3 = self.pos_embedding_3(pos_tag_3)  # [batch_size, seq_len, pos_tag_embed]
+        pos_embed_1 = self.pos_embedding_1(pos_tag_1) # [batch_size, seq_len, pos_tag_embed]
+        pos_embed_2 = self.pos_embedding_2(pos_tag_2)  # [batch_size, seq_len, pos_tag_embed]
+        pos_embed_3 = self.pos_embedding_3(pos_tag_3)  # [batch_size, seq_len, pos_tag_embed]
+
+        pos_embed_1 = F.relu(pos_embed_1)
+        pos_embed_2 = F.relu(pos_embed_2)
+        pos_embed_3 = F.relu(pos_embed_3)
+        '''
 
         electra_outputs = self.electra(input_ids=input_ids,
                                        attention_mask=attention_mask,

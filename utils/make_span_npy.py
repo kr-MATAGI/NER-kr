@@ -229,7 +229,7 @@ def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
                   seq_max_len: int = 128, debug_mode: bool = False,
                   span_max_len: int = 10, save_npy_path: str = None,
                   b_make_adapter_input: bool = False,
-                  b_make_only_pos_ids: bool = False, target_n_pos: int = 14, target_tag_list: List = []
+                  b_make_pos_flag: bool = False, target_n_pos: int = 14, target_tag_list: List = []
                   ):
 #=======================================================================================
     span_minus = int((span_max_len + 1) * span_max_len / 2)
@@ -410,22 +410,24 @@ def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
         real_span_mask_token = np.ones_like(span_only_label_token).tolist()
 
         ''' 모델에서 POS Embedding 만드는거 속도 느려서 미리 전처리 '''
-        mecab_tag2ids = {v: k for k, v in MECAB_POS_TAG.items()}  # origin, 1: "NNG"
-        # {1: 0, 2: 1, 43: 2, 3: 3, 5: 4, 4: 5, 16: 6, 17: 7, 18: 8, 19: 9, 20: 10, 23: 11, 24: 12, 21: 13, 22: 14}
-        target_tag2ids = {mecab_tag2ids[x]: i for i, x in enumerate(target_tag_list)}
-        pos_target_onehot = []
-        for start_idx, end_idx in all_span_idx_list:
-            span_pos = [0 for _ in range(target_n_pos)]
-            for pos in pos_ids[start_idx:end_idx + 1]:
-                for pos_item in pos:  # @TODO: Plz Check
-                    if pos_item in target_tag2ids.keys():
-                        if 0 == pos_item or 1 == pos_item:
-                            span_pos[0] = 1
-                        else:
-                            span_pos[target_tag2ids[pos_item] - 1] = 1
-            pos_target_onehot.append(span_pos)
-        # end, b_make_only_pos_ids
-        print(pos_target_onehot)
+        if b_make_pos_flag:
+            mecab_tag2ids = {v: k for k, v in MECAB_POS_TAG.items()}  # origin, 1: "NNG"
+            # {1: 0, 2: 1, 43: 2, 3: 3, 5: 4, 4: 5, 16: 6, 17: 7, 18: 8, 19: 9, 20: 10, 23: 11, 24: 12, 21: 13, 22: 14}
+            target_tag2ids = {mecab_tag2ids[x]: i for i, x in enumerate(target_tag_list)}
+            pos_target_onehot = []
+            for start_idx, end_idx in all_span_idx_list:
+                span_pos = [0 for _ in range(target_n_pos)]
+                for pos in pos_ids[start_idx:end_idx + 1]:
+                    for pos_item in pos:  # @TODO: Plz Check
+                        if pos_item in target_tag2ids.keys():
+                            if 0 == pos_item or 1 == pos_item:
+                                span_pos[0] = 1
+                            else:
+                                span_pos[target_tag2ids[pos_item] - 1] = 1
+                pos_target_onehot.append(span_pos)
+            # end, b_make_only_pos_ids
+        else:
+            pass
 
         '''
             all_span_idx_list와 span_only_label_token을 통해서
@@ -495,16 +497,8 @@ def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
                 print(i, t, ne_detail_ids2_tok[l], p)
             input()
 
-        # if 0 == ((proc_idx+1) % 1000):
-        #     # For save Test
-        #     break
-
     print("Total Tok Count: ", total_tok_cnt)
     print("[UNK] Count: ", unk_tok_cnt)
-
-    # if b_make_only_pos_ids:
-    #     save_only_pos_ids(npy_dict, len(src_list), save_npy_path)
-    #     return
 
     if not debug_mode:
         save_span_npy(npy_dict, len(src_list), save_npy_path)
@@ -690,6 +684,6 @@ if "__main__" == __name__:
         tokenizer_name="monologg/koelectra-base-v3-discriminator",
         src_list=all_sent_list, seq_max_len=128, span_max_len=8,
         debug_mode=True, save_npy_path="span_ner", b_make_adapter_input=False,
-        b_make_only_pos_ids=True, target_n_pos=target_n_pos, target_tag_list=target_tag_list
+        b_make_pos_flag=False, target_n_pos=target_n_pos, target_tag_list=target_tag_list
     )
     print(f"Proc Time: {time.time() - start_time}")
