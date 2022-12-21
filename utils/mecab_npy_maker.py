@@ -902,12 +902,7 @@ def save_mecab_morp_npy(npy_dict: Dict[str, List], src_list_len, save_dir: str =
     npy_dict["attention_mask"] = np.array(npy_dict["attention_mask"])
     npy_dict["token_type_ids"] = np.array(npy_dict["token_type_ids"])
     npy_dict["labels"] = np.array(npy_dict["labels"])
-    # npy_dict["pos_tag_ids"] = np.array(npy_dict["pos_tag_ids"])
-    npy_dict["morp_ids"] = np.array(npy_dict["morp_ids"])
-    # npy_dict["ne_one_hot"] = np.array(npy_dict["ne_one_hot"])
-    # npy_dict["josa_one_hot"] = np.array(npy_dict["josa_one_hot"])
-    npy_dict["jamo_one_hot"] = np.array(npy_dict["jamo_one_hot"])
-    npy_dict["char_boundary"] = np.array(npy_dict["char_boundary"])
+    npy_dict["pos_ids"] = np.array(npy_dict["pos_ids"])
 
     # 토큰 단위
     print(f"Unit: Tokens")
@@ -915,12 +910,7 @@ def save_mecab_morp_npy(npy_dict: Dict[str, List], src_list_len, save_dir: str =
     print(f"attention_mask.shape: {npy_dict['attention_mask'].shape}")
     print(f"token_type_ids.shape: {npy_dict['token_type_ids'].shape}")
     print(f"labels.shape: {npy_dict['labels'].shape}")
-    # print(f"pos_tag_ids.shape: {npy_dict['pos_tag_ids'].shape}")
-    print(f"morp_ids.shape: {npy_dict['morp_ids'].shape}")
-    # print(f"ne_one_hot.shape: {npy_dict['ne_one_hot'].shape}")
-    # print(f"josa_one_hot.shape: {npy_dict['josa_one_hot'].shape}")
-    print(f"jamo_one_hot : {npy_dict['jamo_one_hot'].shape}")
-    print(f"char_boundary : {npy_dict['char_boundary'].shape}")
+    print(f"pos_ids.shape: {npy_dict['pos_ids'].shape}")
 
     # train/dev/test 분할
     split_size = int(src_list_len * 0.1)
@@ -933,20 +923,10 @@ def save_mecab_morp_npy(npy_dict: Dict[str, List], src_list_len, save_dir: str =
                 npy_dict["token_type_ids"][:train_size]]
     train_np = np.stack(train_np, axis=-1)
     train_labels_np = npy_dict["labels"][:train_size]
-    # train_pos_tag_np = npy_dict["pos_tag_ids"][:train_size]
-    train_morp_ids_np = npy_dict["morp_ids"][:train_size]
-    # train_ne_one_hot_np = npy_dict["ne_one_hot"][:train_size]
-    # train_josa_one_hot_np = npy_dict["josa_one_hot"][:train_size]
-    train_jamo_one_hot_np = npy_dict["jamo_one_hot"][:train_size]
-    train_char_boundary_np = npy_dict["char_boundary"][:train_size]
+    train_pos_tag_np = npy_dict["pos_ids"][:train_size]
     print(f"train_np.shape: {train_np.shape}")
     print(f"train_labels_np.shape: {train_labels_np.shape}")
-    # print(f"train_pos_tag_ids_np.shape: {train_pos_tag_np.shape}")
-    print(f"train_morp_ids_np.shape: {train_morp_ids_np.shape}")
-    # print(f"train_ne_one_hot_np.shape: {train_ne_one_hot_np.shape}")
-    # print(f"train_josa_one_hot_np.shape: {train_josa_one_hot_np.shape}")
-    print(f"train_jamo_one_hot.shape: {train_jamo_one_hot_np.shape}")
-    print(f"train_char_boundary_np.shape: {train_char_boundary_np.shape}")
+    print(f"train_pos_tag_ids_np.shape: {train_pos_tag_np.shape}")
 
     # Dev
     dev_np = [npy_dict["input_ids"][train_size:valid_size],
@@ -954,20 +934,10 @@ def save_mecab_morp_npy(npy_dict: Dict[str, List], src_list_len, save_dir: str =
               npy_dict["token_type_ids"][train_size:valid_size]]
     dev_np = np.stack(dev_np, axis=-1)
     dev_labels_np = npy_dict["labels"][train_size:valid_size]
-    # dev_pos_tag_np = npy_dict["pos_tag_ids"][train_size:valid_size]
-    dev_morp_ids_np = npy_dict["morp_ids"][train_size:valid_size]
-    # dev_ne_one_hot_np = npy_dict["ne_one_hot"][train_size:valid_size]
-    # dev_josa_one_hot_np = npy_dict["josa_one_hot"][train_size:valid_size]
-    dev_jamo_one_hot_np = npy_dict["jamo_one_hot"][train_size:valid_size]
-    dev_char_boundary_np = npy_dict["char_boundary"][train_size:valid_size]
+    dev_pos_tag_np = npy_dict["pos_ids"][train_size:valid_size]
     print(f"dev_np.shape: {dev_np.shape}")
     print(f"dev_labels_np.shape: {dev_labels_np.shape}")
-    # print(f"dev_pos_tag_ids_np.shape: {dev_pos_tag_np.shape}")
-    print(f"dev_morp_ids_np.shape: {dev_morp_ids_np.shape}")
-    # print(f"dev_ne_one_hot_np.shape: {dev_ne_one_hot_np.shape}")
-    # print(f"dev_josa_one_hot_np.shape: {dev_josa_one_hot_np.shape}")
-    print(f"dev_jamo_one_hot_np.shape: {dev_jamo_one_hot_np.shape}")
-    print(f"dev_char_boundary_np.shape: {dev_char_boundary_np.shape}")
+    print(f"dev_pos_tag_ids_np.shape: {dev_pos_tag_np.shape}")
 
     # Test
     test_np = [npy_dict["input_ids"][valid_size:],
@@ -975,20 +945,10 @@ def save_mecab_morp_npy(npy_dict: Dict[str, List], src_list_len, save_dir: str =
                npy_dict["token_type_ids"][valid_size:]]
     test_np = np.stack(test_np, axis=-1)
     test_labels_np = npy_dict["labels"][valid_size:]
-    # test_pos_tag_np = npy_dict["pos_tag_ids"][valid_size:]
-    test_morp_ids_np = npy_dict["morp_ids"][valid_size:]
-    # test_ne_one_hot_np = npy_dict["ne_one_hot"][valid_size:]
-    # test_josa_one_hot_np = npy_dict["josa_one_hot"][valid_size:]
-    test_jamo_one_hot_np = npy_dict["jamo_one_hot"][valid_size:]
-    test_char_boundary_np = npy_dict["char_boundary"][valid_size:]
+    test_pos_tag_np = npy_dict["pos_ids"][valid_size:]
     print(f"test_np.shape: {test_np.shape}")
     print(f"test_labels_np.shape: {test_labels_np.shape}")
-    # print(f"test_pos_tag_ids_np.shape: {test_pos_tag_np.shape}")
-    print(f"test_morp_ids_np.shape: {test_morp_ids_np.shape}")
-    # print(f"test_ne_one_hot_np.shape: {test_ne_one_hot_np.shape}")
-    # print(f"test_josa_one_hot_np.shape: {test_josa_one_hot_np.shape}")
-    print(f"test_jamo_one_hot_np.shape: {dev_jamo_one_hot_np.shape}")
-    print(f"test_char_boundary_np.shape: {dev_char_boundary_np.shape}")
+    print(f"test_pos_tag_ids_np.shape: {test_pos_tag_np.shape}")
 
     root_path = "../corpus/npy/" + save_dir
     # save input_ids, attention_mask, token_type_ids
@@ -1001,40 +961,11 @@ def save_mecab_morp_npy(npy_dict: Dict[str, List], src_list_len, save_dir: str =
     np.save(root_path + "/dev_labels", dev_labels_np)
     np.save(root_path + "/test_labels", test_labels_np)
 
-    # save pos_tag_ids
-    '''
-    np.save(root_path + "/train_pos_tag", train_pos_tag_np)
-    np.save(root_path + "/dev_pos_tag", dev_pos_tag_np)
-    np.save(root_path + "/test_pos_tag", test_pos_tag_np)
-    '''
-
-    # save morp_ids
-    np.save(root_path + "/train_morp_ids", train_morp_ids_np)
-    np.save(root_path + "/dev_morp_ids", dev_morp_ids_np)
-    np.save(root_path + "/test_morp_ids", test_morp_ids_np)
-
-    # save NE, Josa One-hot
-    '''
-    np.save(root_path + "/train_ne_one_hot", train_ne_one_hot_np)
-    np.save(root_path + "/dev_ne_one_hot", dev_ne_one_hot_np)
-    np.save(root_path + "/test_ne_one_hot", test_ne_one_hot_np)
-
-    np.save(root_path + "/train_josa_one_hot", train_josa_one_hot_np)
-    np.save(root_path + "/dev_josa_one_hot", dev_josa_one_hot_np)
-    np.save(root_path + "/test_josa_one_hot", test_josa_one_hot_np)
-    '''
-
-    # Save 초/중/종성 OneHot, CharBoundary
-    np.save(root_path + "/train_jamo_one_hot", train_jamo_one_hot_np)
-    np.save(root_path + "/dev_jamo_one_hot", dev_jamo_one_hot_np)
-    np.save(root_path + "/test_jamo_one_hot", test_jamo_one_hot_np)
-
-    np.save(root_path + "/train_boundary", train_char_boundary_np)
-    np.save(root_path + "/dev_boundary", dev_char_boundary_np)
-    np.save(root_path + "/test_boundary", test_char_boundary_np)
+    np.save(root_path + "/train_pos_ids", train_pos_tag_np)
+    np.save(root_path + "/dev_pos_ids", dev_pos_tag_np)
+    np.save(root_path + "/test_pos_ids", test_pos_tag_np)
 
     print(f"Complete - Save all npy files !")
-
 
 #================================================================
 @dataclass
@@ -1337,9 +1268,9 @@ def make_mecab_morp_npy(
             print(f"{proc_idx} Processing... {src_item.text}")
 
         # Mecab
-        res_mecab = mecab.pos(src_item.text, False)
+        res_mecab = mecab.pos(src_item.text)
         # [('전창수', 'NNP', False), ('(', 'SSO', False), ('42', 'SN', False)]
-        conv_mecab_res = convert_morp_connected_tokens(res_mecab)
+        conv_mecab_res = convert_morp_connected_tokens(res_mecab, src_item.text)
 
         origin_tokens = []
         text_tokens = []
@@ -1698,6 +1629,6 @@ if "__main__" == __name__:
     elif "morp" == make_npy_mode:
         make_mecab_morp_npy(
             tokenizer_name="monologg/koelectra-base-v3-discriminator",
-            src_list=all_sent_list, token_max_len=128, debug_mode=True,
+            src_list=all_sent_list, token_max_len=128, debug_mode=False,
             save_model_dir="mecab_morp_electra"
         )

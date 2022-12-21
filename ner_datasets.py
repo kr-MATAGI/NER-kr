@@ -79,15 +79,6 @@ class NER_POS_Dataset(Dataset):
             "token_type_ids": self.token_type_ids[idx],
             "label_ids": self.labels[idx],
             "pos_ids": self.pos_ids[idx]
-
-            # "morp_ids": self.morp_ids[idx],
-            # "ne_pos_one_hot": self.ne_pos_one_hot[idx],
-            # "josa_pos_one_hot": self.josa_pos_one_hot[idx]
-
-            # "jamo_ids": self.jamo_ids[idx],
-            # "jamo_boundary": self.jamo_boundary[idx]
-            
-            # "sents": self.sentences[idx]
         }
 
         return items

@@ -444,10 +444,6 @@ def main():
                                       span_only_label=test_span_only_label, real_span_mask=test_real_span_mask,
                                       all_span_len=test_all_span_len, all_span_idx=test_all_span_idx)
     else:
-        # elmo_vocab = None
-        # with open("C:/Users/MATAGI/Desktop/Git/NER_Private/model/charELMo/char_elmo_vocab.pkl", mode="rb") as vocab_pkl:
-        #     elmo_vocab = pickle.load(vocab_pkl)
-        #     print(f"[run_ner][__main__] Load Vocab : {len(elmo_vocab)}")
         train_dataset = NER_POS_Dataset(data=train_npy, labels=train_labels, pos_ids=train_pos_ids)
         dev_dataset = NER_POS_Dataset(data=dev_npy, labels=dev_labels, pos_ids=dev_pos_ids)
         test_dataset = NER_POS_Dataset(data=test_npy, labels=test_labels, pos_ids=test_pos_ids)

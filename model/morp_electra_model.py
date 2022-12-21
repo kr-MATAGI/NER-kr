@@ -80,27 +80,8 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
         self.num_labels = config.num_labels
         self.dropout_rate = 0.1
 
-        self.num_ne_pos = config.num_ne_pos
-        self.num_josa_pos = config.num_josa_pos
-        self.pos_id2label = config.pos_id2label
-        self.pos_label2id = config.pos_label2id
-
         # POS
         self.pos_embed_out_dim = 128
-
-        # Morp
-        # self.morp_embed_out_dim = 128
-
-        # Char-level
-        self.elmo_vocab_size = config.elmo_vocab_size
-
-        '''
-            @ Note
-                AutoModel.from_config()
-                Loading a model from its configuration file does not load the model weights. 
-                It only affects the model’s configuration.
-                Use from_pretrained() to load the model weights.
-        '''
 
         # ELECTRA
         self.electra = ElectraModel.from_pretrained("monologg/koelectra-base-v3-discriminator", config=config)
