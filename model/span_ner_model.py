@@ -34,7 +34,7 @@ class ElectraSpanNER(ElectraPreTrainedModel):
         # self.n_pos = 43 # 모든 품사 사용
 
         ''' 원본 Git에서는 Method 적용 개수에 따라 달라짐 '''
-        self.input_dim = self.hidden_size * 2 + self.token_len_emb_dim + self.span_len_emb_dim + (self.pos_emb_dim * self.n_pos)
+        self.input_dim = self.hidden_size * 2 + self.token_len_emb_dim + self.span_len_emb_dim #+ (self.pos_emb_dim * self.n_pos)
         self.model_dropout = 0.1
 
         # loss and softmax
@@ -69,15 +69,16 @@ class ElectraSpanNER(ElectraPreTrainedModel):
                                                        self.model_dropout)
 
         self.span_len_embedding = nn.Embedding(self.max_span_width + 1, self.span_len_emb_dim, padding_idx=0)
-        self.pos_embedding = nn.Embedding(self.n_pos, self.pos_emb_dim)
+        # self.pos_embedding = nn.Embedding(self.n_pos, self.pos_emb_dim)
 
         ''' 
             12.19 Test - Flag가 아닌 앞에서 Span 범위에서 먼저 등장하는 3개 정도만 Embedding해서 사용
             이거 근데 8개가 span prediction limit라 3개는 좀 부족할거 같은데 
-        '''
+        
         self.pos_embedding_1 = nn.Embedding(self.n_pos, self.pos_emb_dim)
         self.pos_embedding_2 = nn.Embedding(self.n_pos, self.pos_emb_dim)
         self.pos_embedding_3 = nn.Embedding(self.n_pos, self.pos_emb_dim)
+        '''
 
     #==============================================
     def forward(self,
@@ -120,16 +121,15 @@ class ElectraSpanNER(ElectraPreTrainedModel):
 
         # [batch, n_span, num_pos]
         ''' Flag POS Embedding '''
-        # all_span_pos_ids = self.make_pos_embedding(pos_ids=pos_ids, all_span_idx_list=all_span_idxs_ltoken)
+        '''
         span_morp_rep = self.pos_embedding(pos_ids) # [batch, n_span, num_pos, pos_emb_dim]
-        ''' POS nn.Embedding '''
-        # pos_nn_embedding = self.make_nn_pos_embedding(pos_ids, all_span_idxs_ltoken)
-
         span_morp_rep = F.relu(span_morp_rep)
         morp_rep_size = span_morp_rep.size()
         span_morp_rep = span_morp_rep.reshape(morp_rep_size[0], morp_rep_size[1], -1)
+        '''
 
-        all_span_rep = torch.cat((all_span_rep, span_len_rep, span_morp_rep), dim=-1)
+        # all_span_rep = torch.cat((all_span_rep, span_len_rep, span_morp_rep), dim=-1)
+        all_span_rep = torch.cat((all_span_rep, span_len_rep), dim=-1)
         all_span_rep = self.span_embedding(all_span_rep) # [batch, n_span, n_class] : [64, 502, 16]
         predict_prob = self.softmax(all_span_rep)
 

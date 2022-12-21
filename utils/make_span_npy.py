@@ -5,6 +5,7 @@ import numpy as np
 import pickle
 
 from eunjeon import Mecab
+#from konlpy.tag import Mecab
 
 from tag_def import ETRI_TAG, NIKL_POS_TAG, MECAB_POS_TAG
 from data_def import Sentence, NE, Morp, Word
@@ -424,6 +425,7 @@ def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
                             span_pos[target_tag2ids[pos_item] - 1] = 1
             pos_target_onehot.append(span_pos)
         # end, b_make_only_pos_ids
+        print(pos_target_onehot)
 
         '''
             all_span_idx_list와 span_only_label_token을 통해서
@@ -676,17 +678,18 @@ if "__main__" == __name__:
     pkl_src_path = "../corpus/pkl/NIKL_ne_pos.pkl"
     all_sent_list = load_ne_entity_list(src_path=pkl_src_path)
 
-    target_n_pos = 14
+    target_n_pos = 42
     target_tag_list = [  # NN은 NNG/NNP 통합
         "NNG", "NNP", "SN", "NNB", "NR", "NNBC",
         "JKS", "JKC", "JKG", "JKO", "JKB", "JX", "JC", "JKV", "JKQ",
     ]
+    target_tag_list = [v for k, v in MECAB_POS_TAG.items() if 0 != k]
 
     start_time = time.time()
     make_span_npy(
         tokenizer_name="monologg/koelectra-base-v3-discriminator",
         src_list=all_sent_list, seq_max_len=128, span_max_len=8,
-        debug_mode=False, save_npy_path="span_ner", b_make_adapter_input=False,
+        debug_mode=True, save_npy_path="span_ner", b_make_adapter_input=False,
         b_make_only_pos_ids=True, target_n_pos=target_n_pos, target_tag_list=target_tag_list
     )
-    print(f"Proc Time: {start_time - time.time()}")
+    print(f"Proc Time: {time.time() - start_time}")
