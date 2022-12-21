@@ -91,7 +91,7 @@ def load_corpus_span_ner_npy(src_path: str, mode: str="train", is_load_klue: boo
         klue_real_span_mask = np.load(klue_root_path + "_real_span_mask_token.npy")
         klue_span_only_label = np.load(klue_root_path + "_span_only_label_token.npy")
 
-        klue_pos_ids = np.load(root_path + "_pos_ids.npy")
+        klue_pos_ids = np.load(klue_root_path + "_pos_ids.npy")
 
         input_token_attn_npy = np.vstack([input_token_attn_npy, klue_input_token_attn_npy])
         label_ids = np.vstack([label_ids, klue_label_ids])
