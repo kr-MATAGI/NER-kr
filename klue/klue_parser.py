@@ -106,16 +106,13 @@ def create_features(examples, tokenizer, target_n_pos, target_tag_list,
         if 0 == (ex_idx % 1000):
             print(f"{ex_idx} Processing... {example[0]}")
 
-        mecab_res = mecab.pos(sentence)
-        word_lvl_morps = []
-        for word_morp in sentence.split(" "):
-            word_lvl_morps.append(mecab.pos(word_morp))
-        conv_mecab_res = convert_morp_connected_tokens(mecab_res, word_lvl_morps)
+        mecab_res = mecab.pos(sentence, False)
+        # [('전창수', 'NNP', False), ('(', 'SSO', False), ('42', 'SN', False)]
+        conv_mecab_res = convert_morp_connected_tokens(mecab_res)
 
         origin_tokens = []
         text_tokens = []
         token_pos_list = []
-
         for m_idx, mecab_item in enumerate(conv_mecab_res):
             tokens = tokenizer.tokenize(mecab_item[0])
             origin_tokens.extend(tokens)
@@ -363,45 +360,26 @@ def create_npy_datasets(src_path: str, target_n_pos: int, target_tag_list: List)
     create_features(examples, tokenizer, target_n_pos, target_tag_list, 128)
 
 #=======================================================================================
-def convert_morp_connected_tokens(
-        sent_lvl_pos: Tuple[str, str], word_lvl_pos: List[Tuple[str, str]]
-):
+def convert_morp_connected_tokens(sent_lvl_pos: Tuple[str, str]):
 #=======================================================================================
     ret_conv_morp_tokens = []
 
-    symbol_tags = [
+    g_SYMBOL_TAGS = [
         "SF", "SE", # (마침표, 물음표, 느낌표), 줄임표
         "SSO", "SSC", # 여는 괄호, 닫는 괄호
         "SC", "SY", # 구분자, (붙임표, 기타 기호)
     ]
-    b_check_use = [[False] * len(word_pos) for word_pos in word_lvl_pos]
-    for sent_pos in sent_lvl_pos:
-        is_find = False
-        new_morp_tokens = [sent_pos[0], sent_pos[1], False] # index_2는 ##이 붙는지 여부
-        for w_idx, word_pos in enumerate(word_lvl_pos):
-            for m_idx, morp in enumerate(word_pos):
-                if b_check_use[w_idx][m_idx]:
-                    continue
 
-                if sent_pos[0] == morp[0]:
-                    if 0 == m_idx or morp[1] in symbol_tags:
-                        is_find = True
-                        b_check_use[w_idx][m_idx] = True
-                        break
-                    else:
-                        is_find = True
-                        if 0 < len(ret_conv_morp_tokens) and ret_conv_morp_tokens[-1][-2] not in symbol_tags:
-                            new_morp_tokens[-1] = True
-                        b_check_use[w_idx][m_idx] = True
-                        break
-            if is_find:
-                break
-        ret_conv_morp_tokens.append(new_morp_tokens)
-
-        ''' 조사에 ## 안 붙는거 수정 12.08 '''
-        # for idx, morp_tokens in enumerate(ret_conv_morp_tokens):
-        #     if 0 < idx and morp_tokens[1] in concat_tags and ret_conv_morp_tokens[idx-1][-2] not in symbol_tags:
-        #         morp_tokens[-1] = True
+    for eojeol in sent_lvl_pos:
+        for mp_idx, morp in enumerate(eojeol): # morp (마케팅, NNG)
+            if 0 == mp_idx or morp[1] in g_SYMBOL_TAGS:
+                ret_conv_morp_tokens.append((morp[0], morp[1], False))
+            else:
+                if eojeol[mp_idx-1][1] not in g_SYMBOL_TAGS:
+                    conv_morp = (morp[0], morp[1], True)
+                    ret_conv_morp_tokens.append(conv_morp)
+                else:
+                    ret_conv_morp_tokens.append((morp[0], morp[1], False))
 
     return ret_conv_morp_tokens
 

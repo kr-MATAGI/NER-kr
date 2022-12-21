@@ -404,13 +404,13 @@ def main():
     if 12 == g_user_select:
         train_npy, train_label_ids, \
         train_all_span_idx, train_all_span_len, train_real_span_mask, train_span_only_label, train_pos_ids = \
-            load_corpus_span_ner_npy(args.train_npy, mode="train")
+            load_corpus_span_ner_npy(args.train_npy, mode="train", is_load_klue=True)
         dev_npy, dev_label_ids, \
         dev_all_span_idx, dev_all_span_len, dev_real_span_mask, dev_span_only_label, dev_pos_ids = \
-            load_corpus_span_ner_npy(args.dev_npy, mode="dev")
+            load_corpus_span_ner_npy(args.dev_npy, mode="dev", is_load_klue=True)
         test_npy, test_label_ids, \
         test_all_span_idx, test_all_span_len, test_real_span_mask, test_span_only_label, test_pos_ids = \
-            load_corpus_span_ner_npy(args.test_npy, mode="test")
+            load_corpus_span_ner_npy(args.test_npy, mode="test", is_load_klue=False)
         print(f"train.shape - dataset: {train_npy.shape}, label_ids: {train_label_ids.shape}, pos_ids: {train_pos_ids.shape}"
               f"all_span_idx: {train_all_span_idx.shape}, all_span_len: {train_all_span_len.shape}, "
               f"real_span_mask: {train_real_span_mask.shape}, span_only_label: {train_span_only_label.shape}")
