@@ -1,5 +1,5 @@
 import random
-from audioop import add
+import time
 
 import numpy as np
 import pickle
@@ -35,13 +35,13 @@ test_str_list = [
     "'중국 편'이라고 믿었던 박 대통령에게", "2001년 한·미 주둔군지위협정(소파·SOFA)"
 ]
 
-symbol_tags = [
+g_SYMBOL_TAGS = [
     "SF", "SE", # (마침표, 물음표, 느낌표), 줄임표
     "SSO", "SSC", # 여는 괄호, 닫는 괄호
     "SC", "SY", # 구분자, (붙임표, 기타 기호)
 ]
 
-concat_tags = [
+g_CONCAT_TAGS = [
     "JKS", "JKC", "JKG", "JKO", # 주격 조사, 보격 조사, 관형격 조사, 목적격 조사 
     "JKB", "JKV", "JKQ", "JX", "JC",  # 부사격 조사, 호격 조사, 인용격 조사, 접속 조사, 보조사, 접속 조사
 ]
@@ -135,42 +135,20 @@ def make_span_nn_josa_onehot(all_span_idx_list, nn_onehot, josa_onehot):
 
 
 #=======================================================================================
-def convert_morp_connected_tokens(
-        sent_lvl_pos: Tuple[str, str], word_lvl_pos: List[Tuple[str, str]]
-):
+def convert_morp_connected_tokens(sent_lvl_pos: Tuple[str, str]):
 #=======================================================================================
     ret_conv_morp_tokens = []
 
-    # print("sent_level_: ", sent_lvl_pos)
-    # print("word_level_: ", word_lvl_pos)
-    b_check_use = [[False] * len(word_pos) for word_pos in word_lvl_pos]
-    for sent_pos in sent_lvl_pos:
-        is_find = False
-        new_morp_tokens = [sent_pos[0], sent_pos[1], False] # index_2는 ##이 붙는지 여부
-        for w_idx, word_pos in enumerate(word_lvl_pos):
-            for m_idx, morp in enumerate(word_pos):
-                if b_check_use[w_idx][m_idx]:
-                    continue
-
-                if sent_pos[0] == morp[0]:
-                    if 0 == m_idx or morp[1] in symbol_tags:
-                        is_find = True
-                        b_check_use[w_idx][m_idx] = True
-                        break
-                    else:
-                        is_find = True
-                        if 0 < len(ret_conv_morp_tokens) and ret_conv_morp_tokens[-1][-2] not in symbol_tags:
-                            new_morp_tokens[-1] = True
-                        b_check_use[w_idx][m_idx] = True
-                        break
-            if is_find:
-                break
-        ret_conv_morp_tokens.append(new_morp_tokens)
-
-        ''' 조사에 ## 안 붙는거 수정 12.08 '''
-        # for idx, morp_tokens in enumerate(ret_conv_morp_tokens):
-        #     if 0 < idx and morp_tokens[1] in concat_tags and ret_conv_morp_tokens[idx-1][-2] not in symbol_tags:
-        #         morp_tokens[-1] = True
+    for eojeol in sent_lvl_pos:
+        for mp_idx, morp in enumerate(eojeol): # morp (마케팅, NNG)
+            if 0 == mp_idx or morp[1] in g_SYMBOL_TAGS:
+                ret_conv_morp_tokens.append((morp[0], morp[1], False))
+            else:
+                if eojeol[mp_idx-1][1] not in g_SYMBOL_TAGS:
+                    conv_morp = (morp[0], morp[1], True)
+                    ret_conv_morp_tokens.append(conv_morp)
+                else:
+                    ret_conv_morp_tokens.append((morp[0], morp[1], False))
 
     return ret_conv_morp_tokens
 
@@ -308,14 +286,9 @@ def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
                 continue
 
         # Mecab
-        mecab_res = mecab.pos(src_item.text)
-        word_lvl_morps = []
-
-        for word_morp in src_item.text.split(" "):
-            word_lvl_morps.append(mecab.pos(word_morp))
-        conv_mecab_res = convert_morp_connected_tokens(mecab_res, word_lvl_morps)
-        # print(conv_mecab_res)
-        # print(tokenizer.tokenize(src_item.text))
+        mecab_res = mecab.pos(src_item.text, False)
+        # [('전창수', 'NNP', False), ('(', 'SSO', False), ('42', 'SN', False)]
+        conv_mecab_res = convert_morp_connected_tokens(mecab_res)
 
         origin_tokens = []
         text_tokens = []
@@ -338,7 +311,6 @@ def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
         conv_token_ids = tokenizer.convert_tokens_to_ids(text_tokens)
         for tok_idx, (ori_tok, conv_tok) in enumerate(zip(origin_token_ids, conv_token_ids)):
             if 1 == conv_tok and 1 != ori_tok:
-                # print(text_tokens[tok_idx], origin_tokens[tok_idx])
                 text_tokens[tok_idx] = origin_tokens[tok_idx]
 
         # morp_ids
@@ -441,6 +413,23 @@ def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
         all_span_len_list = all_span_len_list[:max_num_span]
         real_span_mask_token = np.ones_like(span_only_label_token).tolist()
 
+        ''' 모델에서 POS Embedding 만드는거 속도 느려서 미리 전처리 '''
+        mecab_tag2ids = {v: k for k, v in MECAB_POS_TAG.items()}  # origin, 1: "NNG"
+        # {1: 0, 2: 1, 43: 2, 3: 3, 5: 4, 4: 5, 16: 6, 17: 7, 18: 8, 19: 9, 20: 10, 23: 11, 24: 12, 21: 13, 22: 14}
+        target_tag2ids = {mecab_tag2ids[x]: i for i, x in enumerate(target_tag_list)}
+        pos_target_onehot = []
+        for start_idx, end_idx in all_span_idx_list:
+            span_pos = [0 for _ in range(target_n_pos)]
+            for pos in pos_ids[start_idx:end_idx + 1]:
+                for pos_item in pos:  # @TODO: Plz Check
+                    if pos_item in target_tag2ids.keys():
+                        if 0 == pos_item or 1 == pos_item:
+                            span_pos[0] = 1
+                        else:
+                            span_pos[target_tag2ids[pos_item] - 1] = 1
+            pos_target_onehot.append(span_pos)
+        # end, b_make_only_pos_ids
+
         '''
             all_span_idx_list와 span_only_label_token을 통해서
             정답 span을 알 수 있다.
@@ -465,32 +454,9 @@ def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
         if max_num_span > len(all_span_idx_list):
             diff_len = max_num_span - len(all_span_idx_list)
             all_span_idx_list += [(0, 0)] * diff_len
-
-        # 모델에서 POS Embedding 만드는거 속도 느려서 미리 전처리
-        if b_make_only_pos_ids:
-            mecab_tag2ids = {v: k for k, v in MECAB_POS_TAG.items()}  # origin, 1: "NNG"
-            # {1: 0, 2: 1, 43: 2, 3: 3, 5: 4, 4: 5, 16: 6, 17: 7, 18: 8, 19: 9, 20: 10, 23: 11, 24: 12, 21: 13, 22: 14}
-            target_tag2ids = {mecab_tag2ids[x]: i for i, x in enumerate(target_tag_list)}
-            pos_npy = []
-            for start_idx, end_idx in all_span_idx_list:
-                span_pos = [0 for _ in range(target_n_pos)]
-                for pos in pos_ids[start_idx:end_idx + 1]:
-                    for pos_item in pos: # @TODO: Plz Check
-                        if pos_item in target_tag2ids.keys():
-                            if 0 == pos_item or 1 == pos_item:
-                                span_pos[0] = 1
-                            else:
-                                span_pos[target_tag2ids[pos_item] - 1] = 1
-                pos_npy.append(span_pos)
-
-            if max_num_span > len(pos_npy):
-                diff_len = max_num_span - len(pos_npy)
-                pos_npy += [[0 for _ in range(target_n_pos)]] * diff_len
-
-            assert len(pos_npy) == max_num_span, f"{len(pos_npy)}"
-            npy_dict["pos_ids"].append(pos_npy)
-            continue
-        # end, b_make_only_pos_ids
+        if max_num_span > len(pos_target_onehot):
+            diff_len = max_num_span - len(pos_target_onehot)
+            pos_target_onehot += [[0 for _ in range(target_n_pos)]] * diff_len
 
         '''span 별 가지는 nn, josa one-hot으로 나타냄'''
         # all_nn_span_onehot, all_josa_span_onehot = make_span_nn_josa_onehot(all_span_idx_list=all_span_idx_list,
@@ -507,26 +473,26 @@ def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
         assert len(all_span_idx_list) == max_num_span, f"{len(all_span_idx_list)}"
         assert len(all_span_len_list) == max_num_span, f"{len(all_span_len_list)}"
         assert len(real_span_mask_token) == max_num_span, f"{len(real_span_mask_token)}"
-        assert len(pos_npy) == max_num_span, f"{len(pos_npy)}"
+        assert len(pos_target_onehot) == max_num_span, f"{len(pos_target_onehot)}, {max_num_span}"
 
-        if not b_make_only_pos_ids:
-            npy_dict["input_ids"].append(input_ids)
-            npy_dict["attention_mask"].append(attention_mask)
-            npy_dict["token_type_ids"].append(token_type_ids)
-            npy_dict["label_ids"].append(label_ids)
+        # if not b_make_only_pos_ids:
+        npy_dict["input_ids"].append(input_ids)
+        npy_dict["attention_mask"].append(attention_mask)
+        npy_dict["token_type_ids"].append(token_type_ids)
+        npy_dict["label_ids"].append(label_ids)
 
-            npy_dict["span_only_label_token"].append(span_only_label_token)
-            npy_dict["all_span_len_list"].append(all_span_len_list)
-            npy_dict["real_span_mask_token"].append(real_span_mask_token)
-            npy_dict["all_span_idx_list"].append(all_span_idx_list)
+        npy_dict["span_only_label_token"].append(span_only_label_token)
+        npy_dict["all_span_len_list"].append(all_span_len_list)
+        npy_dict["real_span_mask_token"].append(real_span_mask_token)
+        npy_dict["all_span_idx_list"].append(all_span_idx_list)
 
-            npy_dict["pos_ids"].append(pos_ids)
+        npy_dict["pos_ids"].append(pos_target_onehot)
 
         if debug_mode:
             print(span_idx_label_dict)
             print(span_idx_new_label_dict)
             print(tokenizer.tokenize(src_item.text))
-            for i, (t, l, p) in enumerate(zip(text_tokens[1:], label_ids[1:], token_pos_list)):
+            for i, (ids, t, l, p) in enumerate(zip(input_ids[1:], text_tokens[1:], label_ids[1:], token_pos_list)):
                 if "[PAD]" == t:
                     break
                 print(i, t, ne_detail_ids2_tok[l], p)
@@ -539,12 +505,13 @@ def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
     print("Total Tok Count: ", total_tok_cnt)
     print("[UNK] Count: ", unk_tok_cnt)
 
-    if b_make_only_pos_ids:
-        save_only_pos_ids(npy_dict, len(src_list), save_npy_path)
-        return
+    # if b_make_only_pos_ids:
+    #     save_only_pos_ids(npy_dict, len(src_list), save_npy_path)
+    #     return
 
     if not debug_mode:
         save_span_npy(npy_dict, len(src_list), save_npy_path)
+
 #=======================================================================================
 def save_only_pos_ids(npy_dict, src_list_len, save_path):
 #=======================================================================================
@@ -719,9 +686,12 @@ if "__main__" == __name__:
         "NNG", "NNP", "SN", "NNB", "NR", "NNBC",
         "JKS", "JKC", "JKG", "JKO", "JKB", "JX", "JC", "JKV", "JKQ",
     ]
+
+    start_time = time.time()
     make_span_npy(
         tokenizer_name="monologg/koelectra-base-v3-discriminator",
         src_list=all_sent_list, seq_max_len=128, span_max_len=8,
         debug_mode=False, save_npy_path="span_ner", b_make_adapter_input=False,
         b_make_only_pos_ids=True, target_n_pos=target_n_pos, target_tag_list=target_tag_list
     )
+    print(f"Proc Time: {start_time - time.time()}")
