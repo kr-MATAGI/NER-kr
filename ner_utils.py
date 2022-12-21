@@ -112,18 +112,8 @@ def load_corpus_npy_datasets(src_path: str, mode: str="train"):
     dataset_npy = np.load(src_path)
 
     pos_ids_npy = np.load(root_path + "_pos_ids.npy")
-    label_ids_npy = np.load(root_path + "_label_ids.npy")
-    # morp_ids = np.load(root_path + "_morp_ids.npy")
-    # jamo_ids = np.load(root_path + "_jamo_one_hot.npy")
-    # jamo_boundary = np.load(root_path + "_boundary.npy")
-    # ne_pos_one_hot = np.load(root_path + "_ne_one_hot.npy")
-    # josa_pos_one_hot = np.load(root_path + "_josa_one_hot.npy")
+    label_ids_npy = np.load(root_path + "_labels.npy")
 
-    # sentences = []
-    # with open(root_path + "_sents.pkl", mode="rb") as sents_pkl:
-    #     sentences = pickle.load(sents_pkl)
-
-    # return dataset_npy, pos_tag_npy, labels_npy, morp_ids, ne_pos_one_hot, josa_pos_one_hot
     return dataset_npy, label_ids_npy, pos_ids_npy
 
 #===============================================================

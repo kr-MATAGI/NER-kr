@@ -101,47 +101,19 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
                 It only affects the model’s configuration.
                 Use from_pretrained() to load the model weights.
         '''
-        # self.gate_layer = nn.Linear(config.hidden_size*2, config.hidden_size)
-        # self.gate_sigmoid = nn.Sigmoid()
 
         # ELECTRA
         self.electra = ElectraModel.from_pretrained("monologg/koelectra-base-v3-discriminator", config=config)
-        self.dropout = nn.Dropout(self.dropout_rate)
 
-        # CharELMo
-        #self.charELMo = CharELMo(vocab_size=self.elmo_vocab_size, mode="repr")
-        #self.charELMo.load_state_dict(torch.load("C:/Users/MATAGI/Desktop/Git/NER_Private/model/charELMo/16_model.pth"))
-
-        # Char-level Embedding
-        '''
-        self.max_cnn_input = 30 # CNN에 입력으로 최대 몇 글자가 들어갈지 (글자 * 3(초/중/종성))
-        self.char_cnn = CharCNN(vocab_size=self.char_vocab_size,
-                                seq_len=self.max_seq_len)
-        '''
-
-        # POS tag embedding
-        # self.ne_pos_embedding = nn.Embedding(self.num_ne_pos, self.pos_embed_out_dim // 2)
-        # self.josa_pos_embedding = nn.Embedding(self.num_josa_pos, self.pos_embed_out_dim)
-
-        # Morp Embedding
-        # self.morp_embedding = nn.Embedding(self.max_seq_len, self.max_seq_len)
-
-        # LSTM Encoder
-        # self.lstm_dim_size = config.hidden_size + ((self.pos_embed_out_dim // 2) * self.num_ne_pos) + \
-        #                      (self.pos_embed_out_dim * self.num_josa_pos)
+        # LSTM
         self.lstm_dim = config.hidden_size #* 3
         self.encoder = nn.LSTM(input_size=self.lstm_dim, hidden_size=(config.hidden_size // 2),
                                num_layers=1, batch_first=True, bidirectional=True)
 
-        # Attention
-        # self.attn_hidden_dim = config.hidden_size
-        # self.attn_config = AttentionConfig(hidden_size=self.attn_hidden_dim)
-        # self.attn_layer = Attention(self.attn_config)
-
         # Classifier
         self.classifier_dim = config.hidden_size
         self.classifier = nn.Linear(self.classifier_dim, config.num_labels)
-        # self.crf = CRF(num_tags=config.num_labels, batch_first=True)
+        self.crf = CRF(num_tags=config.num_labels, batch_first=True)
 
         # Initialize weights and apply final processing
         self.post_init()
@@ -149,9 +121,7 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
     #===================================
     def forward(self,
                 input_ids, token_type_ids, attention_mask,
-                label_ids=None, pos_tag_ids=None,
-                morp_ids=None, ne_pos_one_hot=None, josa_pos_one_hot=None,
-                jamo_ids=None, jamo_boundary=None, sents=None
+                label_ids=None, pos_ids=None
                 ):
     #===================================
         '''
@@ -165,69 +135,6 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
 
         electra_outputs = electra_outputs.last_hidden_state # [batch_size, seq_len, hidden_size]
 
-        # Use POS Embedding
-        # ne_pos_embed, josa_pos_embed = self._make_ne_and_josa_pos_embedding(ne_one_hot=ne_pos_one_hot,
-        #                                                                     josa_one_hot=josa_pos_one_hot)
-        # josa_pos_embed = self._make_ne_and_josa_pos_embedding(ne_one_hot=ne_pos_one_hot,
-        #                                                       josa_one_hot=josa_pos_one_hot)
-
-        ''' Make Morp Tokens - [batch_size, seq_len, seq_len] '''
-        # morp_boundary_embed = self._detect_morp_boundary(last_hidden_size=electra_outputs.size(),
-        #                                                  device=electra_outputs.device,
-        #                                                  morp_ids=morp_ids)
-        # morp_embed = morp_boundary_embed @ electra_outputs
-
-        ''' Make Char-Level Embedding '''
-        '''
-        device = electra_outputs.device
-        tensor_size = electra_outputs.size() # [batch, seq_len, hidden]
-        '''
-            #jamo_ids.shape: [batch_size, seq_len, 3]
-            #jamo_boundary: [batch_size, seq_len]
-        '''
-        # [batch_size, vocab_size, seq_len * 3]
-        char_lvl_tensor = self._make_jamo_tensor(char_ids=jamo_ids, char_boundary=jamo_boundary,
-                                                 device=device, tensor_size=tensor_size)
-        new_char_lvl_tensor = None
-        for batch_idx in range(tensor_size[0]):
-            boundary = jamo_boundary[batch_idx]
-            batch_char_tensor = char_lvl_tensor[batch_idx]
-            start_bdry = 0
-            new_seq_tensor = None
-            for bdry in boundary:
-                extract_tensor = batch_char_tensor[:, start_bdry:start_bdry+bdry.item()]
-                if self.max_cnn_input > extract_tensor.shape[1]:
-                    diff_size = self.max_cnn_input - extract_tensor.shape[1]
-                    empty_pad_tensor = torch.zeros(self.char_vocab_size, diff_size, device=torch.device(device))
-                    extract_tensor = torch.hstack([extract_tensor, empty_pad_tensor])
-                extract_tensor = extract_tensor.unsqueeze(0) # [1, vocab_size, 형태소 최대 길이]
-                start_bdry += bdry.item()
-                cnn_out = self.char_cnn(extract_tensor)  # [batch, last_linear_embed]
-                cnn_out = cnn_out
-                if new_seq_tensor is None:
-                    new_seq_tensor = cnn_out
-                else:
-                    new_seq_tensor = torch.vstack([new_seq_tensor, cnn_out])
-            if new_char_lvl_tensor is None:
-                new_char_lvl_tensor = new_seq_tensor.unsqueeze(0)
-            else:
-                new_char_lvl_tensor = torch.vstack([new_char_lvl_tensor, new_seq_tensor.unsqueeze(0)])
-        new_char_lvl_tensor = new_char_lvl_tensor
-        '''
-
-        # CharELMo
-        '''
-            elmo_x : [batch_size, seq_len, elmo_embed_dim]
-            elmo_layer_1_out : [batch_size, seq_len, elmo_lstm_hidden * 2]
-            elmo_layer_2_out : [batch_size, seq_len, elmo_lstm_hidden * 2]
-            elmo_repr : [batch_size, seq_len, elmo_lstm_hidden * 2]
-        '''
-        #elmo_x, elmo_layer_1_out, elmo_layer_2_out = self.charELMo(sents)
-        ''' elmo_x 써야 되는가 차원 안맞긴 한데 안써도 된다고 본거 같긴함 (optional)'''
-
-        # Concat
-        #concat_embed = torch.concat([electra_outputs, elmo_layer_2_out], dim=-1)
-
         # LSTM
         '''
             output: [seq_len, batch_size, hidden_dim * n_direction]
@@ -236,33 +143,28 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
         '''
         enc_out, (enc_h_n, enc_c_n) = self.encoder(electra_outputs) # [batch_size, seq_len, hidden_size]
 
-        # Attention
-        # attention_mask = attention_mask.unsqueeze(1).unsqueeze(2)
-        # attention_mask = attention_mask.to(dtype=next(self.parameters()).dtype)
-        # attn_out = self.attn_layer(enc_out, attention_mask)
-
         # Classifier
         logits = self.classifier(enc_out)
 
         # Get LossE
-        loss = None
-        if label_ids is not None:
-            loss_fct = nn.CrossEntropyLoss()
-            loss = loss_fct(logits.view(-1, self.config.num_labels), label_ids.view(-1))
-
-        return TokenClassifierOutput(
-            loss=loss,
-            logits=logits
-        )
+        # loss = None
+        # if label_ids is not None:
+        #     loss_fct = nn.CrossEntropyLoss()
+        #     loss = loss_fct(logits.view(-1, self.config.num_labels), label_ids.view(-1))
+        #
+        # return TokenClassifierOutput(
+        #     loss=loss,
+        #     logits=logits
+        # )
 
         # crf
-        # if labels is not None:
-        #     log_likelihood, sequence_of_tags = self.crf(emissions=logits, tags=labels, mask=attention_mask.bool(),
-        #                                                 reduction="mean"), self.crf.decode(logits, mask=attention_mask.bool())
-        #     return log_likelihood, sequence_of_tags
-        # else:
-        #     sequence_of_tags = self.crf.decode(logits)
-        #     return sequence_of_tags
+        if label_ids is not None:
+            log_likelihood, sequence_of_tags = self.crf(emissions=logits, tags=label_ids, mask=attention_mask.bool(),
+                                                        reduction="mean"), self.crf.decode(logits, mask=attention_mask.bool())
+            return log_likelihood, sequence_of_tags
+        else:
+            sequence_of_tags = self.crf.decode(logits)
+            return sequence_of_tags
 
     #===================================
     def _make_ne_and_josa_pos_embedding(
