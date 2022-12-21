@@ -93,13 +93,13 @@ def load_corpus_span_ner_npy(src_path: str, mode: str="train", is_load_klue: boo
 
         klue_pos_ids = np.load(root_path + "_pos_ids.npy")
 
-        input_token_attn_npy = np.vstack(input_token_attn_npy, klue_input_token_attn_npy)
-        label_ids = np.vstack(label_ids, klue_label_ids)
-        all_span_idx = np.vstack(all_span_idx, klue_all_span_idx)
-        all_span_len = np.vstack(all_span_len, klue_all_span_len)
-        real_span_mask = np.vstack(real_span_mask, klue_real_span_mask)
-        span_only_label = np.vstack(span_only_label, klue_span_only_label)
-        pos_ids = np.vstack(pos_ids, klue_pos_ids)
+        input_token_attn_npy = np.vstack([input_token_attn_npy, klue_input_token_attn_npy])
+        label_ids = np.vstack([label_ids, klue_label_ids])
+        all_span_idx = np.vstack([all_span_idx, klue_all_span_idx])
+        all_span_len = np.vstack([all_span_len, klue_all_span_len])
+        real_span_mask = np.vstack([real_span_mask, klue_real_span_mask])
+        span_only_label = np.vstack([span_only_label, klue_span_only_label])
+        pos_ids = np.vstack([pos_ids, klue_pos_ids])
 
     return input_token_attn_npy, label_ids, all_span_idx, all_span_len, real_span_mask, span_only_label, pos_ids
 
