@@ -410,24 +410,21 @@ def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
         real_span_mask_token = np.ones_like(span_only_label_token).tolist()
 
         ''' 모델에서 POS Embedding 만드는거 속도 느려서 미리 전처리 '''
-        if b_make_pos_flag:
-            mecab_tag2ids = {v: k for k, v in MECAB_POS_TAG.items()}  # origin, 1: "NNG"
-            # {1: 0, 2: 1, 43: 2, 3: 3, 5: 4, 4: 5, 16: 6, 17: 7, 18: 8, 19: 9, 20: 10, 23: 11, 24: 12, 21: 13, 22: 14}
-            target_tag2ids = {mecab_tag2ids[x]: i for i, x in enumerate(target_tag_list)}
-            pos_target_onehot = []
-            for start_idx, end_idx in all_span_idx_list:
-                span_pos = [0 for _ in range(target_n_pos)]
-                for pos in pos_ids[start_idx:end_idx + 1]:
-                    for pos_item in pos:  # @TODO: Plz Check
-                        if pos_item in target_tag2ids.keys():
-                            if 0 == pos_item or 1 == pos_item:
-                                span_pos[0] = 1
-                            else:
-                                span_pos[target_tag2ids[pos_item] - 1] = 1
-                pos_target_onehot.append(span_pos)
-            # end, b_make_only_pos_ids
-        else:
-            pass
+        mecab_tag2ids = {v: k for k, v in MECAB_POS_TAG.items()}  # origin, 1: "NNG"
+        # {1: 0, 2: 1, 43: 2, 3: 3, 5: 4, 4: 5, 16: 6, 17: 7, 18: 8, 19: 9, 20: 10, 23: 11, 24: 12, 21: 13, 22: 14}
+        target_tag2ids = {mecab_tag2ids[x]: i for i, x in enumerate(target_tag_list)}
+        pos_target_onehot = []
+        for start_idx, end_idx in all_span_idx_list:
+            span_pos = [0 for _ in range(target_n_pos)]
+            for pos in pos_ids[start_idx:end_idx + 1]:
+                for pos_item in pos:  # @TODO: Plz Check
+                    if pos_item in target_tag2ids.keys():
+                        if 0 == pos_item or 1 == pos_item:
+                            span_pos[0] = 1
+                        else:
+                            span_pos[target_tag2ids[pos_item] - 1] = 1
+            pos_target_onehot.append(span_pos)
+        # end, b_make_only_pos_ids
 
         '''
             all_span_idx_list와 span_only_label_token을 통해서
