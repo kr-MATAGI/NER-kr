@@ -60,7 +60,7 @@ class ElectraSpanNER(ElectraPreTrainedModel):
                                                        self.model_dropout)
 
         self.span_len_embedding = nn.Embedding(self.max_span_width + 1, self.span_len_emb_dim, padding_idx=0)
-        # self.pos_embedding = nn.Embedding(self.n_pos, self.pos_emb_dim)
+        self.pos_embedding = nn.Embedding(self.n_pos, self.pos_emb_dim)
 
         ''' 
             12.19 Test - Flag가 아닌 앞에서 Span 범위에서 먼저 등장하는 3개 정도만 Embedding해서 사용
