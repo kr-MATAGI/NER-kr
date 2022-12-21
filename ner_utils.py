@@ -81,7 +81,7 @@ def load_corpus_span_ner_npy(src_path: str, mode: str="train", is_load_klue: boo
 
     if is_load_klue:
         print("[load_corpus_span_ner_npy] Use KLue Dataset")
-        klue_root_path = "./klue/npy/" + mode
+        klue_root_path = "./corpus/npy/klue_ner/" + mode
 
         klue_input_token_attn_npy = np.load(klue_root_path)
         klue_label_ids = np.load(klue_root_path + "_label_ids.npy")
