@@ -1,7 +1,7 @@
 {
   "task": "custom",
   "data_dir": "data",
-  "ckpt_dir": "ckpt-electra-mecab-span-ner-tokenization-with-14pos-spanlimit6-1222",
+  "ckpt_dir": "ckpt-electra-mecab-span-ner-tokenization-base-wo-pos-1222",
   "train_npy": "./corpus/npy/span_ner/train.npy",
   "dev_npy": "./corpus/npy/span_ner/dev.npy",
   "test_npy": "./corpus/npy/span_ner/test.npy",
@@ -22,12 +22,12 @@
   "no_cuda": false,
   "model_type": "monologg/koelectra-base-v3-discriminator",
   "model_name_or_path": "monologg/koelectra-base-v3-discriminator",
-  "output_dir": "electra-mecab-span-ner-tokenization-with-14pos-spanlimit6-1222",
+  "output_dir": "electra-mecab-span-ner-tokenization-base-wo-pos-1222",
   "seed": 42,
-  "train_batch_size": 64,
+  "train_batch_size": 32,
   "eval_batch_size": 128,
   "logging_steps": 8210,
-  "save_steps": 1642,
+  "save_steps": 3283,
   "learning_rate": 5e-5,
   "n_gpu": 1
 }

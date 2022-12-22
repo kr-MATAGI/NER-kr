@@ -692,7 +692,7 @@ if "__main__" == __name__:
     pkl_src_path = "../corpus/pkl/NIKL_ne_pos.pkl"
     all_sent_list = load_ne_entity_list(src_path=pkl_src_path)
 
-    target_n_pos = 15
+    target_n_pos = 14
     target_tag_list = [  # NN은 NNG/NNP 통합
         "NNG", "NNP", "SN", "NNB", "NR", "NNBC",
         "JKS", "JKC", "JKG", "JKO", "JKB", "JX", "JC", "JKV", "JKQ",
