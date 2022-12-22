@@ -576,7 +576,7 @@ def save_span_npy(npy_dict, src_list_len, save_path):
     print(f"pos_ids.shape: {npy_dict['pos_ids'].shape}")
 
     split_size = int(src_list_len * 0.1)
-    train_size = split_size * 7
+    train_size = split_size * 8
     dev_size = train_size + split_size
 
     # Train
@@ -692,18 +692,18 @@ if "__main__" == __name__:
     pkl_src_path = "../corpus/pkl/NIKL_ne_pos.pkl"
     all_sent_list = load_ne_entity_list(src_path=pkl_src_path)
 
-    target_n_pos = 42
+    target_n_pos = 15
     target_tag_list = [  # NN은 NNG/NNP 통합
         "NNG", "NNP", "SN", "NNB", "NR", "NNBC",
         "JKS", "JKC", "JKG", "JKO", "JKB", "JX", "JC", "JKV", "JKQ",
     ]
-    target_tag_list = [v for k, v in MECAB_POS_TAG.items() if 0 != k]
+    # target_tag_list = [v for k, v in MECAB_POS_TAG.items() if 0 != k]
 
     start_time = time.time()
     make_span_npy(
         tokenizer_name="monologg/koelectra-base-v3-discriminator",
         src_list=all_sent_list, seq_max_len=128, span_max_len=8,
-        debug_mode=True, save_npy_path="span_ner", b_make_adapter_input=False,
+        debug_mode=False, save_npy_path="span_ner", b_make_adapter_input=False,
         b_make_pos_flag=False, target_n_pos=target_n_pos, target_tag_list=target_tag_list
     )
     print(f"Proc Time: {time.time() - start_time}")
