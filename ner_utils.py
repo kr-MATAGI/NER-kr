@@ -272,7 +272,7 @@ def load_ner_config_and_model(user_select: int, args, tag_dict):
                                                num_labels=len(span_tag_list),
                                                id2label={idx: label for label, idx in klue_tags_dict.items()},
                                                label2id={label: idx for label, idx in klue_tags_dict.items()})
-        config.etri_tags = {label: i for i, label in enumerate(tag_dict.keys())}
+        config.etri_tags = {label: i for i, label in enumerate(tag_dict.items())}
 
     # model
     if 1 == user_select:

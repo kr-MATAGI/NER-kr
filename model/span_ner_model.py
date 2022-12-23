@@ -148,7 +148,7 @@ class ElectraSpanNER(ElectraPreTrainedModel):
         return loss
 
     #==============================================
-    def get_predict(self, predicts, all_span_idxs, label_ids=None):
+    def get_predict(self, predicts, all_span_idxs):
     #==============================================
         '''
             Decode 함수

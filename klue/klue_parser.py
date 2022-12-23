@@ -289,8 +289,17 @@ def create_features(examples, tokenizer, target_n_pos, target_tag_list, mode:str
 
         npy_dict["pos_ids"].append(pos_target_onehot)
 
+        print(span_idx_label_dict)
+        print(span_idx_new_label_dict)
+        print(tokenizer.tokenize(sentence))
+        for i, (ids, t, l, p) in enumerate(zip(input_ids[1:], text_tokens[1:], label_ids[1:], token_pos_list)):
+            if "[PAD]" == t:
+                break
+            print(i+1, t, ne_detail_ids2tok[l], p)
+        input()
+
     # Save npy
-    save_span_npy(npy_dict, save_path="../corpus/npy/klue_ner")
+    save_span_npy(npy_dict, save_path="../corpus/npy/klue_ner", mode=mode)
 
 #=======================================================================================
 def save_span_npy(npy_dict, save_path, mode: str = "train"):
@@ -467,4 +476,4 @@ if "__main__" == __name__:
         "JKS", "JKC", "JKG", "JKO", "JKB", "JX", "JC", "JKV", "JKQ",
     ]
     create_npy_datasets(src_path=dev_data_path, target_n_pos=target_n_pos, target_tag_list=target_tag_list, mode="dev")
-    # create_npy_datasets(src_path=train_data_path, target_n_pos=target_n_pos, target_tag_list=target_tag_list, mode="train")
+    create_npy_datasets(src_path=train_data_path, target_n_pos=target_n_pos, target_tag_list=target_tag_list, mode="train")
