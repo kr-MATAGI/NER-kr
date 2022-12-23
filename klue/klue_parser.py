@@ -1,10 +1,11 @@
 import random
+import copy
 import re
 import numpy as np
 
 from pathlib import Path
 from klue_tag_def import KLUE_NER_TAG, NerExample
-from utils.tag_def import ETRI_TAG, MECAB_POS_TAG
+from utils.tag_def import MECAB_POS_TAG
 from typing import List, Tuple
 
 from transformers import ElectraTokenizer
@@ -59,7 +60,7 @@ def create_ner_examples(src_path: str, tokenizer):
     return all_sent_ne_pairs
 
 #===========================================================
-def create_features(examples, tokenizer, target_n_pos, target_tag_list,
+def create_features(examples, tokenizer, target_n_pos, target_tag_list, mode:str,
                     max_seq_len: int = 128, max_span_len: int = 8):
 #===========================================================
     print(f"[create_features] Label list: {KLUE_NER_TAG}")
@@ -68,17 +69,21 @@ def create_features(examples, tokenizer, target_n_pos, target_tag_list,
     max_num_span = int(max_seq_len * max_span_len - span_minus)
 
     mecab = Mecab()
-    label_map = {label: i for i, label in enumerate(KLUE_NER_TAG)}
     '''
         klue_tag: 
             "B-PS", "I-PS", "B-LC", "I-LC", "B-OG", "I-OG",
             "B-DT", "I-DT", "B-TI", "I-TI", "B-QT", "I-QT",
     '''
-    etri_tags = {'O': 0, 'FD': 1, 'EV': 2, 'DT': 3, 'TI': 4, 'MT': 5,
-                 'AM': 6, 'LC': 7, 'CV': 8, 'PS': 9, 'TR': 10,
-                 'TM': 11, 'AF': 12, 'PT': 13, 'OG': 14, 'QT': 15}
-    ne_ids2tag = {v: i for i, v in enumerate(etri_tags)}
-    ne_detail_ids2_tok = {v: k for k, v in ETRI_TAG.items()}
+    # etri_tags = {'O': 0, 'FD': 1, 'EV': 2, 'DT': 3, 'TI': 4, 'MT': 5,
+    #              'AM': 6, 'LC': 7, 'CV': 8, 'PS': 9, 'TR': 10,
+    #              'TM': 11, 'AF': 12, 'PT': 13, 'OG': 14, 'QT': 15}
+    klue_tags = {
+        "O": 0, "PS": 1, "LC": 2, "OG": 3,
+        "DT": 4, "TI": 5, "QT": 6
+    }
+    ne_ids2tag = {v: k for k, v in klue_tags.items()}
+    ne_tag2ids = {k: v for k, v in klue_tags.items()}
+    ne_detail_ids2tok = {v: k for k, v in KLUE_NER_TAG.items()}
 
     random.seed(42)
     random.shuffle(examples)
@@ -106,9 +111,9 @@ def create_features(examples, tokenizer, target_n_pos, target_tag_list,
         if 0 == (ex_idx % 1000):
             print(f"{ex_idx} Processing... {example[0]}")
 
-        mecab_res = mecab.pos(sentence, False)
+        mecab_res = mecab.pos(sentence)
         # [('전창수', 'NNP', False), ('(', 'SSO', False), ('42', 'SN', False)]
-        conv_mecab_res = convert_morp_connected_tokens(mecab_res)
+        conv_mecab_res = convert_morp_connected_tokens(mecab_res, src_text=sentence)
 
         origin_tokens = []
         text_tokens = []
@@ -169,7 +174,7 @@ def create_features(examples, tokenizer, target_n_pos, target_tag_list,
             valid_token_len = len(text_tokens)
 
         # NE - Token 단위
-        label_ids = [ETRI_TAG["O"]] * len(text_tokens)
+        label_ids = [KLUE_NER_TAG["O"]] * len(text_tokens)
         b_check_use = [False for _ in range(len(text_tokens))]
         for ne_idx, ne_item in enumerate(ex_ne_list):
             ne_char_list = list(ne_item[0].replace(" ", ""))
@@ -189,17 +194,17 @@ def create_features(examples, tokenizer, target_n_pos, target_tag_list,
             for bio_idx in range(target_idx_pair[0], target_idx_pair[1]):
                 b_check_use[bio_idx] = True
                 if bio_idx == target_idx_pair[0]:
-                    label_ids[bio_idx] = ETRI_TAG["B-" + ne_item[1]]
+                    label_ids[bio_idx] = KLUE_NER_TAG["B-" + ne_item[1]]
                 else:
-                    label_ids[bio_idx] = ETRI_TAG["I-" + ne_item[1]]
+                    label_ids[bio_idx] = KLUE_NER_TAG["I-" + ne_item[1]]
 
         if max_seq_len <= len(label_ids):
             label_ids = label_ids[:max_seq_len - 1]
-            label_ids.append(ETRI_TAG["O"])
+            label_ids.append(KLUE_NER_TAG["O"])
         else:
             label_ids_size = len(label_ids)
             for _ in range(max_seq_len - label_ids_size):
-                label_ids.append(ETRI_TAG["O"])
+                label_ids.append(KLUE_NER_TAG["O"])
 
         all_span_idx_list = enumerate_spans(text_tokens, offset=0, max_span_width=max_span_len)
         all_span_len_list = []
@@ -213,7 +218,7 @@ def create_features(examples, tokenizer, target_n_pos, target_tag_list,
                                                    all_span_idxs=all_span_idx_list)
         span_only_label_token = []  # 만들어진 span 집합들의 label
         for idx_str, label in span_idx_new_label_dict.items():
-            span_only_label_token.append(ne_ids2tag[label])
+            span_only_label_token.append(ne_tag2ids[label])
 
         text_tokens += ["[PAD]"] * (max_seq_len - valid_token_len)
         input_ids = tokenizer.convert_tokens_to_ids(text_tokens)
@@ -235,10 +240,13 @@ def create_features(examples, tokenizer, target_n_pos, target_tag_list,
             for pos in pos_ids[start_idx:end_idx + 1]:
                 for pos_item in pos:  # @TODO: Plz Check
                     if pos_item in target_tag2ids.keys():
-                        if 0 == pos_item or 1 == pos_item:
-                            span_pos[0] = 1
+                        if 14 == target_n_pos:
+                            if 0 == pos_item or 1 == pos_item:
+                                span_pos[0] = 1
+                            else:
+                                span_pos[target_tag2ids[pos_item] - 1] = 1
                         else:
-                            span_pos[target_tag2ids[pos_item] - 1] = 1
+                            span_pos[target_tag2ids[pos_item]] = 1
             pos_target_onehot.append(span_pos)
 
         if max_num_span > len(span_only_label_token):
@@ -285,7 +293,7 @@ def create_features(examples, tokenizer, target_n_pos, target_tag_list,
     save_span_npy(npy_dict, save_path="../corpus/npy/klue_ner")
 
 #=======================================================================================
-def save_span_npy(npy_dict, save_path):
+def save_span_npy(npy_dict, save_path, mode: str = "train"):
 #=======================================================================================
     npy_dict["input_ids"] = np.array(npy_dict["input_ids"])
     npy_dict["attention_mask"] = np.array(npy_dict["attention_mask"])
@@ -328,28 +336,28 @@ def save_span_npy(npy_dict, save_path):
     # Save
     root_path = save_path
     # save input_ids, attention_mask, token_type_ids
-    np.save(root_path + "/train", train_np)
+    np.save(root_path + "/" + mode, train_np)
 
-    np.save(root_path + "/train_span_only_label_token", train_span_only_label_token_np)
-    np.save(root_path + "/train_all_span_len_list", train_all_span_len_list_np)
-    np.save(root_path + "/train_label_ids", train_label_ids_np)
-    np.save(root_path + "/train_real_span_mask_token", train_real_span_mask_token_np)
-    np.save(root_path + "/train_all_span_idx", train_all_span_idx_list_np)
-    np.save(root_path + "/train_pos_ids", train_pos_ids_np)
+    np.save(root_path + "/" + mode + "_span_only_label_token", train_span_only_label_token_np)
+    np.save(root_path + "/" + mode + "_all_span_len_list", train_all_span_len_list_np)
+    np.save(root_path + "/" + mode + "_label_ids", train_label_ids_np)
+    np.save(root_path + "/" + mode + "_real_span_mask_token", train_real_span_mask_token_np)
+    np.save(root_path + "/" + mode + "_all_span_idx", train_all_span_idx_list_np)
+    np.save(root_path + "/" + mode + "_pos_ids", train_pos_ids_np)
 
     print("[save_span_npy] save complete")
 
 #===========================================================
-def create_npy_datasets(src_path: str, target_n_pos: int, target_tag_list: List):
+def create_npy_datasets(src_path: str, target_n_pos: int, target_tag_list: List, mode: str):
 #===========================================================
     print(f"[create_npy_datasets] src_path: {src_path}")
 
     tokenizer = ElectraTokenizer.from_pretrained("monologg/koelectra-base-v3-discriminator")
     examples = create_ner_examples(src_path, tokenizer)
-    create_features(examples, tokenizer, target_n_pos, target_tag_list, 128)
+    create_features(examples, tokenizer, target_n_pos, target_tag_list, mode=mode, max_seq_len=128, max_span_len=8)
 
 #=======================================================================================
-def convert_morp_connected_tokens(sent_lvl_pos: Tuple[str, str]):
+def convert_morp_connected_tokens(sent_lvl_pos: Tuple[str, str], src_text: str):
 #=======================================================================================
     ret_conv_morp_tokens = []
 
@@ -359,12 +367,35 @@ def convert_morp_connected_tokens(sent_lvl_pos: Tuple[str, str]):
         "SC", "SY", # 구분자, (붙임표, 기타 기호)
     ]
 
-    for eojeol in sent_lvl_pos:
-        for mp_idx, morp in enumerate(eojeol): # morp (마케팅, NNG)
+
+    # 어절별 글자 수 체크해서 띄워쓰기 적기
+    split_text = src_text.split(" ")
+    char_cnt_list = [len(st) for st in split_text]
+
+    total_eojeol_morp = []
+    use_check = [False for _ in range(len(sent_lvl_pos))]
+    for char_cnt in char_cnt_list:
+        eojeol_morp = []
+        curr_char_cnt = 0
+        for ej_idx, eojeol in enumerate(sent_lvl_pos):
+            if char_cnt == curr_char_cnt:
+                total_eojeol_morp.append(copy.deepcopy(eojeol_morp))
+                eojeol_morp.clear()
+                break
+            if use_check[ej_idx]:
+                continue
+            eojeol_morp.append(eojeol)
+            curr_char_cnt += len(eojeol[0])
+            use_check[ej_idx] = True
+        if 0 < len(eojeol_morp):
+            total_eojeol_morp.append(eojeol_morp)
+
+    for eojeol in total_eojeol_morp:
+        for mp_idx, morp in enumerate(eojeol):  # morp (마케팅, NNG)
             if 0 == mp_idx or morp[1] in g_SYMBOL_TAGS:
                 ret_conv_morp_tokens.append((morp[0], morp[1], False))
             else:
-                if eojeol[mp_idx-1][1] not in g_SYMBOL_TAGS:
+                if eojeol[mp_idx - 1][1] not in g_SYMBOL_TAGS:
                     conv_morp = (morp[0], morp[1], True)
                     ret_conv_morp_tokens.append(conv_morp)
                 else:
@@ -435,5 +466,5 @@ if "__main__" == __name__:
         "NNG", "NNP", "SN", "NNB", "NR", "NNBC",
         "JKS", "JKC", "JKG", "JKO", "JKB", "JX", "JC", "JKV", "JKQ",
     ]
-    create_npy_datasets(src_path=dev_data_path, target_n_pos=target_n_pos, target_tag_list=target_tag_list)
-    create_npy_datasets(src_path=train_data_path, target_n_pos=target_n_pos, target_tag_list=target_tag_list)
+    create_npy_datasets(src_path=dev_data_path, target_n_pos=target_n_pos, target_tag_list=target_tag_list, mode="dev")
+    # create_npy_datasets(src_path=train_data_path, target_n_pos=target_n_pos, target_tag_list=target_tag_list, mode="train")

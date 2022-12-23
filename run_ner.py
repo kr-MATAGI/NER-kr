@@ -18,6 +18,8 @@ from tqdm import tqdm
 from ner_def import (
     ETRI_TAG, NER_MODEL_LIST,
 )
+from klue.klue_tag_def import KLUE_NER_TAG
+
 from ner_datasets import NER_POS_Dataset, NER_Eojeol_Datasets, SpanNERDataset
 from ner_utils import (
     init_logger, print_parameters, load_corpus_npy_datasets,
@@ -71,11 +73,11 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
                 "label_ids": batch["label_ids"].to(args.device),
                 "pos_ids": batch["pos_ids"].to(args.device),
 
-                # "all_span_idxs_ltoken": batch["all_span_idx"].to(args.device),
-                # "all_span_lens": batch["all_span_len"].to(args.device),
-                # "real_span_mask_ltoken": batch["real_span_mask"].to(args.device),
-                # "span_only_label": batch["span_only_label"].to(args.device),
-                # "mode": "eval"
+                "all_span_idxs_ltoken": batch["all_span_idx"].to(args.device),
+                "all_span_lens": batch["all_span_len"].to(args.device),
+                "real_span_mask_ltoken": batch["real_span_mask"].to(args.device),
+                "span_only_label": batch["span_only_label"].to(args.device),
+                "mode": "eval"
             }
 
             if 12 == g_user_select:
@@ -136,7 +138,8 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
         "loss": eval_loss
     }
 
-    labels = ETRI_TAG.keys()
+    # labels = ETRI_TAG.keys()
+    labels = KLUE_NER_TAG.keys()
     label_map = {i: label for i, label in enumerate(labels)}
 
     out_label_list = [[] for _ in range(out_label_ids.shape[0])]
@@ -237,11 +240,11 @@ def train(args, model, train_dataset, dev_dataset):
                 "label_ids": batch["label_ids"].to(args.device),
                 "pos_ids": batch["pos_ids"].to(args.device),
 
-                # "all_span_idxs_ltoken": batch["all_span_idx"].to(args.device),
-                # "all_span_lens": batch["all_span_len"].to(args.device),
-                # "real_span_mask_ltoken": batch["real_span_mask"].to(args.device),
-                # "span_only_label": batch["span_only_label"].to(args.device),
-                # "mode": "train"
+                "all_span_idxs_ltoken": batch["all_span_idx"].to(args.device),
+                "all_span_lens": batch["all_span_len"].to(args.device),
+                "real_span_mask_ltoken": batch["real_span_mask"].to(args.device),
+                "span_only_label": batch["span_only_label"].to(args.device),
+                "mode": "train"
             }
 
             if 12 == g_user_select:
@@ -375,7 +378,7 @@ def main():
     args.output_dir = os.path.join(args.ckpt_dir, args.output_dir)
 
     # Config
-    config, model = load_ner_config_and_model(g_user_select, args, ETRI_TAG)
+    config, model = load_ner_config_and_model(g_user_select, args, KLUE_NER_TAG)
 
     # print config / model
     logger.info(f"[run_ner][__main__] model: {args.model_name_or_path}")
