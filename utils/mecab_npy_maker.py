@@ -6,7 +6,8 @@ import pickle
 from dataclasses import dataclass, field
 from collections import deque
 
-from eunjeon import Mecab
+# from eunjeon import Mecab # Window
+from konlpy.tag import Mecab # Linux
 
 from tag_def import ETRI_TAG, NIKL_POS_TAG, MECAB_POS_TAG
 from data_def import Sentence, NE, Morp, Word
@@ -1232,7 +1233,8 @@ def check_count_morp(src_sent_list):
 def make_mecab_morp_npy(
         tokenizer_name: str, src_list: List[Sentence],
         token_max_len: int = 128, debug_mode: bool = False,
-        save_model_dir: str = None,
+        save_model_dir: str = None, is_make_pos_flag: bool = False,
+        target_n_pos: int = 14, target_tag_list: List[str] = []
 ):
 #==========================================================================================
     npy_dict = {
@@ -1240,7 +1242,8 @@ def make_mecab_morp_npy(
         "labels": [],
         "attention_mask": [],
         "token_type_ids": [],
-        "pos_ids": []
+        "pos_ids": [],
+        "pos_flag": []
     }
 
     # shuffle
@@ -1307,6 +1310,21 @@ def make_mecab_morp_npy(
                 curr_pos[p_idx] = pos_tag2ids[filter_pos]
             pos_ids.append(curr_pos)
 
+        # Make POS Flag
+        mecab_tag2ids = {v: k for k, v in MECAB_POS_TAG.items()}  # origin, 1: "NNG"
+        # {1: 0, 2: 1, 43: 2, 3: 3, 5: 4, 4: 5, 16: 6, 17: 7, 18: 8, 19: 9, 20: 10, 23: 11, 24: 12, 21: 13, 22: 14}
+        target_tag2ids = {mecab_tag2ids[x]: i for i, x in enumerate(target_tag_list)}
+        pos_target_onehot = []
+        for seq_pos in pos_ids:
+            span_pos = [0 for _ in range(target_n_pos)]
+            for pos_item in seq_pos:
+                if pos_item in target_tag2ids.keys():
+                    if 0 == pos_item or 1 == pos_item:
+                        span_pos[0] = 1
+                    else:
+                        span_pos[target_tag2ids[pos_item] - 1] = 1
+            pos_target_onehot.append(span_pos)
+
         # Make NE Labels
         token_pair_len = len(text_tokens)
         labels_ids = [ETRI_TAG["O"]] * token_pair_len
@@ -1362,6 +1380,15 @@ def make_mecab_morp_npy(
             for _ in range(token_max_len - pos_ids_size):
                 pos_ids.append([pos_tag2ids["O"]] * 10)
 
+        pos_target_onehot.insert(0, [0 for _ in range(target_n_pos)]) # [CLS]
+        if token_max_len <= len(pos_target_onehot):
+            pos_target_onehot = pos_target_onehot[:token_max_len - 1]
+            pos_target_onehot.append([0 for _ in range(target_n_pos)])
+        else:
+            pos_target_onehot_size = len(pos_target_onehot)
+            for _ in range(token_max_len - pos_target_onehot_size):
+                pos_target_onehot.append([0 for _ in range(target_n_pos)])
+
         # NE Label
         labels_ids.insert(0, ETRI_TAG["O"])
         if token_max_len <= len(labels_ids):
@@ -1394,14 +1421,16 @@ def make_mecab_morp_npy(
             print("NE labels: \n", src_item.ne_list)
 
             # Token 별 확인
-            for t_tok, lab, p in zip(text_tokens, labels_ids, pos_ids):
+            for t_tok, lab, p, p_oh in zip(text_tokens, labels_ids, pos_ids, pos_target_onehot):
                 if "[PAD]" == t_tok:
                     break
                 conv_p = [pos_ids2tag[x] for x in p]
-                print(t_tok, ne_ids2tag[lab], conv_p)
+                print(t_tok, ne_ids2tag[lab], conv_p, p_oh)
             input()
 
     if not debug_mode:
+        if is_make_pos_flag:
+            npy_dict["pos_ids"] = npy_dict["pos_flag"]
         save_mecab_morp_npy(npy_dict, src_list_len=len(src_list), save_dir=save_model_dir)
 
 #======================================================
@@ -1627,8 +1656,15 @@ if "__main__" == __name__:
             save_model_dir="mecab_wordpiece_electra"
         )
     elif "morp" == make_npy_mode:
+        target_n_pos = 14
+        target_tag_list = [  # NN은 NNG/NNP 통합
+            "NNG", "NNP", "SN", "NNB", "NR", "NNBC",
+            "JKS", "JKC", "JKG", "JKO", "JKB", "JX", "JC", "JKV", "JKQ",
+        ]
+        # target_tag_list = [v for k, v in MECAB_POS_TAG.items() if 0 != k]
         make_mecab_morp_npy(
             tokenizer_name="monologg/koelectra-base-v3-discriminator",
-            src_list=all_sent_list, token_max_len=128, debug_mode=False,
-            save_model_dir="mecab_morp_electra"
+            src_list=all_sent_list, token_max_len=128, debug_mode=True,
+            save_model_dir="mecab_morp_electra", is_make_pos_flag=True,
+            target_n_pos=target_n_pos, target_tag_list=target_tag_list
         )

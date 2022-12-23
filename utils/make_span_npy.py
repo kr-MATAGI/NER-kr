@@ -442,10 +442,13 @@ def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
             for pos in pos_ids[start_idx:end_idx + 1]:
                 for pos_item in pos:  # @TODO: Plz Check
                     if pos_item in target_tag2ids.keys():
-                        if 0 == pos_item or 1 == pos_item:
-                            span_pos[0] = 1
+                        if 14 == target_n_pos:
+                            if 0 == pos_item or 1 == pos_item:
+                                span_pos[0] = 1
+                            else:
+                                span_pos[target_tag2ids[pos_item] - 1] = 1
                         else:
-                            span_pos[target_tag2ids[pos_item] - 1] = 1
+                            span_pos[target_tag2ids[pos_item]] = 1
             pos_target_onehot.append(span_pos)
         # end, b_make_only_pos_ids
 
