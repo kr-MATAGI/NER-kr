@@ -251,8 +251,7 @@ def make_adapter_input(src_list: List[Sentence], tokenizer, max_length: int = 12
 def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
                   seq_max_len: int = 128, debug_mode: bool = False,
                   span_max_len: int = 10, save_npy_path: str = None,
-                  b_make_adapter_input: bool = False,
-                  b_make_pos_flag: bool = False, target_n_pos: int = 14, target_tag_list: List = []
+                  b_make_adapter_input: bool = False, target_n_pos: int = 14, target_tag_list: List = []
                   ):
 #=======================================================================================
     span_minus = int((span_max_len + 1) * span_max_len / 2)
@@ -293,6 +292,10 @@ def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
     total_tok_cnt = 0
     unk_tok_cnt = 0 # [UNK] 나오는거 Count
     for proc_idx, src_item in enumerate(src_list):
+        # 데이터 필터링
+        if 0 == len(src_item.ne_list) and 3 >= len(src_item.word_list):
+            continue
+
         if 0 == (proc_idx % 1000):
             print(f"{proc_idx} Processing... {src_item.text}")
 
@@ -707,6 +710,6 @@ if "__main__" == __name__:
         tokenizer_name="monologg/koelectra-base-v3-discriminator",
         src_list=all_sent_list, seq_max_len=128, span_max_len=8,
         debug_mode=False, save_npy_path="span_ner", b_make_adapter_input=False,
-        b_make_pos_flag=False, target_n_pos=target_n_pos, target_tag_list=target_tag_list
+        target_n_pos=target_n_pos, target_tag_list=target_tag_list
     )
     print(f"Proc Time: {time.time() - start_time}")

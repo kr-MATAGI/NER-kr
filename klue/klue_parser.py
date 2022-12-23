@@ -289,14 +289,14 @@ def create_features(examples, tokenizer, target_n_pos, target_tag_list, mode:str
 
         npy_dict["pos_ids"].append(pos_target_onehot)
 
-        print(span_idx_label_dict)
-        print(span_idx_new_label_dict)
-        print(tokenizer.tokenize(sentence))
-        for i, (ids, t, l, p) in enumerate(zip(input_ids[1:], text_tokens[1:], label_ids[1:], token_pos_list)):
-            if "[PAD]" == t:
-                break
-            print(i+1, t, ne_detail_ids2tok[l], p)
-        input()
+        # print(span_idx_label_dict)
+        # print(span_idx_new_label_dict)
+        # print(tokenizer.tokenize(sentence))
+        # for i, (ids, t, l, p) in enumerate(zip(input_ids[1:], text_tokens[1:], label_ids[1:], token_pos_list)):
+        #     if "[PAD]" == t:
+        #         break
+        #     print(i+1, t, ne_detail_ids2tok[l], p)
+        # input()
 
     # Save npy
     save_span_npy(npy_dict, save_path="../corpus/npy/klue_ner", mode=mode)
@@ -363,7 +363,7 @@ def create_npy_datasets(src_path: str, target_n_pos: int, target_tag_list: List,
 
     tokenizer = ElectraTokenizer.from_pretrained("monologg/koelectra-base-v3-discriminator")
     examples = create_ner_examples(src_path, tokenizer)
-    create_features(examples, tokenizer, target_n_pos, target_tag_list, mode=mode, max_seq_len=128, max_span_len=8)
+    create_features(examples, tokenizer, target_n_pos, target_tag_list, mode=mode, max_seq_len=128, max_span_len=6)
 
 #=======================================================================================
 def convert_morp_connected_tokens(sent_lvl_pos: Tuple[str, str], src_text: str):
