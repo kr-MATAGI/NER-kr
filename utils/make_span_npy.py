@@ -5,8 +5,8 @@ import copy
 import numpy as np
 import pickle
 
-from eunjeon import Mecab
-#from konlpy.tag import Mecab
+# from eunjeon import Mecab
+from konlpy.tag import Mecab
 
 from tag_def import ETRI_TAG, NIKL_POS_TAG, MECAB_POS_TAG
 from data_def import Sentence, NE, Morp, Word
@@ -251,7 +251,8 @@ def make_adapter_input(src_list: List[Sentence], tokenizer, max_length: int = 12
 def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
                   seq_max_len: int = 128, debug_mode: bool = False,
                   span_max_len: int = 10, save_npy_path: str = None,
-                  b_make_adapter_input: bool = False, target_n_pos: int = 14, target_tag_list: List = []
+                  b_make_adapter_input: bool = False, target_n_pos: int = 14, target_tag_list: List = [],
+                  train_data_ratio: int = 7
                   ):
 #=======================================================================================
     span_minus = int((span_max_len + 1) * span_max_len / 2)
@@ -527,7 +528,7 @@ def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
     print("[UNK] Count: ", unk_tok_cnt)
 
     if not debug_mode:
-        save_span_npy(npy_dict, len(src_list), save_npy_path)
+        save_span_npy(npy_dict, len(src_list), save_npy_path, train_data_ratio)
 
 #=======================================================================================
 def save_only_pos_ids(npy_dict, src_list_len, save_path):
@@ -555,7 +556,7 @@ def save_only_pos_ids(npy_dict, src_list_len, save_path):
     print("[save_only_pos_ids] save complete")
 
 #=======================================================================================
-def save_span_npy(npy_dict, src_list_len, save_path):
+def save_span_npy(npy_dict, src_list_len, save_path, train_data_ratio):
 #=======================================================================================
     npy_dict["input_ids"] = np.array(npy_dict["input_ids"])
     npy_dict["attention_mask"] = np.array(npy_dict["attention_mask"])
@@ -582,8 +583,9 @@ def save_span_npy(npy_dict, src_list_len, save_path):
     print(f"pos_ids.shape: {npy_dict['pos_ids'].shape}")
 
     split_size = int(src_list_len * 0.1)
-    train_size = split_size * 8
+    train_size = split_size * train_data_ratio
     dev_size = train_size + split_size
+    print(f"train_data_ratio: {train_data_ratio}")
 
     # Train
     train_np = [npy_dict["input_ids"][:train_size],
@@ -710,6 +712,6 @@ if "__main__" == __name__:
         tokenizer_name="monologg/koelectra-base-v3-discriminator",
         src_list=all_sent_list, seq_max_len=128, span_max_len=8,
         debug_mode=False, save_npy_path="span_ner", b_make_adapter_input=False,
-        target_n_pos=target_n_pos, target_tag_list=target_tag_list
+        target_n_pos=target_n_pos, target_tag_list=target_tag_list, train_data_ratio=7
     )
     print(f"Proc Time: {time.time() - start_time}")
