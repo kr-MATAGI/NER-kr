@@ -1412,6 +1412,7 @@ def make_mecab_morp_npy(
         npy_dict["token_type_ids"].append(token_type_ids)
         npy_dict["labels"].append(labels_ids)
         npy_dict["pos_ids"].append(pos_ids)
+        npy_dict["pos_flag"].append(pos_target_onehot)
 
         # Debug mode
         if debug_mode:
