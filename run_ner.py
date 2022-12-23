@@ -139,7 +139,7 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
     }
 
     # labels = ETRI_TAG.keys()
-    label_map = {label: i for label, i in KLUE_NER_TAG.items()}
+    label_map = {i: label for label, i in KLUE_NER_TAG.items()}
 
     out_label_list = [[] for _ in range(out_label_ids.shape[0])]
     preds_list = [[] for _ in range(out_label_ids.shape[0])]
