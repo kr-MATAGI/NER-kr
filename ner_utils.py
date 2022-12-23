@@ -270,9 +270,7 @@ def load_ner_config_and_model(user_select: int, args, tag_dict):
         print("SPAN_TAG_DICT: ", klue_tags_dict)
         config = ElectraConfig.from_pretrained("monologg/koelectra-base-v3-discriminator",
                                                num_labels=len(span_tag_list),
-                                               id2label={idx: label for label, idx in klue_tags_dict.items()},
-                                               label2id={label: idx for label, idx in klue_tags_dict.items()})
-        config.etri_tags = {label: i for i, label in enumerate(tag_dict.items())}
+                                               id2label={idx: label for label, idx in klue_tags_dict.items()})
 
     # model
     if 1 == user_select:

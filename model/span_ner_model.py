@@ -18,8 +18,6 @@ class ElectraSpanNER(ElectraPreTrainedModel):
         self.hidden_size = config.hidden_size
         self.n_class = config.num_labels
         self.ids2label = config.id2label
-        self.label2ids = config.label2id
-        self.etri_tags = config.etri_tags
 
         self.span_combi_mode = "x,y"
         self.token_len_emb_dim = 50 # 12.09 늘려서 테스트
@@ -115,8 +113,7 @@ class ElectraSpanNER(ElectraPreTrainedModel):
         # preds = self.get_predict(predicts=predict_prob, all_span_idxs=all_span_idxs_ltoken, label_ids=label_ids)
         if "eval" == mode:
             loss = self.compute_loss(all_span_rep, span_only_label, real_span_mask_ltoken)
-            preds = self.get_predict(predicts=predict_prob, all_span_idxs=all_span_idxs_ltoken,
-                                     label_ids=label_ids)
+            preds = self.get_predict(predicts=predict_prob, all_span_idxs=all_span_idxs_ltoken)
             return loss, preds
         else:
             loss = self.compute_loss(all_span_rep, span_only_label, real_span_mask_ltoken)
