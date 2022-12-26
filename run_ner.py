@@ -18,7 +18,7 @@ from tqdm import tqdm
 from ner_def import (
     ETRI_TAG, NER_MODEL_LIST,
 )
-from klue.klue_tag_def import KLUE_NER_TAG
+# from klue.klue_tag_def import KLUE_NER_TAG
 
 from ner_datasets import NER_POS_Dataset, NER_Eojeol_Datasets, SpanNERDataset
 from ner_utils import (
@@ -138,8 +138,7 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
         "loss": eval_loss
     }
 
-    # labels = ETRI_TAG.keys()
-    label_map = {i: label for label, i in KLUE_NER_TAG.items()}
+    label_map = {i: label for label, i in ETRI_TAG.items()}
 
     out_label_list = [[] for _ in range(out_label_ids.shape[0])]
     preds_list = [[] for _ in range(out_label_ids.shape[0])]
@@ -377,7 +376,7 @@ def main():
     args.output_dir = os.path.join(args.ckpt_dir, args.output_dir)
 
     # Config
-    config, model = load_ner_config_and_model(g_user_select, args, KLUE_NER_TAG)
+    config, model = load_ner_config_and_model(g_user_select, args, ETRI_TAG)
 
     # print config / model
     logger.info(f"[run_ner][__main__] model: {args.model_name_or_path}")

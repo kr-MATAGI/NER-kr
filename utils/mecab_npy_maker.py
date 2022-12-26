@@ -1257,6 +1257,7 @@ def make_mecab_morp_npy(
     mecab = Mecab()
     tokenizer = ElectraTokenizer.from_pretrained(tokenizer_name)
 
+    total_data_count = 0
     for proc_idx, src_item in enumerate(src_list):
         # Test
         if debug_mode:
@@ -1269,6 +1270,7 @@ def make_mecab_morp_npy(
 
         if 0 == (proc_idx % 1000):
             print(f"{proc_idx} Processing... {src_item.text}")
+        total_data_count += 1
 
         # Mecab
         res_mecab = mecab.pos(src_item.text)
@@ -1432,7 +1434,7 @@ def make_mecab_morp_npy(
     if not debug_mode:
         if is_make_pos_flag:
             npy_dict["pos_ids"] = npy_dict["pos_flag"]
-        save_mecab_morp_npy(npy_dict, src_list_len=len(src_list), save_dir=save_model_dir)
+        save_mecab_morp_npy(npy_dict, src_list_len=total_data_count, save_dir=save_model_dir)
 
 #======================================================
 def kor_letter_from(letter):

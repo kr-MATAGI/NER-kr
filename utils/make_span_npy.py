@@ -292,6 +292,7 @@ def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
 
     total_tok_cnt = 0
     unk_tok_cnt = 0 # [UNK] 나오는거 Count
+    total_data_size = 0
     for proc_idx, src_item in enumerate(src_list):
         # 데이터 필터링
         if 0 == len(src_item.ne_list) and 3 >= len(src_item.word_list):
@@ -307,6 +308,7 @@ def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
                     is_test_str = True
             if not is_test_str:
                 continue
+        total_data_size += 1
 
         # Mecab
         mecab_res = mecab.pos(src_item.text)
@@ -528,7 +530,7 @@ def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
     print("[UNK] Count: ", unk_tok_cnt)
 
     if not debug_mode:
-        save_span_npy(npy_dict, len(src_list), save_npy_path, train_data_ratio)
+        save_span_npy(npy_dict, total_data_size, save_npy_path, train_data_ratio)
 
 #=======================================================================================
 def save_only_pos_ids(npy_dict, src_list_len, save_path):
