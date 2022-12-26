@@ -257,20 +257,22 @@ def load_ner_config_and_model(user_select: int, args, tag_dict):
         config.max_seq_len = 128
     elif 12 == user_select:
         # ELECTRA SPAN NER
-        span_tag_dict = {'O': 0, 'FD': 1, 'EV': 2, 'DT': 3, 'TI': 4, 'MT': 5,
+        span_tag_dict = {'O': 0,
+                         'FD': 1, 'EV': 2, 'DT': 3, 'TI': 4, 'MT': 5,
                          'AM': 6, 'LC': 7, 'CV': 8, 'PS': 9, 'TR': 10,
                          'TM': 11, 'AF': 12, 'PT': 13, 'OG': 14, 'QT': 15}
 
         klue_tags_dict = {
-            "O": 0, "PS": 1, "LC": 2, "OG": 3,
+            "O": 0,
+            "PS": 1, "LC": 2, "OG": 3,
             "DT": 4, "TI": 5, "QT": 6
         }
 
-        span_tag_list = klue_tags_dict.keys()
-        print("SPAN_TAG_DICT: ", klue_tags_dict)
+        span_tag_list = span_tag_dict.keys()
+        print("SPAN_TAG_DICT: ", span_tag_dict)
         config = ElectraConfig.from_pretrained("monologg/koelectra-base-v3-discriminator",
                                                num_labels=len(span_tag_list),
-                                               id2label={idx: label for label, idx in klue_tags_dict.items()})
+                                               id2label={idx: label for label, idx in span_tag_dict.items()})
 
     # model
     if 1 == user_select:
