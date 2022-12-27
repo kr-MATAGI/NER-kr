@@ -224,7 +224,7 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
     if g_use_klue:
         output_ch_eval_files = os.path.join(output_dir,
                                             "{}-{}_ch.txt".format(mode, global_step) if global_step else "{}.txt".format(mode))
-        with open(output_eval_file, "w") as f_w:
+        with open(output_ch_eval_files, "w") as f_w:
             for key in sorted(results.keys()):
                 logger.info("  {} = {}".format(key, str(ch_results[key])))
                 f_w.write("  {} = {}\n".format(key, str(ch_results[key])))
