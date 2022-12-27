@@ -106,13 +106,12 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
 
         if g_use_klue:
             all_conv_seq_pred = []
-            tokenizer = ElectraTokenizer.from_pretrained("monologg/koelectra-base-v3-discriminator")
             for b_idx, b_pred_item in enumerate(predict): # Batch -> seq
                 len_idx = 0
                 conv_seq_pred = []
                 for p_item in b_pred_item:
                     ori_tag = p_item.split("-")[-1]
-                    for cnt in range(char_len[b_idx][len_idx]):
+                    for cnt in range(char_len[b_idx][len_idx] + 1):
                         if "B-" in p_item:
                             if 0 == cnt:
                                 conv_seq_pred.append("B-" + ori_tag)
