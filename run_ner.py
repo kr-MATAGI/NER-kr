@@ -167,11 +167,15 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
                 preds = np.append(preds, logits, axis=0)
                 out_label_ids = np.append(out_label_ids, inputs["label_ids"].detach().cpu().numpy(), axis=0)
 
+
     logger.info("  Eval End !")
     eval_pbar.close()
 
     eval_loss = eval_loss / nb_eval_steps
     results = {
+        "loss": eval_loss
+    }
+    ch_results = {
         "loss": eval_loss
     }
 
@@ -202,7 +206,6 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
                     char_preds_list[i].append(char_preds[i][j])
         ch_result = f1_pre_rec(out_label_char_list, char_preds_list, is_ner=True)
         ch_results.update(ch_result)
-        logger.info("CHAR_LVL_REPORT\n" + show_ner_report(out_label_char_list, char_preds_list))
 
     output_dir = os.path.join(args.output_dir, mode)
     if not os.path.exists(output_dir):
@@ -221,11 +224,12 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
     if g_use_klue:
         output_ch_eval_files = os.path.join(output_dir,
                                             "{}-{}_ch.txt".format(mode, global_step) if global_step else "{}.txt".format(mode))
-        for key in sorted(results.keys()):
-            logger.info("  {} = {}".format(key, str(ch_results[key])))
-            f_w.write("  {} = {}\n".format(key, str(ch_results[key])))
-        logger.info("\n" + show_ner_report(out_label_char_list, char_preds_list))  # Show report for each tag result
-        f_w.write("\n" + show_ner_report(out_label_char_list, char_preds_list))
+        with open(output_eval_file, "w") as f_w:
+            for key in sorted(results.keys()):
+                logger.info("  {} = {}".format(key, str(ch_results[key])))
+                f_w.write("  {} = {}\n".format(key, str(ch_results[key])))
+            logger.info("CHAR_LVL_REPORT \n" + show_ner_report(out_label_char_list, char_preds_list))  # Show report for each tag result
+            f_w.write("\n" + show_ner_report(out_label_char_list, char_preds_list))
 
     return results
 
