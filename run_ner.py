@@ -18,7 +18,7 @@ from tqdm import tqdm
 from ner_def import (
     ETRI_TAG, NER_MODEL_LIST,
 )
-# from klue.klue_tag_def import KLUE_NER_TAG
+from klue.klue_tag_def import KLUE_NER_TAG
 
 from ner_datasets import NER_POS_Dataset, NER_Eojeol_Datasets, SpanNERDataset
 from ner_utils import (
@@ -167,7 +167,6 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
                 preds = np.append(preds, logits, axis=0)
                 out_label_ids = np.append(out_label_ids, inputs["label_ids"].detach().cpu().numpy(), axis=0)
 
-
     logger.info("  Eval End !")
     eval_pbar.close()
 
@@ -179,7 +178,10 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
         "loss": eval_loss
     }
 
-    label_map = {i: label for label, i in ETRI_TAG.items()}
+    # ETRI
+    # label_map = {i: label for label, i in ETRI_TAG.items()}
+    # KLUE
+    label_map = {i: label for label, i in KLUE_NER_TAG.items()}
 
     out_label_list = [[] for _ in range(out_label_ids.shape[0])]
     preds_list = [[] for _ in range(out_label_ids.shape[0])]
@@ -196,6 +198,8 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
     result = f1_pre_rec(out_label_list, preds_list, is_ner=True)
     results.update(result)
 
+    out_label_char_list = None
+    char_preds_list = None
     if g_use_klue:
         out_label_char_list = [[] for _ in range(out_char_label_ids.shape[0])]
         char_preds_list = [[] for _ in range(out_char_label_ids.shape[0])]
