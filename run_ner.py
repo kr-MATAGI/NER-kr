@@ -30,7 +30,7 @@ from ner_utils import (
 ### Global variable
 g_user_select = 0
 g_use_crf = True
-g_use_klue = False
+g_use_klue = True
 logger = init_logger()
 
 if not os.path.exists("./logs"):
@@ -166,8 +166,6 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
                 logits = np.argmax(logits, axis=-1)
                 preds = np.append(preds, logits, axis=0)
                 out_label_ids = np.append(out_label_ids, inputs["label_ids"].detach().cpu().numpy(), axis=0)
-
-        break # TEST
 
 
     logger.info("  Eval End !")
@@ -461,19 +459,19 @@ def main():
         print("IS USE KLUE: ", g_use_klue)
 
         train_npy, train_label_ids, \
-        train_all_span_idx, train_all_span_len, train_real_span_mask, train_span_only_label, train_pos_ids = \
+        train_all_span_idx, train_all_span_len, train_real_span_mask, train_span_only_label, train_pos_ids, \
+        train_char_len, train_char_label_ids = \
             load_corpus_span_ner_npy(args.train_npy, mode="train", is_load_klue=g_use_klue)
-        # train_char_len, train_char_label_ids = \
 
         dev_npy, dev_label_ids, \
-        dev_all_span_idx, dev_all_span_len, dev_real_span_mask, dev_span_only_label, dev_pos_ids = \
+        dev_all_span_idx, dev_all_span_len, dev_real_span_mask, dev_span_only_label, dev_pos_ids, \
+        dev_char_len, dev_char_label_ids = \
             load_corpus_span_ner_npy(args.dev_npy, mode="dev", is_load_klue=g_use_klue)
-        # dev_char_len, dev_char_label_ids = \
 
         test_npy, test_label_ids, \
-        test_all_span_idx, test_all_span_len, test_real_span_mask, test_span_only_label, test_pos_ids = \
+        test_all_span_idx, test_all_span_len, test_real_span_mask, test_span_only_label, test_pos_ids, \
+        test_char_len, test_char_label_ids = \
             load_corpus_span_ner_npy(args.test_npy, mode="test", is_load_klue=g_use_klue)
-        # test_char_len, test_char_label_ids = \
 
     else:
         train_npy, train_labels, train_pos_ids = load_corpus_npy_datasets(args.train_npy, mode="train")
@@ -492,15 +490,15 @@ def main():
         train_dataset = SpanNERDataset(data=train_npy, label_ids=train_label_ids, pos_ids=train_pos_ids,
                                        span_only_label=train_span_only_label, real_span_mask=train_real_span_mask,
                                        all_span_len=train_all_span_len, all_span_idx=train_all_span_idx,
-                                       is_use_klue=g_use_klue, char_label_ids=None, char_len=None)
+                                       is_use_klue=g_use_klue, char_label_ids=train_char_label_ids, char_len=train_char_len)
         dev_dataset = SpanNERDataset(data=dev_npy, label_ids=dev_label_ids, pos_ids=dev_pos_ids,
                                      span_only_label=dev_span_only_label, real_span_mask=dev_real_span_mask,
                                      all_span_len=dev_all_span_len, all_span_idx=dev_all_span_idx,
-                                     is_use_klue=g_use_klue, char_label_ids=None, char_len=None)
+                                     is_use_klue=g_use_klue, char_label_ids=dev_char_label_ids, char_len=dev_char_len)
         test_dataset = SpanNERDataset(data=test_npy, label_ids=test_label_ids, pos_ids=test_pos_ids,
                                       span_only_label=test_span_only_label, real_span_mask=test_real_span_mask,
                                       all_span_len=test_all_span_len, all_span_idx=test_all_span_idx,
-                                      is_use_klue=g_use_klue, char_label_ids=None, char_len=None)
+                                      is_use_klue=g_use_klue, char_label_ids=test_char_label_ids, char_len=test_char_len)
     else:
         train_dataset = NER_POS_Dataset(data=train_npy, labels=train_labels, pos_ids=train_pos_ids)
         dev_dataset = NER_POS_Dataset(data=dev_npy, labels=dev_labels, pos_ids=dev_pos_ids)
