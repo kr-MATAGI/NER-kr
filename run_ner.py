@@ -10,7 +10,7 @@ from attrdict import AttrDict
 import torch
 from torch.utils.data import RandomSampler, SequentialSampler, DataLoader
 from torch.utils.tensorboard import SummaryWriter
-from transformers import get_linear_schedule_with_warmup
+from transformers import get_linear_schedule_with_warmup, ElectraTokenizer
 
 from tqdm import tqdm
 
@@ -86,7 +86,7 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
             }
 
             if 12 == g_user_select:
-                loss, predict = model(**inputs)
+                loss, predict = model(**inputs) # predict [batch, seq_len] List
                 if g_use_klue:
                     char_label_ids = batch["char_label_ids"]
                     char_len = batch["char_len"]
@@ -106,20 +106,21 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
 
         if g_use_klue:
             all_conv_seq_pred = []
-            for b_idx, b_pred_item in enumerate(predict): # Batch
+            tokenizer = ElectraTokenizer.from_pretrained("monologg/koelectra-base-v3-discriminator")
+            for b_idx, b_pred_item in enumerate(predict): # Batch -> seq
                 len_idx = 0
                 conv_seq_pred = []
                 for p_item in b_pred_item:
                     ori_tag = p_item.split("-")[-1]
-                    for curr_len in range(char_len[b_idx][len_idx]):
+                    for cnt in range(char_len[b_idx][len_idx]):
                         if "B-" in p_item:
-                            if 0 == curr_len:
+                            if 0 == cnt:
                                 conv_seq_pred.append("B-" + ori_tag)
                             else:
                                 conv_seq_pred.append("I-" + ori_tag)
                         else:
                             conv_seq_pred.append(p_item)
-                len_idx += 1
+                    len_idx += 1
                 if args.max_seq_len <= len(conv_seq_pred):
                     conv_seq_pred = conv_seq_pred[:args.max_seq_len - 1]
                     conv_seq_pred.append("O")
@@ -166,6 +167,8 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
                 logits = np.argmax(logits, axis=-1)
                 preds = np.append(preds, logits, axis=0)
                 out_label_ids = np.append(out_label_ids, inputs["label_ids"].detach().cpu().numpy(), axis=0)
+
+        break # TEST
 
 
     logger.info("  Eval End !")

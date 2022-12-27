@@ -411,7 +411,7 @@ def create_npy_datasets(src_path: str, target_n_pos: int, target_tag_list: List,
     tokenizer = ElectraTokenizer.from_pretrained("monologg/koelectra-base-v3-discriminator")
     examples, all_char_lvl_labels = create_ner_examples(src_path)
     create_features(examples, tokenizer, target_n_pos, target_tag_list, char_lvl_labels=all_char_lvl_labels,
-                    mode=mode, max_seq_len=128, max_span_len=6)
+                    mode=mode, max_seq_len=128, max_span_len=8)
 
 #=======================================================================================
 def convert_morp_connected_tokens(sent_lvl_pos: Tuple[str, str], src_text: str):
