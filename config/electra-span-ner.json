@@ -24,9 +24,9 @@
   "model_name_or_path": "monologg/koelectra-base-v3-discriminator",
   "output_dir": "electra-mecab-span-ner-tokenization-klue-14pos-6span-1227",
   "seed": 42,
-  "train_batch_size": 64,
+  "train_batch_size": 32,
   "eval_batch_size": 128,
-  "logging_steps": 329,
+  "logging_steps": 1,
   "save_steps": 329,
   "learning_rate": 5e-5,
   "n_gpu": 1

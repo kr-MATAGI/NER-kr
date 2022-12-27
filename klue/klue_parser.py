@@ -96,7 +96,9 @@ def create_features(examples, tokenizer, target_n_pos, target_tag_list, mode: st
     ne_detail_ids2tok = {v: k for k, v in KLUE_NER_TAG.items()}
 
     random.seed(42)
-    random.shuffle(examples)
+    zip_shuffle = list(zip(examples, char_lvl_labels))
+    random.shuffle(zip_shuffle)
+    examples, char_lvl_labels = zip(*zip_shuffle)
 
     npy_dict = {
         "input_ids": [],
@@ -318,6 +320,8 @@ def create_features(examples, tokenizer, target_n_pos, target_tag_list, mode: st
         # print(span_idx_label_dict)
         # print(span_idx_new_label_dict)
         # print(tokenizer.tokenize(sentence))
+        # print(sentence.split())
+        # print(char_lvl_labels[ex_idx])
         # for i, (ids, t, l, p) in enumerate(zip(input_ids[1:], text_tokens[1:], label_ids[1:], token_pos_list)):
         #     if "[PAD]" == t:
         #         break
