@@ -320,7 +320,7 @@ def create_features(examples, tokenizer, target_n_pos, target_tag_list, mode: st
         # print(span_idx_label_dict)
         # print(span_idx_new_label_dict)
         # print(tokenizer.tokenize(sentence))
-        # print(sentence.split())
+        # print(list(sentence.replace(" ", "")))
         # print(char_lvl_labels[ex_idx])
         # for i, (ids, t, l, p) in enumerate(zip(input_ids[1:], text_tokens[1:], label_ids[1:], token_pos_list)):
         #     if "[PAD]" == t:
@@ -415,7 +415,7 @@ def create_npy_datasets(src_path: str, target_n_pos: int, target_tag_list: List,
     tokenizer = ElectraTokenizer.from_pretrained("monologg/koelectra-base-v3-discriminator")
     examples, all_char_lvl_labels = create_ner_examples(src_path)
     create_features(examples, tokenizer, target_n_pos, target_tag_list, char_lvl_labels=all_char_lvl_labels,
-                    mode=mode, max_seq_len=128, max_span_len=8)
+                    mode=mode, max_seq_len=128, max_span_len=6)
 
 #=======================================================================================
 def convert_morp_connected_tokens(sent_lvl_pos: Tuple[str, str], src_text: str):

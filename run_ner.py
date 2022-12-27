@@ -30,7 +30,7 @@ from ner_utils import (
 ### Global variable
 g_user_select = 0
 g_use_crf = True
-g_use_klue = True
+g_use_klue = False
 logger = init_logger()
 
 if not os.path.exists("./logs"):
@@ -132,8 +132,8 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
                 preds = np.array(predict)
                 out_label_ids = label_ids.numpy()
                 if g_use_klue:
-                    out_char_label_ids = char_label_ids.numpy()
                     char_preds = np.array(all_conv_seq_pred)
+                    out_char_label_ids = char_label_ids.numpy()
             else:
                 preds = np.append(preds, np.array(predict), axis=0)
                 out_label_ids = np.append(out_label_ids, label_ids.numpy(), axis=0)
