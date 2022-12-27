@@ -30,6 +30,7 @@ from ner_utils import (
 ### Global variable
 g_user_select = 0
 g_use_crf = True
+g_use_klue = True
 logger = init_logger()
 
 if not os.path.exists("./logs"):
@@ -44,6 +45,7 @@ dict_hash_table = None
 def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
 #===============================================================
     results = {}
+    ch_results = {}
 
     eval_sampler = SequentialSampler(eval_dataset)
     eval_dataloader = DataLoader(eval_dataset, sampler=eval_sampler, batch_size=args.eval_batch_size)
@@ -60,6 +62,9 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
     nb_eval_steps = 0
     preds = None
     out_label_ids = None
+
+    char_preds = None
+    out_char_label_ids = None
 
     eval_pbar = tqdm(eval_dataloader)
     for batch in eval_pbar:
@@ -82,6 +87,9 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
 
             if 12 == g_user_select:
                 loss, predict = model(**inputs)
+                if g_use_klue:
+                    char_label_ids = batch["char_label_ids"]
+                    char_len = batch["char_len"]
             elif g_use_crf:
                 loss, outputs = model(**inputs)
                 loss = -1 * loss
@@ -96,13 +104,42 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
         tb_writer.add_scalar("Loss/val_" + str(train_epoch), eval_loss / nb_eval_steps, nb_eval_steps)
         eval_pbar.set_description("Eval Loss - %.04f" % (eval_loss / nb_eval_steps))
 
+        if g_use_klue:
+            all_conv_seq_pred = []
+            for b_idx, b_pred_item in enumerate(predict): # Batch
+                len_idx = 0
+                conv_seq_pred = []
+                for p_item in b_pred_item:
+                    ori_tag = p_item.split("-")[-1]
+                    for curr_len in range(char_len[b_idx][len_idx]):
+                        if "B-" in p_item:
+                            if 0 == curr_len:
+                                conv_seq_pred.append("B-" + ori_tag)
+                            else:
+                                conv_seq_pred.append("I-" + ori_tag)
+                        else:
+                            conv_seq_pred.append(p_item)
+                len_idx += 1
+                if args.max_seq_len <= len(conv_seq_pred):
+                    conv_seq_pred = conv_seq_pred[:args.max_seq_len - 1]
+                    conv_seq_pred.append("O")
+                else:
+                    conv_seq_pred += ["O"] * (args.max_seq_len - len(conv_seq_pred))
+                all_conv_seq_pred.append(conv_seq_pred)
+
         if 12 == g_user_select:
             if preds is None:
                 preds = np.array(predict)
                 out_label_ids = label_ids.numpy()
+                if g_use_klue:
+                    out_char_label_ids = char_label_ids.numpy()
+                    char_preds = np.array(all_conv_seq_pred)
             else:
                 preds = np.append(preds, np.array(predict), axis=0)
                 out_label_ids = np.append(out_label_ids, label_ids.numpy(), axis=0)
+                if g_use_klue:
+                    char_preds = np.append(char_preds, np.array(all_conv_seq_pred), axis=0)
+                    out_char_label_ids = np.append(out_char_label_ids, char_label_ids.numpy(), axis=0)
         elif g_use_crf:
             conv_outputs = np.zeros_like(inputs["label_ids"].detach().cpu().numpy())
             max_seq_len = conv_outputs.shape[1]
@@ -155,6 +192,18 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
     result = f1_pre_rec(out_label_list, preds_list, is_ner=True)
     results.update(result)
 
+    if g_use_klue:
+        out_label_char_list = [[] for _ in range(out_char_label_ids.shape[0])]
+        char_preds_list = [[] for _ in range(out_char_label_ids.shape[0])]
+        for i in range(out_char_label_ids.shape[0]):
+            for j in range(out_char_label_ids.shape[1]):
+                if out_char_label_ids[i, j] != ignore_index:
+                    out_label_char_list[i].append(label_map[out_char_label_ids[i][j]])
+                    char_preds_list[i].append(char_preds[i][j])
+        ch_result = f1_pre_rec(out_label_char_list, char_preds_list, is_ner=True)
+        ch_results.update(ch_result)
+        logger.info("CHAR_LVL_REPORT\n" + show_ner_report(out_label_char_list, char_preds_list))
+
     output_dir = os.path.join(args.output_dir, mode)
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -168,6 +217,15 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
             f_w.write("  {} = {}\n".format(key, str(results[key])))
         logger.info("\n" + show_ner_report(out_label_list, preds_list))  # Show report for each tag result
         f_w.write("\n" + show_ner_report(out_label_list, preds_list))
+
+    if g_use_klue:
+        output_ch_eval_files = os.path.join(output_dir,
+                                            "{}-{}_ch.txt".format(mode, global_step) if global_step else "{}.txt".format(mode))
+        for key in sorted(results.keys()):
+            logger.info("  {} = {}".format(key, str(ch_results[key])))
+            f_w.write("  {} = {}\n".format(key, str(ch_results[key])))
+        logger.info("\n" + show_ner_report(out_label_char_list, char_preds_list))  # Show report for each tag result
+        f_w.write("\n" + show_ner_report(out_label_char_list, char_preds_list))
 
     return results
 
@@ -329,6 +387,8 @@ def main():
 
     global g_user_select
     global g_use_crf
+    global g_use_klue
+
     g_user_select = int(input())
     config_file_path = "./config/electra-pos-tag.json"
 
@@ -393,23 +453,17 @@ def main():
     # load train/dev/test npy
     if 12 == g_user_select:
         train_npy, train_label_ids, \
-        train_all_span_idx, train_all_span_len, train_real_span_mask, train_span_only_label, train_pos_ids = \
-            load_corpus_span_ner_npy(args.train_npy, mode="train", is_load_klue=False)
+        train_all_span_idx, train_all_span_len, train_real_span_mask, train_span_only_label, train_pos_ids, \
+        train_char_len, train_char_label_ids = \
+            load_corpus_span_ner_npy(args.train_npy, mode="train", is_load_klue=g_use_klue)
         dev_npy, dev_label_ids, \
-        dev_all_span_idx, dev_all_span_len, dev_real_span_mask, dev_span_only_label, dev_pos_ids = \
-            load_corpus_span_ner_npy(args.dev_npy, mode="dev", is_load_klue=False)
+        dev_all_span_idx, dev_all_span_len, dev_real_span_mask, dev_span_only_label, dev_pos_ids, \
+        dev_char_len, dev_char_label_ids = \
+            load_corpus_span_ner_npy(args.dev_npy, mode="dev", is_load_klue=g_use_klue)
         test_npy, test_label_ids, \
-        test_all_span_idx, test_all_span_len, test_real_span_mask, test_span_only_label, test_pos_ids = \
-            load_corpus_span_ner_npy(args.test_npy, mode="test", is_load_klue=False)
-        print(f"train.shape - dataset: {train_npy.shape}, label_ids: {train_label_ids.shape}, pos_ids: {train_pos_ids.shape}"
-              f"all_span_idx: {train_all_span_idx.shape}, all_span_len: {train_all_span_len.shape}, "
-              f"real_span_mask: {train_real_span_mask.shape}, span_only_label: {train_span_only_label.shape}")
-        print(f"dev.shape - dataset: {dev_npy.shape}, label_ids: {dev_label_ids.shape}, pos_ids: {dev_pos_ids.shape}"
-              f"all_span_idx: {dev_all_span_idx.shape}, all_span_len: {dev_all_span_len.shape}, "
-              f"real_span_mask: {dev_real_span_mask.shape}, span_only_label: {dev_span_only_label.shape}")
-        print(f"test.shape - dataset: {test_npy.shape}, label_ids: {test_label_ids.shape}, pos_ids: {test_pos_ids.shape}"
-              f"all_span_idx: {test_all_span_idx.shape}, all_span_len: {test_all_span_len.shape}, "
-              f"real_span_mask: {test_real_span_mask.shape}, span_only_label: {test_span_only_label.shape}")
+        test_all_span_idx, test_all_span_len, test_real_span_mask, test_span_only_label, test_pos_ids, \
+        test_char_len, test_char_label_ids = \
+            load_corpus_span_ner_npy(args.test_npy, mode="test", is_load_klue=g_use_klue)
     else:
         train_npy, train_labels, train_pos_ids = load_corpus_npy_datasets(args.train_npy, mode="train")
         dev_npy, dev_labels, dev_pos_ids = load_corpus_npy_datasets(args.dev_npy, mode="dev")
@@ -426,13 +480,16 @@ def main():
     elif 12 == g_user_select:
         train_dataset = SpanNERDataset(data=train_npy, label_ids=train_label_ids, pos_ids=train_pos_ids,
                                        span_only_label=train_span_only_label, real_span_mask=train_real_span_mask,
-                                       all_span_len=train_all_span_len, all_span_idx=train_all_span_idx)
+                                       all_span_len=train_all_span_len, all_span_idx=train_all_span_idx,
+                                       is_use_klue=g_use_klue, char_label_ids=train_char_label_ids, char_len=train_char_len)
         dev_dataset = SpanNERDataset(data=dev_npy, label_ids=dev_label_ids, pos_ids=dev_pos_ids,
                                      span_only_label=dev_span_only_label, real_span_mask=dev_real_span_mask,
-                                     all_span_len=dev_all_span_len, all_span_idx=dev_all_span_idx)
+                                     all_span_len=dev_all_span_len, all_span_idx=dev_all_span_idx,
+                                     is_use_klue=g_use_klue, char_label_ids=dev_char_label_ids, char_len=dev_char_len)
         test_dataset = SpanNERDataset(data=test_npy, label_ids=test_label_ids, pos_ids=test_pos_ids,
                                       span_only_label=test_span_only_label, real_span_mask=test_real_span_mask,
-                                      all_span_len=test_all_span_len, all_span_idx=test_all_span_idx)
+                                      all_span_len=test_all_span_len, all_span_idx=test_all_span_idx,
+                                      is_use_klue=g_use_klue, char_label_ids=test_char_label_ids, char_len=test_char_len)
     else:
         train_dataset = NER_POS_Dataset(data=train_npy, labels=train_labels, pos_ids=train_pos_ids)
         dev_dataset = NER_POS_Dataset(data=dev_npy, labels=dev_labels, pos_ids=dev_pos_ids)

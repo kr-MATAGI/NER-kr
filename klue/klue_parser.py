@@ -13,11 +13,12 @@ from eunjeon import Mecab
 from allennlp.data.dataset_readers.dataset_utils import enumerate_spans
 
 #===========================================================
-def create_ner_examples(src_path: str, tokenizer):
+def create_ner_examples(src_path: str):
 #===========================================================
     print(f"[create_ner_examples] src_path: {src_path}")
 
     all_sent_ne_pairs = []
+    all_char_lvl_labels = []
 
     file_path = Path(src_path)
     raw_text = file_path.read_text(encoding="utf-8").strip()
@@ -35,6 +36,15 @@ def create_ner_examples(src_path: str, tokenizer):
             sentence += token
             original_clean_tokens.append(token)
             original_clean_labels.append(tag)
+
+        empty_ch_list = np.where(" " == np.array(original_clean_tokens))[0]
+        char_lvl_clean_label = []
+        for ori_idx, origin_label in enumerate(original_clean_labels):
+            if ori_idx in empty_ch_list:
+                continue
+            else:
+                char_lvl_clean_label.append(KLUE_NER_TAG[origin_label])
+        all_char_lvl_labels.append(char_lvl_clean_label)
 
         ne_word_label_pair = []  # [ word, label ]
         curr_word = ""
@@ -57,10 +67,10 @@ def create_ner_examples(src_path: str, tokenizer):
 
         all_sent_ne_pairs.append([sentence, ne_word_label_pair])
 
-    return all_sent_ne_pairs
+    return all_sent_ne_pairs, all_char_lvl_labels
 
 #===========================================================
-def create_features(examples, tokenizer, target_n_pos, target_tag_list, mode:str,
+def create_features(examples, tokenizer, target_n_pos, target_tag_list, mode: str, char_lvl_labels: List,
                     max_seq_len: int = 128, max_span_len: int = 8):
 #===========================================================
     print(f"[create_features] Label list: {KLUE_NER_TAG}")
@@ -91,6 +101,7 @@ def create_features(examples, tokenizer, target_n_pos, target_tag_list, mode:str
     npy_dict = {
         "input_ids": [],
         "label_ids": [],
+        "char_label_ids": [],
         "attention_mask": [],
         "token_type_ids": [],
         "all_span_len_list": [],
@@ -98,7 +109,8 @@ def create_features(examples, tokenizer, target_n_pos, target_tag_list, mode:str
         "span_only_label_token": [],
         "all_span_idx_list": [],
 
-        "pos_ids": []
+        "pos_ids": [],
+        "char_len": [],
     }
     '''
         example
@@ -118,6 +130,7 @@ def create_features(examples, tokenizer, target_n_pos, target_tag_list, mode:str
         origin_tokens = []
         text_tokens = []
         token_pos_list = []
+        char_lvl_len = []
         for m_idx, mecab_item in enumerate(conv_mecab_res):
             tokens = tokenizer.tokenize(mecab_item[0])
             origin_tokens.extend(tokens)
@@ -138,6 +151,17 @@ def create_features(examples, tokenizer, target_n_pos, target_tag_list, mode:str
             if 1 == conv_tok and 1 != ori_tok:
                 # print(text_tokens[tok_idx], origin_tokens[tok_idx])
                 text_tokens[tok_idx] = origin_tokens[tok_idx]
+
+        # Char Level Length
+        for tok in text_tokens:
+            char_lvl_len.append(len(tok.replace("##", "")))
+        char_lvl_len.insert(0, 1) # [CLS]
+        if max_seq_len <= len(char_lvl_len):
+            char_lvl_len = char_lvl_len[:max_seq_len - 1]
+            char_lvl_len.append(1) # [SEP]
+        else:
+            diff_len = max_seq_len - len(char_lvl_len)
+            char_lvl_len += [1] * diff_len # [PAD]
 
         # morp_ids
         mecab_type_len = len(MECAB_POS_TAG.keys())
@@ -270,6 +294,7 @@ def create_features(examples, tokenizer, target_n_pos, target_tag_list, mode:str
         assert len(token_type_ids) == max_seq_len, f"{len(token_type_ids)}"
         assert len(label_ids) == max_seq_len, f"{len(label_ids)}"
         assert len(pos_ids) == max_seq_len, f"{len(pos_ids)}"
+        assert len(char_lvl_len) == max_seq_len, f"{len(char_lvl_len)}"
 
         assert len(span_only_label_token) == max_num_span, f"{len(span_only_label_token)}"
         assert len(all_span_idx_list) == max_num_span, f"{len(all_span_idx_list)}"
@@ -288,6 +313,7 @@ def create_features(examples, tokenizer, target_n_pos, target_tag_list, mode:str
         npy_dict["all_span_idx_list"].append(all_span_idx_list)
 
         npy_dict["pos_ids"].append(pos_target_onehot)
+        npy_dict["char_len"].append(char_lvl_len)
 
         # print(span_idx_label_dict)
         # print(span_idx_new_label_dict)
@@ -297,6 +323,19 @@ def create_features(examples, tokenizer, target_n_pos, target_tag_list, mode:str
         #         break
         #     print(i+1, t, ne_detail_ids2tok[l], p)
         # input()
+
+    # Extend Char Level Labels
+    for ch_labels in char_lvl_labels:
+        ch_labels.insert(0, KLUE_NER_TAG["O"]) # [CLS]
+        if max_seq_len <= len(ch_labels):
+            ch_labels = ch_labels[:max_seq_len - 1]
+            ch_labels.append(KLUE_NER_TAG["O"]) # [SEP]
+        else:
+            diff_len = max_seq_len - len(ch_labels)
+            for _ in range(diff_len):
+                ch_labels.append(KLUE_NER_TAG["O"])
+        assert max_seq_len == len(ch_labels), f"KLUE_CHAR_LABEL_IDS: {len(ch_labels)}"
+    npy_dict["char_label_ids"] = char_lvl_labels
 
     # Save npy
     save_span_npy(npy_dict, save_path="../corpus/npy/klue_ner", mode=mode)
@@ -308,6 +347,7 @@ def save_span_npy(npy_dict, save_path, mode: str = "train"):
     npy_dict["attention_mask"] = np.array(npy_dict["attention_mask"])
     npy_dict["token_type_ids"] = np.array(npy_dict["token_type_ids"])
     npy_dict["label_ids"] = np.array(npy_dict["label_ids"])
+    npy_dict["char_label_ids"] = np.array(npy_dict["char_label_ids"])
 
     npy_dict["span_only_label_token"] = np.array(npy_dict["span_only_label_token"])
     npy_dict["all_span_len_list"] = np.array(npy_dict["all_span_len_list"])
@@ -315,11 +355,13 @@ def save_span_npy(npy_dict, save_path, mode: str = "train"):
     npy_dict["all_span_idx_list"] = np.array(npy_dict["all_span_idx_list"])
 
     npy_dict["pos_ids"] = np.array(npy_dict["pos_ids"])
+    npy_dict["char_len"] = np.array(npy_dict["char_len"])
 
     print(f"input_ids.shape: {npy_dict['input_ids'].shape}")
     print(f"attention_mask.shape: {npy_dict['attention_mask'].shape}")
     print(f"token_type_ids.shape: {npy_dict['token_type_ids'].shape}")
     print(f"label_ids.shape: {npy_dict['label_ids'].shape}")
+    print(f"char_label_ids.shape: {npy_dict['char_label_ids'].shape}")
 
     print(f"span_only_label_token.shape: {npy_dict['span_only_label_token'].shape}")
     print(f"all_span_len_list.shape: {npy_dict['all_span_len_list'].shape}")
@@ -327,32 +369,37 @@ def save_span_npy(npy_dict, save_path, mode: str = "train"):
     print(f"all_span_idx_list.shape: {npy_dict['all_span_idx_list'].shape}")
 
     print(f"pos_ids.shape: {npy_dict['pos_ids'].shape}")
+    print(f"char_len.shape: {npy_dict['char_len'].shape}")
 
-    # Train
-    train_np = [npy_dict["input_ids"],
+    # Ready to make
+    data_np = [npy_dict["input_ids"],
                 npy_dict["attention_mask"],
                 npy_dict["token_type_ids"]]
-    train_np = np.stack(train_np, axis=-1)
-    train_label_ids_np = npy_dict["label_ids"]
+    data_np = np.stack(data_np, axis=-1)
+    label_ids_np = npy_dict["label_ids"]
+    char_label_ids_np = npy_dict["char_label_ids"]
 
-    train_span_only_label_token_np = npy_dict["span_only_label_token"]
-    train_all_span_len_list_np = npy_dict["all_span_len_list"]
-    train_real_span_mask_token_np = npy_dict["real_span_mask_token"]
-    train_all_span_idx_list_np = npy_dict["all_span_idx_list"]
+    span_only_label_token_np = npy_dict["span_only_label_token"]
+    all_span_len_list_np = npy_dict["all_span_len_list"]
+    real_span_mask_token_np = npy_dict["real_span_mask_token"]
+    all_span_idx_list_np = npy_dict["all_span_idx_list"]
 
-    train_pos_ids_np = npy_dict["pos_ids"]
+    pos_ids_np = npy_dict["pos_ids"]
+    char_len_np = npy_dict["char_len"]
 
     # Save
     root_path = save_path
     # save input_ids, attention_mask, token_type_ids
-    np.save(root_path + "/" + mode, train_np)
+    np.save(root_path + "/" + mode, data_np)
 
-    np.save(root_path + "/" + mode + "_span_only_label_token", train_span_only_label_token_np)
-    np.save(root_path + "/" + mode + "_all_span_len_list", train_all_span_len_list_np)
-    np.save(root_path + "/" + mode + "_label_ids", train_label_ids_np)
-    np.save(root_path + "/" + mode + "_real_span_mask_token", train_real_span_mask_token_np)
-    np.save(root_path + "/" + mode + "_all_span_idx", train_all_span_idx_list_np)
-    np.save(root_path + "/" + mode + "_pos_ids", train_pos_ids_np)
+    np.save(root_path + "/" + mode + "_span_only_label_token", span_only_label_token_np)
+    np.save(root_path + "/" + mode + "_all_span_len_list", all_span_len_list_np)
+    np.save(root_path + "/" + mode + "_label_ids", label_ids_np)
+    np.save(root_path + "/" + mode + "_char_label_ids", char_label_ids_np)
+    np.save(root_path + "/" + mode + "_real_span_mask_token", real_span_mask_token_np)
+    np.save(root_path + "/" + mode + "_all_span_idx", all_span_idx_list_np)
+    np.save(root_path + "/" + mode + "_pos_ids", pos_ids_np)
+    np.save(root_path + "/" + mode + "_char_len", char_len_np)
 
     print("[save_span_npy] save complete")
 
@@ -362,8 +409,9 @@ def create_npy_datasets(src_path: str, target_n_pos: int, target_tag_list: List,
     print(f"[create_npy_datasets] src_path: {src_path}")
 
     tokenizer = ElectraTokenizer.from_pretrained("monologg/koelectra-base-v3-discriminator")
-    examples = create_ner_examples(src_path, tokenizer)
-    create_features(examples, tokenizer, target_n_pos, target_tag_list, mode=mode, max_seq_len=128, max_span_len=6)
+    examples, all_char_lvl_labels = create_ner_examples(src_path)
+    create_features(examples, tokenizer, target_n_pos, target_tag_list, char_lvl_labels=all_char_lvl_labels,
+                    mode=mode, max_seq_len=128, max_span_len=6)
 
 #=======================================================================================
 def convert_morp_connected_tokens(sent_lvl_pos: Tuple[str, str], src_text: str):
@@ -375,7 +423,6 @@ def convert_morp_connected_tokens(sent_lvl_pos: Tuple[str, str], src_text: str):
         "SSO", "SSC", # 여는 괄호, 닫는 괄호
         "SC", "SY", # 구분자, (붙임표, 기타 기호)
     ]
-
 
     # 어절별 글자 수 체크해서 띄워쓰기 적기
     split_text = src_text.split(" ")

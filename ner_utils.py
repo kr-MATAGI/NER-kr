@@ -78,7 +78,21 @@ def load_corpus_span_ner_npy(src_path: str, mode: str="train", is_load_klue: boo
     span_only_label = np.load(root_path + "_span_only_label_token.npy")
 
     pos_ids = np.load(root_path + "_pos_ids.npy")
+    print(f"{mode}.shape - dataset: {input_token_attn_npy.shape}, label_ids: {label_ids.shape}, pos_ids: {pos_ids.shape}"
+          f"all_span_idx: {all_span_idx.shape}, all_span_len: {all_span_len.shape}, "
+          f"real_span_mask: {real_span_mask.shape}, span_only_label: {span_only_label.shape}")
 
+    if is_load_klue:
+        ''' KLUE는 char F1을 평가하기 위해 전처리 데이터셋 추가적으로 Load '''
+
+        char_len = np.load(root_path + "_char_len.npy")
+        char_label_ids = np.load(root_path + "_char_label_ids.npy")
+        print(f"char_len: {char_len.shape}, char_label_ids: {char_label_ids.shape}")
+
+        return input_token_attn_npy, label_ids, all_span_idx, all_span_len, \
+               real_span_mask, span_only_label, pos_ids, char_len, char_label_ids
+
+    '''
     if is_load_klue:
         print("[load_corpus_span_ner_npy] Use KLue Dataset")
         klue_root_path = "./corpus/npy/klue_ner/" + mode
@@ -100,6 +114,7 @@ def load_corpus_span_ner_npy(src_path: str, mode: str="train", is_load_klue: boo
         real_span_mask = np.vstack([real_span_mask, klue_real_span_mask])
         span_only_label = np.vstack([span_only_label, klue_span_only_label])
         pos_ids = np.vstack([pos_ids, klue_pos_ids])
+    '''
 
     return input_token_attn_npy, label_ids, all_span_idx, all_span_len, real_span_mask, span_only_label, pos_ids
 
