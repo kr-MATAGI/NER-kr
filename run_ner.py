@@ -1,7 +1,6 @@
 import json
 import os
 import numpy as np
-import pickle
 
 import glob
 import re
@@ -30,7 +29,7 @@ from ner_utils import (
 ### Global variable
 g_user_select = 0
 g_use_crf = True
-g_use_klue = True
+g_use_klue_char_metric = False
 logger = init_logger()
 
 if not os.path.exists("./logs"):
@@ -87,7 +86,7 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
 
             if 12 == g_user_select:
                 loss, predict = model(**inputs) # predict [batch, seq_len] List
-                if g_use_klue:
+                if g_use_klue_char_metric:
                     char_label_ids = batch["char_label_ids"]
                     char_len = batch["char_len"]
             elif g_use_crf:
@@ -104,42 +103,20 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
         tb_writer.add_scalar("Loss/val_" + str(train_epoch), eval_loss / nb_eval_steps, nb_eval_steps)
         eval_pbar.set_description("Eval Loss - %.04f" % (eval_loss / nb_eval_steps))
 
-        if g_use_klue:
-            all_conv_seq_pred = []
-            for b_idx, b_pred_item in enumerate(predict): # Batch -> seq
-                len_idx = 0
-                conv_seq_pred = []
-                for p_item in b_pred_item:
-                    ori_tag = p_item.split("-")[-1]
-                    for cnt in range(char_len[b_idx][len_idx] + 1):
-                        if "B-" in p_item:
-                            if 0 == cnt:
-                                conv_seq_pred.append("B-" + ori_tag)
-                            else:
-                                conv_seq_pred.append("I-" + ori_tag)
-                        else:
-                            conv_seq_pred.append(p_item)
-                    len_idx += 1
-                if args.max_seq_len <= len(conv_seq_pred):
-                    conv_seq_pred = conv_seq_pred[:args.max_seq_len - 1]
-                    conv_seq_pred.append("O")
-                else:
-                    conv_seq_pred += ["O"] * (args.max_seq_len - len(conv_seq_pred))
-                all_conv_seq_pred.append(conv_seq_pred)
+        if g_use_klue_char_metric:
+            pass
 
         if 12 == g_user_select:
             if preds is None:
                 preds = np.array(predict)
                 out_label_ids = label_ids.numpy()
-                if g_use_klue:
-                    char_preds = np.array(all_conv_seq_pred)
-                    out_char_label_ids = char_label_ids.numpy()
+                if g_use_klue_char_metric:
+                    pass
             else:
                 preds = np.append(preds, np.array(predict), axis=0)
                 out_label_ids = np.append(out_label_ids, label_ids.numpy(), axis=0)
-                if g_use_klue:
-                    char_preds = np.append(char_preds, np.array(all_conv_seq_pred), axis=0)
-                    out_char_label_ids = np.append(out_char_label_ids, char_label_ids.numpy(), axis=0)
+                if g_use_klue_char_metric:
+                    pass
         elif g_use_crf:
             conv_outputs = np.zeros_like(inputs["label_ids"].detach().cpu().numpy())
             max_seq_len = conv_outputs.shape[1]
@@ -179,9 +156,10 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
     }
 
     # ETRI
-    # label_map = {i: label for label, i in ETRI_TAG.items()}
+    label_map = {i: label for label, i in ETRI_TAG.items()}
     # KLUE
-    label_map = {i: label for label, i in KLUE_NER_TAG.items()}
+    # label_map = {i: label for label, i in KLUE_NER_TAG.items()}
+    logger.info(f"--Label Map: {label_map}")
 
     out_label_list = [[] for _ in range(out_label_ids.shape[0])]
     preds_list = [[] for _ in range(out_label_ids.shape[0])]
@@ -200,16 +178,8 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
 
     out_label_char_list = None
     char_preds_list = None
-    if g_use_klue:
-        out_label_char_list = [[] for _ in range(out_char_label_ids.shape[0])]
-        char_preds_list = [[] for _ in range(out_char_label_ids.shape[0])]
-        for i in range(out_char_label_ids.shape[0]):
-            for j in range(out_char_label_ids.shape[1]):
-                if out_char_label_ids[i, j] != ignore_index:
-                    out_label_char_list[i].append(label_map[out_char_label_ids[i][j]])
-                    char_preds_list[i].append(char_preds[i][j])
-        ch_result = f1_pre_rec(out_label_char_list, char_preds_list, is_ner=True)
-        ch_results.update(ch_result)
+    if g_use_klue_char_metric:
+        pass
 
     output_dir = os.path.join(args.output_dir, mode)
     if not os.path.exists(output_dir):
@@ -225,15 +195,8 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
         logger.info("\n" + show_ner_report(out_label_list, preds_list))  # Show report for each tag result
         f_w.write("\n" + show_ner_report(out_label_list, preds_list))
 
-    if g_use_klue:
-        output_ch_eval_files = os.path.join(output_dir,
-                                            "{}-{}_ch.txt".format(mode, global_step) if global_step else "{}.txt".format(mode))
-        with open(output_ch_eval_files, "w") as f_w:
-            for key in sorted(results.keys()):
-                logger.info("  {} = {}".format(key, str(ch_results[key])))
-                f_w.write("  {} = {}\n".format(key, str(ch_results[key])))
-            logger.info("CHAR_LVL_REPORT \n" + show_ner_report(out_label_char_list, char_preds_list))  # Show report for each tag result
-            f_w.write("\n" + show_ner_report(out_label_char_list, char_preds_list))
+    if g_use_klue_char_metric:
+        pass
 
     return results
 
@@ -260,10 +223,6 @@ def train(args, model, train_dataset, dev_dataset):
 
     # eps : 줄이기 전/후의 lr차이가 eps보다 작으면 무시한다.
     optimizer = torch.optim.AdamW(optimizer_grouped_parameters, lr=args.learning_rate, eps=args.adam_epsilon)
-
-    # for n, p in model.named_parameters(): # @TODO: Check False
-    #     if "charELMo" in n:
-    #         p.requires_grad = False
 
     # @NOTE: optimizer에 설정된 learning_rate까지 선형으로 감소시킨다. (스케줄러)
     scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=int(t_total * args.warmup_proportion),
@@ -343,7 +302,8 @@ def train(args, model, train_dataset, dev_dataset):
                 tb_writer.add_scalar("Loss/train", tr_loss / global_step, global_step)
                 pbar.set_description("Train Loss - %.04f" % (tr_loss / global_step))
 
-                if args.logging_steps > 0 and global_step % args.logging_steps == 0:
+                if (args.logging_steps > 0 and global_step % args.logging_steps == 0) and \
+                        args.evaluate_test_during_training:
                     evaluate(args, model, dev_dataset, "dev", global_step)
 
                 if args.save_steps > 0 and global_step % args.save_steps == 0:
@@ -395,7 +355,7 @@ def main():
 
     global g_user_select
     global g_use_crf
-    global g_use_klue
+    global g_use_klue_char_metric
 
     g_user_select = int(input())
     config_file_path = "./config/electra-pos-tag.json"
@@ -460,22 +420,19 @@ def main():
 
     # load train/dev/test npy
     if 12 == g_user_select:
-        print("IS USE KLUE: ", g_use_klue)
+        print("IS USE KLUE Char Metric: ", g_use_klue_char_metric)
 
         train_npy, train_label_ids, \
-        train_all_span_idx, train_all_span_len, train_real_span_mask, train_span_only_label, train_pos_ids, \
-        train_char_len, train_char_label_ids = \
-            load_corpus_span_ner_npy(args.train_npy, mode="train", is_load_klue=g_use_klue)
+        train_all_span_idx, train_all_span_len, train_real_span_mask, train_span_only_label, train_pos_ids = \
+            load_corpus_span_ner_npy(args.train_npy, mode="train", is_load_klue=g_use_klue_char_metric)
 
         dev_npy, dev_label_ids, \
-        dev_all_span_idx, dev_all_span_len, dev_real_span_mask, dev_span_only_label, dev_pos_ids, \
-        dev_char_len, dev_char_label_ids = \
-            load_corpus_span_ner_npy(args.dev_npy, mode="dev", is_load_klue=g_use_klue)
+        dev_all_span_idx, dev_all_span_len, dev_real_span_mask, dev_span_only_label, dev_pos_ids = \
+            load_corpus_span_ner_npy(args.dev_npy, mode="dev", is_load_klue=g_use_klue_char_metric)
 
         test_npy, test_label_ids, \
-        test_all_span_idx, test_all_span_len, test_real_span_mask, test_span_only_label, test_pos_ids, \
-        test_char_len, test_char_label_ids = \
-            load_corpus_span_ner_npy(args.test_npy, mode="test", is_load_klue=g_use_klue)
+        test_all_span_idx, test_all_span_len, test_real_span_mask, test_span_only_label, test_pos_ids = \
+            load_corpus_span_ner_npy(args.test_npy, mode="test", is_load_klue=g_use_klue_char_metric)
 
     else:
         train_npy, train_labels, train_pos_ids = load_corpus_npy_datasets(args.train_npy, mode="train")
@@ -494,15 +451,15 @@ def main():
         train_dataset = SpanNERDataset(data=train_npy, label_ids=train_label_ids, pos_ids=train_pos_ids,
                                        span_only_label=train_span_only_label, real_span_mask=train_real_span_mask,
                                        all_span_len=train_all_span_len, all_span_idx=train_all_span_idx,
-                                       is_use_klue=g_use_klue, char_label_ids=train_char_label_ids, char_len=train_char_len)
+                                       is_use_klue=g_use_klue_char_metric, char_label_ids=None, char_len=None)
         dev_dataset = SpanNERDataset(data=dev_npy, label_ids=dev_label_ids, pos_ids=dev_pos_ids,
                                      span_only_label=dev_span_only_label, real_span_mask=dev_real_span_mask,
                                      all_span_len=dev_all_span_len, all_span_idx=dev_all_span_idx,
-                                     is_use_klue=g_use_klue, char_label_ids=dev_char_label_ids, char_len=dev_char_len)
+                                     is_use_klue=g_use_klue_char_metric, char_label_ids=None, char_len=None)
         test_dataset = SpanNERDataset(data=test_npy, label_ids=test_label_ids, pos_ids=test_pos_ids,
                                       span_only_label=test_span_only_label, real_span_mask=test_real_span_mask,
                                       all_span_len=test_all_span_len, all_span_idx=test_all_span_idx,
-                                      is_use_klue=g_use_klue, char_label_ids=test_char_label_ids, char_len=test_char_len)
+                                      is_use_klue=g_use_klue_char_metric, char_label_ids=None, char_len=None)
     else:
         train_dataset = NER_POS_Dataset(data=train_npy, labels=train_labels, pos_ids=train_pos_ids)
         dev_dataset = NER_POS_Dataset(data=dev_npy, labels=dev_labels, pos_ids=dev_pos_ids)

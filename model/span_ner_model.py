@@ -20,14 +20,14 @@ class ElectraSpanNER(ElectraPreTrainedModel):
         self.ids2label = config.id2label
 
         self.span_combi_mode = "x,y"
-        self.token_len_emb_dim = 50 # 12.09 늘려서 테스트
-        self.max_span_width = 8 # 원본 깃에는 4
+        self.token_len_emb_dim = 50
+        self.max_span_width = 8
         self.max_seq_len = 128
 
         self.span_len_emb_dim = 100
         ''' morp는 origin에서 {'isupper': 1, 'islower': 2, 'istitle': 3, 'isdigit': 4, 'other': 5}'''
         self.pos_emb_dim = 100
-        self.n_pos = 14 # 일반/교유 명사 통합
+        self.n_pos = 15 # 일반/교유 명사 통합
         # self.n_pos = 43 # 모든 품사 사용
 
         ''' 원본 Git에서는 Method 적용 개수에 따라 달라짐 '''
@@ -105,12 +105,11 @@ class ElectraSpanNER(ElectraPreTrainedModel):
         morp_rep_size = span_morp_rep.size()
         span_morp_rep = span_morp_rep.reshape(morp_rep_size[0], morp_rep_size[1], -1)
 
+        # all_span_rep = torch.cat((all_span_rep, span_len_rep), dim=-1)
         all_span_rep = torch.cat((all_span_rep, span_len_rep, span_morp_rep), dim=-1)
         all_span_rep = self.span_embedding(all_span_rep) # [batch, n_span, n_class] : [64, 502, 16]
         predict_prob = self.softmax(all_span_rep)
 
-        # For Test
-        # preds = self.get_predict(predicts=predict_prob, all_span_idxs=all_span_idxs_ltoken, label_ids=label_ids)
         if "eval" == mode:
             loss = self.compute_loss(all_span_rep, span_only_label, real_span_mask_ltoken)
             preds = self.get_predict(predicts=predict_prob, all_span_idxs=all_span_idxs_ltoken)

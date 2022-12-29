@@ -331,14 +331,14 @@ def create_features(examples, tokenizer, target_n_pos, target_tag_list, mode: st
     # Extend Char Level Labels
     for ch_labels in char_lvl_labels:
         ch_labels.insert(0, KLUE_NER_TAG["O"]) # [CLS]
-        if max_seq_len <= len(ch_labels):
-            ch_labels = ch_labels[:max_seq_len - 1]
+        if max_seq_len * 2 <= len(ch_labels):
+            ch_labels = ch_labels[:max_seq_len * 2 - 1]
             ch_labels.append(KLUE_NER_TAG["O"]) # [SEP]
         else:
-            diff_len = max_seq_len - len(ch_labels)
+            diff_len = max_seq_len * 2 - len(ch_labels)
             for _ in range(diff_len):
                 ch_labels.append(KLUE_NER_TAG["O"])
-        assert max_seq_len == len(ch_labels), f"KLUE_CHAR_LABEL_IDS: {len(ch_labels)}"
+        assert max_seq_len * 2 == len(ch_labels), f"KLUE_CHAR_LABEL_IDS: {len(ch_labels)}"
     npy_dict["char_label_ids"] = char_lvl_labels
 
     # Save npy

@@ -20,18 +20,19 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
 
         # POS
         self.pos_embed_dim = 100
-        # self.pos_embedding_1 = nn.Embedding(self.num_pos, self.pos_embed_dim)
-        # self.pos_embedding_2 = nn.Embedding(self.num_pos, self.pos_embed_dim)
-        # self.pos_embedding_3 = nn.Embedding(self.num_pos, self.pos_embed_dim)
+        self.pos_embedding_1 = nn.Embedding(self.num_pos, self.pos_embed_dim)
+        self.pos_embedding_2 = nn.Embedding(self.num_pos, self.pos_embed_dim)
+        self.pos_embedding_3 = nn.Embedding(self.num_pos, self.pos_embed_dim)
+        self.pos_embedding_4 = nn.Embedding(self.num_pos, self.pos_embed_dim)
 
         # POS Flag
-        self.pos_flag_embedding = nn.Embedding(self.num_flag_pos, self.pos_embed_dim)
+        # self.pos_flag_embedding = nn.Embedding(self.num_flag_pos, self.pos_embed_dim)
 
         # ELECTRA
         self.electra = ElectraModel.from_pretrained("monologg/koelectra-base-v3-discriminator", config=config)
 
         # LSTM
-        self.lstm_dim = config.hidden_size + (self.pos_embed_dim * 14)
+        self.lstm_dim = config.hidden_size + (self.pos_embed_dim * 4)
         self.encoder = nn.LSTM(input_size=self.lstm_dim, hidden_size=(config.hidden_size // 2),
                                num_layers=1, batch_first=True, bidirectional=True)
 
@@ -56,21 +57,23 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
         electra_outputs = electra_outputs.last_hidden_state # [batch_size, seq_len, hidden_size]
 
         # POS
-        # pos_out_1 = self.pos_embedding_1(pos_ids[:, :, 0])
-        # pos_out_2 = self.pos_embedding_2(pos_ids[:, :, 1])
-        # pos_out_3 = self.pos_embedding_3(pos_ids[:, :, 2])
-        #
-        # pos_out_1 = F.relu(pos_out_1)
-        # pos_out_2 = F.relu(pos_out_2)
-        # pos_out_3 = F.relu(pos_out_3)
-        # concat_pos = torch.concat([electra_outputs, pos_out_1, pos_out_2], dim=-1)
+        pos_out_1 = self.pos_embedding_1(pos_ids[:, :, 0])
+        pos_out_2 = self.pos_embedding_2(pos_ids[:, :, 1])
+        pos_out_3 = self.pos_embedding_3(pos_ids[:, :, 2])
+        pos_out_4 = self.pos_embedding_4(pos_ids[:, :, 3])
+
+        pos_out_1 = F.relu(pos_out_1)
+        pos_out_2 = F.relu(pos_out_2)
+        pos_out_3 = F.relu(pos_out_3)
+        pos_out_4 = F.relu(pos_out_4)
+        concat_pos = torch.concat([electra_outputs, pos_out_1, pos_out_2, pos_out_3, pos_out_4], dim=-1)
 
         # POS Flag
-        pos_flag_out = self.pos_flag_embedding(pos_ids)  # [batch, seq_len, num_pos, pos_emb_dim]
-        pos_flag_out = F.relu(pos_flag_out)
-        pos_flag_size = pos_flag_out.size()
-        pos_flag_out = pos_flag_out.reshape(pos_flag_size[0], pos_flag_size[1], -1)
-        concat_pos = torch.concat([electra_outputs, pos_flag_out], dim=-1)
+        # pos_flag_out = self.pos_flag_embedding(pos_ids)  # [batch, seq_len, num_pos, pos_emb_dim]
+        # pos_flag_out = F.relu(pos_flag_out)
+        # pos_flag_size = pos_flag_out.size()
+        # pos_flag_out = pos_flag_out.reshape(pos_flag_size[0], pos_flag_size[1], -1)
+        # concat_pos = torch.concat([electra_outputs, pos_flag_out], dim=-1)
 
         # LSTM
         '''
