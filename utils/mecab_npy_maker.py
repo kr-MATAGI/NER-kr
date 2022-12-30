@@ -1582,6 +1582,16 @@ def load_sentences_datasets(src_sents: List[Sentence]) -> Tuple[List[str], List[
     return train_sents, dev_sents, test_sents
 
 
+#==========================================================================================
+def make_mecab_char_npy(
+        tokenizer_name: str, src_list: List[Sentence],
+        token_max_len: int = 128, debug_mode: bool = False,
+        save_model_dir: str = None, is_make_pos_flag: bool = False,
+        target_n_pos: int = 14, target_tag_list: List[str] = []
+):
+#==========================================================================================
+    pass
+
 ### MAIN ###
 if "__main__" == __name__:
     print("[mecab_npy_maker] __main__ !")
@@ -1600,7 +1610,7 @@ if "__main__" == __name__:
     # else:
     #     with open(char_dict_path, mode="rb") as char_dict_pkl:
     #         char_lvl_dict = pickle.load(char_dict_pkl)
-    # print(f"vocab_size: {len(char_lvl_dict)}")
+    # print(f"vocab_size:  {len(char_lvl_dict)}")
 
 
     # Mecab하고 모두의 말뭉치 비교
@@ -1669,5 +1679,17 @@ if "__main__" == __name__:
             tokenizer_name="monologg/koelectra-base-v3-discriminator",
             src_list=all_sent_list, token_max_len=128, debug_mode=True,
             save_model_dir="mecab_morp_electra", is_make_pos_flag=True,
+            target_n_pos=target_n_pos, target_tag_list=target_tag_list
+        )
+    elif "character" == make_npy_mode:
+        target_n_pos = 14
+        target_tag_list = [  # NN은 NNG/NNP 통합
+            "NNG", "NNP", "SN", "NNB", "NR", "NNBC",
+            "JKS", "JKC", "JKG", "JKO", "JKB", "JX", "JC", "JKV", "JKQ",
+        ]
+        make_mecab_char_npy(
+            tokenizer_name="monologg/kocharelectra-base-discriminator",
+            src_list=all_sent_list, token_max_len=128, debug_mode=True,
+            save_model_dir="mecab_char_electra", is_make_pos_flag=True,
             target_n_pos=target_n_pos, target_tag_list=target_tag_list
         )

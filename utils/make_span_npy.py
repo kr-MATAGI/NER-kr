@@ -17,6 +17,7 @@ from gold_corpus_npy_maker import (
 
 from typing import List, Dict, Tuple
 from transformers import ElectraTokenizer
+from tokenization_kocharelectra import KoCharElectraTokenizer
 
 # SPAN NER Package
 from allennlp.data.dataset_readers.dataset_utils import enumerate_spans
@@ -249,9 +250,9 @@ def make_adapter_input(src_list: List[Sentence], tokenizer, max_length: int = 12
 
 #=======================================================================================
 def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
-                  seq_max_len: int = 128, debug_mode: bool = False,
+                  seq_max_len: int = 128, debug_mode: bool = False, mode: str = "morp-aware",
                   span_max_len: int = 10, save_npy_path: str = None,
-                  b_make_adapter_input: bool = False, target_n_pos: int = 14, target_tag_list: List = [],
+                  target_n_pos: int = 14, target_tag_list: List = [],
                   train_data_ratio: int = 7
                   ):
 #=======================================================================================
@@ -283,12 +284,15 @@ def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
     print(ne_ids2tag)
 
     mecab = Mecab()
-    tokenizer = ElectraTokenizer.from_pretrained(tokenizer_name)
+    if "character" == mode:
+        tokenizer = KoCharElectraTokenizer.from_pretrained(tokenizer_name)
+    else:
+        tokenizer = ElectraTokenizer.from_pretrained(tokenizer_name)
 
     # For K-Adapter
-    if b_make_adapter_input:
-        make_adapter_input(src_list=src_list, tokenizer=tokenizer, max_length=seq_max_len)
-        return
+    # if b_make_adapter_input:
+    #     make_adapter_input(src_list=src_list, tokenizer=tokenizer, max_length=seq_max_len)
+    #     return
 
     total_tok_cnt = 0
     unk_tok_cnt = 0 # [UNK] 나오는거 Count
@@ -311,32 +315,39 @@ def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
         total_data_size += 1
 
         # Mecab
-        mecab_res = mecab.pos(src_item.text)
-        # [('전창수', 'NNP', False), ('(', 'SSO', False), ('42', 'SN', False)]
-        conv_mecab_res = convert_morp_connected_tokens(mecab_res, src_text=src_item.text)
+        if "morp-aware" == mode:
+            mecab_res = mecab.pos(src_item.text)
+            # [('전창수', 'NNP', False), ('(', 'SSO', False), ('42', 'SN', False)]
+            conv_mecab_res = convert_morp_connected_tokens(mecab_res, src_text=src_item.text)
 
-        origin_tokens = []
-        text_tokens = []
-        token_pos_list = []
-        for m_idx, mecab_item in enumerate(conv_mecab_res):
-            tokens = tokenizer.tokenize(mecab_item[0])
-            origin_tokens.extend(tokens)
+            origin_tokens = []
+            text_tokens = []
+            token_pos_list = []
+            for m_idx, mecab_item in enumerate(conv_mecab_res):
+                tokens = tokenizer.tokenize(mecab_item[0])
+                origin_tokens.extend(tokens)
 
-            if mecab_item[-1]:
-                for tok in tokens:
-                    text_tokens.append("##"+tok)
-            else:
-                text_tokens.extend(tokens)
+                if mecab_item[-1]:
+                    for tok in tokens:
+                        text_tokens.append("##"+tok)
+                else:
+                    text_tokens.extend(tokens)
 
-            # 0 index에는 [CLS] 토큰이 있어야 한다.
-            for _ in range(len(tokens)):
-                token_pos_list.append(mecab_item[1].split("+"))
+                # 0 index에는 [CLS] 토큰이 있어야 한다.
+                for _ in range(len(tokens)):
+                    token_pos_list.append(mecab_item[1].split("+"))
 
-        origin_token_ids = tokenizer.convert_tokens_to_ids(origin_tokens)
-        conv_token_ids = tokenizer.convert_tokens_to_ids(text_tokens)
-        for tok_idx, (ori_tok, conv_tok) in enumerate(zip(origin_token_ids, conv_token_ids)):
-            if 1 == conv_tok and 1 != ori_tok:
-                text_tokens[tok_idx] = origin_tokens[tok_idx]
+            origin_token_ids = tokenizer.convert_tokens_to_ids(origin_tokens)
+            conv_token_ids = tokenizer.convert_tokens_to_ids(text_tokens)
+            for tok_idx, (ori_tok, conv_tok) in enumerate(zip(origin_token_ids, conv_token_ids)):
+                if 1 == conv_tok and 1 != ori_tok:
+                    text_tokens[tok_idx] = origin_tokens[tok_idx]
+        elif "wordpiece" == mode:
+            text_tokens = tokenizer.tokenize(src_item.text)
+        elif "character" == mode:
+            pass
+        else:
+            raise Exception(f"Not supported making mode: {mode}")
 
         # morp_ids
         mecab_type_len = len(MECAB_POS_TAG.keys())
@@ -702,7 +713,7 @@ if "__main__" == __name__:
     pkl_src_path = "../corpus/pkl/NIKL_ne_pos.pkl"
     all_sent_list = load_ne_entity_list(src_path=pkl_src_path)
 
-    target_n_pos = 15
+    target_n_pos = 14
     target_tag_list = [  # NN은 NNG/NNP 통합
         "NNG", "NNP", "SN", "NNB", "NR", "NNBC",
         "JKS", "JKC", "JKG", "JKO", "JKB", "JX", "JC", "JKV", "JKQ",
@@ -710,10 +721,16 @@ if "__main__" == __name__:
     # target_tag_list = [v for k, v in MECAB_POS_TAG.items() if 0 != k]
 
     start_time = time.time()
+    making_mode = "wordpiece"
+    if "character" == making_mode:
+        tokenizer_name = "monologg/koelectra-base-v3-discriminator"
+    else:
+        tokenizer_name = "monologg/kocharelectra-base-discriminator"
+
     make_span_npy(
-        tokenizer_name="monologg/koelectra-base-v3-discriminator",
+        tokenizer_name=tokenizer_name,
         src_list=all_sent_list, seq_max_len=128, span_max_len=8,
-        debug_mode=False, save_npy_path="span_ner", b_make_adapter_input=False,
+        debug_mode=False, save_npy_path="span_ner", mode=making_mode,
         target_n_pos=target_n_pos, target_tag_list=target_tag_list, train_data_ratio=7
     )
     print(f"Proc Time: {time.time() - start_time}")
