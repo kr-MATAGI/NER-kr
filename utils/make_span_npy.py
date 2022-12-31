@@ -7,6 +7,7 @@ import pickle
 
 from eunjeon import Mecab
 # from konlpy.tag import Mecab
+from numpy.matlib import empty
 
 from tag_def import ETRI_TAG, NIKL_POS_TAG, MECAB_POS_TAG
 from data_def import Sentence, NE, Morp, Word
@@ -133,6 +134,29 @@ def make_span_nn_josa_onehot(all_span_idx_list, nn_onehot, josa_onehot):
 
 
 #=======================================================================================
+def convert_character_pos_tokens(sent_lvl_pos: Tuple[str, str], src_text: str):
+#=======================================================================================
+    # 어절별 글자 수 체크해서 띄워쓰기 적기
+    split_text = src_text.split(" ")
+    char_cnt_list = [len(st) for st in split_text]
+
+    total_eojeol_morp = []
+    use_check = [False for _ in range(len(sent_lvl_pos))]
+    for char_cnt in char_cnt_list:
+        curr_char_cnt = 0
+        for ej_idx, eojeol in enumerate(sent_lvl_pos):
+            if char_cnt == curr_char_cnt:
+                total_eojeol_morp.append([" ", "O"])
+                break
+            if use_check[ej_idx]:
+                continue
+            total_eojeol_morp.append([eojeol[0], eojeol[1].split("+")])
+            curr_char_cnt += len(eojeol[0])
+            use_check[ej_idx] = True
+
+    return total_eojeol_morp
+
+#=======================================================================================
 def convert_morp_connected_tokens(sent_lvl_pos: Tuple[str, str], src_text: str):
 #=======================================================================================
     ret_conv_morp_tokens = []
@@ -250,7 +274,7 @@ def make_adapter_input(src_list: List[Sentence], tokenizer, max_length: int = 12
 
 #=======================================================================================
 def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
-                  seq_max_len: int = 128, debug_mode: bool = False, mode: str = "morp-aware",
+                  seq_max_len: int = 128, debug_mode: bool = False,
                   span_max_len: int = 10, save_npy_path: str = None,
                   target_n_pos: int = 14, target_tag_list: List = [],
                   train_data_ratio: int = 7
@@ -284,10 +308,7 @@ def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
     print(ne_ids2tag)
 
     mecab = Mecab()
-    if "character" == mode:
-        tokenizer = KoCharElectraTokenizer.from_pretrained(tokenizer_name)
-    else:
-        tokenizer = ElectraTokenizer.from_pretrained(tokenizer_name)
+    tokenizer = ElectraTokenizer.from_pretrained(tokenizer_name)
 
     # For K-Adapter
     # if b_make_adapter_input:
@@ -315,39 +336,32 @@ def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
         total_data_size += 1
 
         # Mecab
-        if "morp-aware" == mode:
-            mecab_res = mecab.pos(src_item.text)
-            # [('전창수', 'NNP', False), ('(', 'SSO', False), ('42', 'SN', False)]
-            conv_mecab_res = convert_morp_connected_tokens(mecab_res, src_text=src_item.text)
+        mecab_res = mecab.pos(src_item.text)
+        # [('전창수', 'NNP', False), ('(', 'SSO', False), ('42', 'SN', False)]
+        conv_mecab_res = convert_morp_connected_tokens(mecab_res, src_text=src_item.text)
 
-            origin_tokens = []
-            text_tokens = []
-            token_pos_list = []
-            for m_idx, mecab_item in enumerate(conv_mecab_res):
-                tokens = tokenizer.tokenize(mecab_item[0])
-                origin_tokens.extend(tokens)
+        origin_tokens = []
+        text_tokens = []
+        token_pos_list = []
+        for m_idx, mecab_item in enumerate(conv_mecab_res):
+            tokens = tokenizer.tokenize(mecab_item[0])
+            origin_tokens.extend(tokens)
 
-                if mecab_item[-1]:
-                    for tok in tokens:
-                        text_tokens.append("##"+tok)
-                else:
-                    text_tokens.extend(tokens)
+            if mecab_item[-1]:
+                for tok in tokens:
+                    text_tokens.append("##"+tok)
+            else:
+                text_tokens.extend(tokens)
 
-                # 0 index에는 [CLS] 토큰이 있어야 한다.
-                for _ in range(len(tokens)):
-                    token_pos_list.append(mecab_item[1].split("+"))
+            # 0 index에는 [CLS] 토큰이 있어야 한다.
+            for _ in range(len(tokens)):
+                token_pos_list.append(mecab_item[1].split("+"))
 
-            origin_token_ids = tokenizer.convert_tokens_to_ids(origin_tokens)
-            conv_token_ids = tokenizer.convert_tokens_to_ids(text_tokens)
-            for tok_idx, (ori_tok, conv_tok) in enumerate(zip(origin_token_ids, conv_token_ids)):
-                if 1 == conv_tok and 1 != ori_tok:
-                    text_tokens[tok_idx] = origin_tokens[tok_idx]
-        elif "wordpiece" == mode:
-            text_tokens = tokenizer.tokenize(src_item.text)
-        elif "character" == mode:
-            pass
-        else:
-            raise Exception(f"Not supported making mode: {mode}")
+        origin_token_ids = tokenizer.convert_tokens_to_ids(origin_tokens)
+        conv_token_ids = tokenizer.convert_tokens_to_ids(text_tokens)
+        for tok_idx, (ori_tok, conv_tok) in enumerate(zip(origin_token_ids, conv_token_ids)):
+            if 1 == conv_tok and 1 != ori_tok:
+                text_tokens[tok_idx] = origin_tokens[tok_idx]
 
         # morp_ids
         mecab_type_len = len(MECAB_POS_TAG.keys())
@@ -707,6 +721,103 @@ def save_span_npy(npy_dict, src_list_len, save_path, train_data_ratio):
 
     print("save complete")
 
+#=======================================================================================
+def make_span_char_npy(
+        tokenizer_name: str, src_list: List[Sentence],
+        seq_max_len: int = 128, debug_mode: bool = False,
+        span_max_len: int = 10, save_npy_path: str = None,
+        target_n_pos: int = 14, target_tag_list: List = [],
+        train_data_ratio: int = 7
+):
+#=======================================================================================
+    span_minus = int((span_max_len + 1) * span_max_len / 2)
+    max_num_span = int(seq_max_len * span_max_len - span_minus)
+
+    npy_dict = {
+        "input_ids": [],
+        "label_ids": [],
+        "attention_mask": [],
+        "token_type_ids": [],
+        "all_span_len_list": [],
+        "real_span_mask_token": [],
+        "span_only_label_token": [],
+        "all_span_idx_list": [],
+
+        "pos_ids": []
+    }
+
+    # shuffle
+    random.shuffle(src_list)
+
+    # init
+    etri_tags = {
+        'O': 0, 'FD': 1, 'EV': 2, 'DT': 3, 'TI': 4, 'MT': 5,
+        'AM': 6, 'LC': 7, 'CV': 8, 'PS': 9, 'TR': 10,
+        'TM': 11, 'AF': 12, 'PT': 13, 'OG': 14, 'QT': 15
+    }
+    ne_ids2tag = {v: i for i, v in enumerate(etri_tags)}
+    ne_detail_ids2_tok = {v: k for k, v in ETRI_TAG.items()}
+    print(ne_ids2tag)
+
+    mecab = Mecab()
+    tokenizer = KoCharElectraTokenizer.from_pretrained(tokenizer_name)
+
+    total_tok_cnt = 0
+    unk_tok_cnt = 0 # [UNK] 나오는거 Count
+    total_data_size = 0
+    for proc_idx, src_item in enumerate(src_list):
+        # 데이터 필터링
+        if 0 == len(src_item.ne_list) and 3 >= len(src_item.word_list):
+            continue
+
+        if 0 == (proc_idx % 1000):
+            print(f"{proc_idx} Processing... {src_item.text}")
+
+        if debug_mode:
+            is_test_str = False
+            for test_str in test_str_list:
+                if test_str in src_item.text:
+                    is_test_str = True
+            if not is_test_str:
+                continue
+        total_data_size += 1
+
+        # MeCab
+        mecab_res = mecab.pos(src_item.text)
+        # [('전창수', 'NNP', False), ('(', 'SSO', False), ('42', 'SN', False)]
+        conv_mecab_res = convert_character_pos_tokens(mecab_res, src_text=src_item.text)
+        text_tokens = tokenizer.tokenize(src_item.text)
+        text_tokens.insert(0, "[CLS]")
+        print(conv_mecab_res)
+
+        # pos_ids
+        mecab_type_len = len(MECAB_POS_TAG.keys())
+        mecab_tag2id = {v: k for k, v in MECAB_POS_TAG.items()}
+        pos_ids = [(0, 0, mecab_tag2id["O"])] # [CLS] -> (start_index, end_index, POS)
+        pos_start_idx = 1
+        for tok_pos in conv_mecab_res:
+            curr_pos = []
+            print(tok_pos)
+            for pos in tok_pos[1]:
+                filter_pos = pos if "UNKNOWN" != pos and "NA" != pos and "UNA" != pos and "VSV" != pos else "O"
+                curr_pos.append(mecab_tag2id[filter_pos])
+            end_index = pos_start_idx+len(tok_pos[0]) - 1
+            if " " == tok_pos[0]:
+                end_index = pos_start_idx
+            pos_ids.append((pos_start_idx, end_index, curr_pos))
+            pos_start_idx = end_index + 1
+
+        print(pos_ids)
+        if seq_max_len <= len(pos_ids):
+            pos_ids = pos_ids[:seq_max_len - 1]
+            pos_ids.append((127, 127, [mecab_tag2id["O"]]))
+        else:
+            last_pos_idx = pos_ids[-1][1]
+            for empty_idx in range(last_pos_idx + 1, seq_max_len):
+                pos_ids.append((empty_idx, empty_idx, [mecab_tag2id["O"]]))
+        print(pos_ids)
+        input()
+
 ### MAIN ###
 if "__main__" == __name__:
     # load corpus
@@ -721,16 +832,26 @@ if "__main__" == __name__:
     # target_tag_list = [v for k, v in MECAB_POS_TAG.items() if 0 != k]
 
     start_time = time.time()
-    making_mode = "wordpiece"
+    making_mode = "character"
     if "character" == making_mode:
         tokenizer_name = "monologg/koelectra-base-v3-discriminator"
-    else:
+        make_span_char_npy(
+            tokenizer_name=tokenizer_name,
+            src_list=all_sent_list, seq_max_len=128, span_max_len=8,
+            debug_mode=False, save_npy_path="span_ner_char",
+            target_n_pos=target_n_pos, target_tag_list=target_tag_list, train_data_ratio=7,
+        )
+    elif "wordpiece" == making_mode:
+        pass
+    elif "morp-aware" == making_mode:
         tokenizer_name = "monologg/kocharelectra-base-discriminator"
+        make_span_npy(
+            tokenizer_name=tokenizer_name,
+            src_list=all_sent_list, seq_max_len=128, span_max_len=8,
+            debug_mode=False, save_npy_path="span_ner",
+            target_n_pos=target_n_pos, target_tag_list=target_tag_list, train_data_ratio=7
+        )
+    else:
+        raise Exception(f"Plz Check making mode: {making_mode}")
 
-    make_span_npy(
-        tokenizer_name=tokenizer_name,
-        src_list=all_sent_list, seq_max_len=128, span_max_len=8,
-        debug_mode=False, save_npy_path="span_ner", mode=making_mode,
-        target_n_pos=target_n_pos, target_tag_list=target_tag_list, train_data_ratio=7
-    )
     print(f"Proc Time: {time.time() - start_time}")

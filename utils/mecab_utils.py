@@ -12,7 +12,6 @@ def convert_morp_connected_tokens(sent_lvl_pos: Tuple[str, str], src_text: str):
         "SC", "SY", # 구분자, (붙임표, 기타 기호)
     ]
 
-
     # 어절별 글자 수 체크해서 띄워쓰기 적기
     split_text = src_text.split(" ")
     char_cnt_list = [len(st) for st in split_text]

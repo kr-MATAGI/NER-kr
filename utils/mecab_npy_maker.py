@@ -6,8 +6,8 @@ import pickle
 from dataclasses import dataclass, field
 from collections import deque
 
-# from eunjeon import Mecab # Window
-from konlpy.tag import Mecab # Linux
+from eunjeon import Mecab # Window
+# from konlpy.tag import Mecab # Linux
 
 from tag_def import ETRI_TAG, NIKL_POS_TAG, MECAB_POS_TAG
 from data_def import Sentence, NE, Morp, Word
@@ -21,6 +21,7 @@ from gold_corpus_npy_maker import (
 
 from typing import List, Dict, Tuple
 from transformers import AutoTokenizer, ElectraTokenizer
+from tokenization_kocharelectra import KoCharElectraTokenizer
 
 # Character Level
 import unicodedata
@@ -1590,7 +1591,50 @@ def make_mecab_char_npy(
         target_n_pos: int = 14, target_tag_list: List[str] = []
 ):
 #==========================================================================================
-    pass
+    npy_dict = {
+        "input_ids": [],
+        "labels": [],
+        "attention_mask": [],
+        "token_type_ids": [],
+        "pos_ids": [],
+        "pos_flag": []
+    }
+
+    # shuffle
+    random.shuffle(src_list)
+
+    # Init
+    pos_tag2ids = {v: int(k) for k, v in MECAB_POS_TAG.items()}
+    pos_ids2tag = {k: v for k, v in MECAB_POS_TAG.items()}
+    ne_ids2tag = {v: k for k, v in ETRI_TAG.items()}
+
+    mecab = Mecab()
+    tokenizer = KoCharElectraTokenizer.from_pretrained(tokenizer_name)
+
+    total_data_count = 0
+    for proc_idx, src_item in enumerate(src_list):
+        if debug_mode:
+            is_test_str = False
+            for test_str in test_str_list:
+                if test_str in src_item.text:
+                    is_test_str = True
+            if not is_test_str:
+                continue
+
+        if 0 == (proc_idx % 1000):
+            print(f"{proc_idx} Processing... {src_item.text}")
+        total_data_count += 1
+
+        # MeCab
+        res_mecab = mecab.pos(src_item.text)
+        # [('전창수', 'NNP', False), ('(', 'SSO', False), ('42', 'SN', False)]
+        conv_mecab_res = convert_morp_connected_tokens(res_mecab, src_item.text)
+
+        # Tokenize
+        text_tokens = tokenizer.tokenize(src_item.text)
+        print(text_tokens)
+        input()
+
 
 ### MAIN ###
 if "__main__" == __name__:
@@ -1654,7 +1698,7 @@ if "__main__" == __name__:
     '''
 
     # make *.npy (use Mecab)
-    make_npy_mode = "morp"
+    make_npy_mode = "character"
     if "eojeol" == make_npy_mode:
         make_mecab_eojeol_npy(
             tokenizer_name="monologg/koelectra-base-v3-discriminator",
