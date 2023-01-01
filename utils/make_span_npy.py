@@ -982,9 +982,6 @@ def make_span_char_npy(
                 print(sp_idx, p_t_oh)
             input()
 
-            if 100 == proc_idx:
-                break
-
     print("Total Tok Count: ", total_tok_cnt)
     print("[UNK] Count: ", unk_tok_cnt)
 
