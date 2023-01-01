@@ -157,6 +157,28 @@ def convert_character_pos_tokens(sent_lvl_pos: Tuple[str, str], src_text: str):
     return total_eojeol_morp
 
 #=======================================================================================
+def convert_wordpiece_pos_tokens(sent_lvl_pos: Tuple[str, str], src_text: str):
+#=======================================================================================
+    # 어절별 글자 수 체크해서 띄워쓰기 적기
+    split_text = src_text.split(" ")
+    char_cnt_list = [len(st) for st in split_text]
+
+    total_eojeol_morp = []
+    use_check = [False for _ in range(len(sent_lvl_pos))]
+    for char_cnt in char_cnt_list:
+        curr_char_cnt = 0
+        for ej_idx, eojeol in enumerate(sent_lvl_pos):
+            if char_cnt == curr_char_cnt:
+                break
+            if use_check[ej_idx]:
+                continue
+            total_eojeol_morp.append([eojeol[0], eojeol[1].split("+")])
+            curr_char_cnt += len(eojeol[0])
+            use_check[ej_idx] = True
+
+    return total_eojeol_morp
+
+#=======================================================================================
 def convert_morp_connected_tokens(sent_lvl_pos: Tuple[str, str], src_text: str):
 #=======================================================================================
     ret_conv_morp_tokens = []
@@ -273,12 +295,12 @@ def make_adapter_input(src_list: List[Sentence], tokenizer, max_length: int = 12
     print("[make_adapter_input] Save Complete !")
 
 #=======================================================================================
-def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
-                  seq_max_len: int = 128, debug_mode: bool = False,
-                  span_max_len: int = 10, save_npy_path: str = None,
-                  target_n_pos: int = 14, target_tag_list: List = [],
-                  train_data_ratio: int = 7
-                  ):
+def make_span_morp_aware_npy(tokenizer_name: str, src_list: List[Sentence],
+                             seq_max_len: int = 128, debug_mode: bool = False,
+                             span_max_len: int = 10, save_npy_path: str = None,
+                             target_n_pos: int = 14, target_tag_list: List = [],
+                             train_data_ratio: int = 7
+                             ):
 #=======================================================================================
     span_minus = int((span_max_len + 1) * span_max_len / 2)
     max_num_span = int(seq_max_len * span_max_len - span_minus)
@@ -549,6 +571,10 @@ def make_span_npy(tokenizer_name: str, src_list: List[Sentence],
                 if "[PAD]" == t:
                     break
                 print(i, t, ne_detail_ids2_tok[l], p)
+            input()
+
+            for sp_idx, sp_len, p_t_oh in zip(all_span_idx_list, all_span_len_list, pos_target_onehot):
+                print(sp_idx, sp_len, p_t_oh)
             input()
 
     print("Total Tok Count: ", total_tok_cnt)
@@ -978,12 +1004,292 @@ def make_span_char_npy(
                 print(i, t, ne_detail_ids2_tok[l])
             input()
 
-            for sp_idx, p_t_oh in zip(all_span_idx_list, pos_target_onehot):
-                print(sp_idx, p_t_oh)
+            for sp_idx, sp_len, p_t_oh in zip(all_span_idx_list, all_span_len_list, pos_target_onehot):
+                print(sp_idx, sp_len, p_t_oh)
             input()
 
     print("Total Tok Count: ", total_tok_cnt)
     print("[UNK] Count: ", unk_tok_cnt)
+
+    if not debug_mode:
+        save_span_npy(npy_dict, total_data_size, save_npy_path, train_data_ratio)
+#=======================================================================================
+def make_span_wordpiece_npy(
+        tokenizer_name: str, src_list: List[Sentence],
+        seq_max_len: int = 128, debug_mode: bool = False,
+        span_max_len: int = 8, save_npy_path: str = None,
+        target_n_pos: int = 14, target_tag_list: List = [],
+        train_data_ratio: int = 7
+):
+#=======================================================================================
+    print(f"target_n_pos: {target_n_pos}")
+    print(f"target_tag_list: {target_tag_list}")
+    print(f"train_data_ratio: {train_data_ratio}")
+    print(f"span_max_len: {span_max_len}")
+
+    span_minus = int((span_max_len + 1) * span_max_len / 2)
+    max_num_span = int(seq_max_len * span_max_len - span_minus)
+
+    npy_dict = {
+            "input_ids": [],
+            "label_ids": [],
+            "attention_mask": [],
+            "token_type_ids": [],
+            "all_span_len_list": [],
+            "real_span_mask_token": [],
+            "span_only_label_token": [],
+            "all_span_idx_list": [],
+
+            "pos_ids": []
+        }
+
+    # shuffle
+    random.shuffle(src_list)
+
+    # init
+    etri_tags = {
+        'O': 0, 'FD': 1, 'EV': 2, 'DT': 3, 'TI': 4, 'MT': 5,
+        'AM': 6, 'LC': 7, 'CV': 8, 'PS': 9, 'TR': 10,
+        'TM': 11, 'AF': 12, 'PT': 13, 'OG': 14, 'QT': 15
+    }
+    ne_ids2tag = {v: i for i, v in enumerate(etri_tags)}
+    ne_detail_ids2_tok = {v: k for k, v in ETRI_TAG.items()}
+    print(ne_ids2tag)
+
+    mecab = Mecab()
+    tokenizer = ElectraTokenizer.from_pretrained(tokenizer_name)
+
+    total_tok_cnt = 0
+    unk_tok_cnt = 0 # [UNK] 나오는거 Count
+    total_data_size = 0
+    for proc_idx, src_item in enumerate(src_list):
+        # 데이터 필터링
+        if 0 == len(src_item.ne_list) and 3 >= len(src_item.word_list):
+            continue
+
+        if 0 == (proc_idx % 1000):
+            print(f"{proc_idx} Processing... {src_item.text}")
+
+        if debug_mode:
+            is_test_str = False
+            for test_str in test_str_list:
+                if test_str in src_item.text:
+                    is_test_str = True
+            if not is_test_str:
+                continue
+        total_data_size += 1
+
+        # MeCab
+        mecab_res = mecab.pos(src_item.text)
+        # [('전창수', 'NNP', False), ('(', 'SSO', False), ('42', 'SN', False)]
+        conv_mecab_res = convert_wordpiece_pos_tokens(mecab_res, src_text=src_item.text)
+        text_tokens = tokenizer.tokenize(src_item.text)
+        text_tokens.insert(0, "[CLS]")
+
+        print(text_tokens)
+        print(conv_mecab_res)
+
+        # pos_ids
+        mecab_tag2id = {v: k for k, v in MECAB_POS_TAG.items()}
+        mecab_id2tag = {k: v for k, v in MECAB_POS_TAG.items()}
+        pos_ids = [(0, 0, [mecab_tag2id["O"]])]  # [CLS] -> (start_index, end_index, POS)
+        b_check_pos_use = [False for _ in range(len(text_tokens))]
+        for tok_pos in conv_mecab_res:
+            curr_pos = []
+            for pos in tok_pos[1]:
+                filter_pos = pos if "UNKNOWN" != pos and "NA" != pos and "UNA" != pos and "VSV" != pos else "O"
+                curr_pos.append(mecab_tag2id[filter_pos])
+
+            for root_idx in range(1, len(text_tokens)):
+                if b_check_pos_use[root_idx]:
+                    continue
+                concat_item_list = []
+                for tok_idx in range(root_idx, len(text_tokens)):
+                    if b_check_pos_use[tok_idx]:
+                        continue
+                    for sub_idx in range(tok_idx, len(text_tokens)):
+                        concat_word = ["".join(x).replace("##", "") for x in text_tokens[tok_idx:sub_idx+1]]
+                        concat_item_list.append(("".join(concat_word), (tok_idx, sub_idx)))
+                concat_item_list = [x for x in concat_item_list if tok_pos[0] in x[0]]
+                if 0 >= len(concat_item_list):
+                    continue
+                concat_item_list.sort(key=lambda x: len(x[0]))
+                target_idx_pair = concat_item_list[0][1]
+                b_check_pos_use[target_idx_pair[0]] = b_check_pos_use[target_idx_pair[1]] = True
+                pos_ids.append((target_idx_pair[0], target_idx_pair[1], curr_pos))
+                break
+
+        # print(len(text_tokens))
+        # for i, j, k in pos_ids:
+        #     print(i, j, text_tokens[i], text_tokens[j], [mecab_id2tag[z] for z in k])
+        # print(pos_ids)
+
+        print(pos_ids)
+        if seq_max_len <= len(pos_ids):
+            pos_ids = pos_ids[:seq_max_len - 1]
+            pos_ids.append((127, 127, [mecab_tag2id["O"]]))
+        else:
+            last_pos_idx = pos_ids[-1][1]
+            for empty_idx in range(last_pos_idx + 1, seq_max_len):
+                pos_ids.append((empty_idx, empty_idx, [mecab_tag2id["O"]]))
+
+        # Text Tokens
+        valid_token_len = 0
+        if seq_max_len <= len(text_tokens):
+            text_tokens = text_tokens[:seq_max_len - 1]
+            text_tokens.append("[SEP]")
+
+            valid_token_len = seq_max_len
+        else:
+            text_tokens.append("[SEP]")
+            valid_token_len = len(text_tokens)
+
+        # Label_ids
+        label_ids = [ETRI_TAG["O"]] * len(text_tokens)
+        b_check_use = [False for _ in range(len(text_tokens))]
+        for ne_idx, ne_item in enumerate(src_item.ne_list):
+            ne_char_list = list(ne_item.text.replace(" ", ""))
+            concat_item_list = []
+            for tok_idx in range(len(text_tokens)):
+                if b_check_use[tok_idx]:
+                    continue
+                for sub_idx in range(tok_idx + 1, len(text_tokens)):
+                    concat_word = ["".join(x).replace("##", "") for x in text_tokens[tok_idx:sub_idx]]
+                    concat_item_list.append(("".join(concat_word), (tok_idx, sub_idx)))
+            concat_item_list = [x for x in concat_item_list if "".join(ne_char_list) in x[0]]
+            concat_item_list.sort(key=lambda x: len(x[0]))
+            if 0 >= len(concat_item_list):
+                continue
+            target_idx_pair = concat_item_list[0][1]
+
+            for bio_idx in range(target_idx_pair[0], target_idx_pair[1]):
+                b_check_use[bio_idx] = True
+                if bio_idx == target_idx_pair[0]:
+                    label_ids[bio_idx] = ETRI_TAG["B-" + ne_item.type]
+                else:
+                    label_ids[bio_idx] = ETRI_TAG["I-" + ne_item.type]
+
+        if seq_max_len <= len(label_ids):
+            label_ids = label_ids[:seq_max_len - 1]
+            label_ids.append(ETRI_TAG["O"])
+        else:
+            label_ids_size = len(label_ids)
+            for _ in range(seq_max_len - label_ids_size):
+                label_ids.append(ETRI_TAG["O"])
+
+        all_span_idx_list = enumerate_spans(text_tokens, offset=0, max_span_width=span_max_len)
+        all_span_len_list = []
+        for idx_pair in all_span_idx_list:
+            s_idx, e_idx = idx_pair
+            span_len = e_idx - s_idx + 1
+            all_span_len_list.append(span_len)
+
+        span_idx_label_dict = make_span_idx_label_pair(src_item.ne_list, text_tokens)
+        span_idx_new_label_dict = convert2tokenIdx(span_idxLab=span_idx_label_dict,
+                                                   all_span_idxs=all_span_idx_list)
+        span_only_label_token = []  # 만들어진 span 집합들의 label
+        for idx_str, label in span_idx_new_label_dict.items():
+            span_only_label_token.append(ne_ids2tag[label])
+
+        text_tokens += ["[PAD]"] * (seq_max_len - valid_token_len)
+        input_ids = tokenizer.convert_tokens_to_ids(text_tokens)
+        attention_mask = ([1] * valid_token_len) + ([0] * (seq_max_len - valid_token_len))
+        token_type_ids = [0] * seq_max_len
+
+        # TEST - UNK 세보기
+        for tok in input_ids:
+            total_tok_cnt += 1
+            if 1 == tok:
+                unk_tok_cnt += 1
+
+        # Span Len
+        all_span_idx_list = all_span_idx_list[:max_num_span]
+        span_only_label_token = span_only_label_token[:max_num_span]
+        all_span_len_list = all_span_len_list[:max_num_span]
+        real_span_mask_token = np.ones_like(span_only_label_token).tolist()
+
+        ''' 모델에서 POS Embedding 만드는거 속도 느려서 미리 전처리 '''
+        mecab_tag2ids = {v: k for k, v in MECAB_POS_TAG.items()}  # origin, 1: "NNG"
+        # {1: 0, 2: 1, 43: 2, 3: 3, 5: 4, 4: 5, 16: 6, 17: 7, 18: 8, 19: 9, 20: 10, 23: 11, 24: 12, 21: 13, 22: 14}
+        target_tag2ids = {mecab_tag2ids[x]: i for i, x in enumerate(target_tag_list)}
+        pos_target_onehot = []
+        for start_idx, end_idx in all_span_idx_list:
+            span_pos = [0 for _ in range(target_n_pos)]
+
+            for pos_item in pos_ids:
+                pos_s_idx = pos_item[0]  # Start Index
+                pos_e_idx = pos_item[1]  # End Index
+                pos_info = pos_item[2]  # POS Ids
+
+                if (start_idx <= pos_s_idx) and (end_idx >= pos_e_idx):
+                    for pos_i in pos_info:
+                        if pos_i in target_tag2ids.keys():
+                            if 14 == target_n_pos:
+                                if 0 == pos_i or 1 == pos_i:
+                                    span_pos[0] = 1
+                                else:
+                                    span_pos[target_tag2ids[pos_i] - 1] = 1
+                            else:
+                                span_pos[target_tag2ids[pos_i]] = 1
+                else:
+                    continue
+            pos_target_onehot.append(span_pos)
+        # end, b_make_only_pos_ids
+
+        if max_num_span > len(span_only_label_token):
+            diff_len = max_num_span - len(span_only_label_token)
+            span_only_label_token += [0] * diff_len
+        if max_num_span > len(all_span_len_list):
+            diff_len = max_num_span - len(all_span_len_list)
+            all_span_len_list += [0] * diff_len
+        if max_num_span > len(real_span_mask_token):
+            diff_len = max_num_span - len(real_span_mask_token)
+            real_span_mask_token += [0] * diff_len
+        if max_num_span > len(all_span_idx_list):
+            diff_len = max_num_span - len(all_span_idx_list)
+            all_span_idx_list += [(0, 0)] * diff_len
+        if max_num_span > len(pos_target_onehot):
+            diff_len = max_num_span - len(pos_target_onehot)
+            pos_target_onehot += [[0 for _ in range(target_n_pos)]] * diff_len
+
+        assert len(input_ids) == seq_max_len, f"{len(input_ids)}"
+        assert len(attention_mask) == seq_max_len, f"{len(attention_mask)}"
+        assert len(token_type_ids) == seq_max_len, f"{len(token_type_ids)}"
+        assert len(label_ids) == seq_max_len, f"{len(label_ids)}"
+        # assert len(pos_ids) == seq_max_len, f"{len(pos_ids)}"
+
+        assert len(span_only_label_token) == max_num_span, f"{len(span_only_label_token)}"
+        assert len(all_span_idx_list) == max_num_span, f"{len(all_span_idx_list)}"
+        assert len(all_span_len_list) == max_num_span, f"{len(all_span_len_list)}"
+        assert len(real_span_mask_token) == max_num_span, f"{len(real_span_mask_token)}"
+        assert len(pos_target_onehot) == max_num_span, f"{len(pos_target_onehot)}, {max_num_span}"
+
+        npy_dict["input_ids"].append(input_ids)
+        npy_dict["attention_mask"].append(attention_mask)
+        npy_dict["token_type_ids"].append(token_type_ids)
+        npy_dict["label_ids"].append(label_ids)
+
+        npy_dict["span_only_label_token"].append(span_only_label_token)
+        npy_dict["all_span_len_list"].append(all_span_len_list)
+        npy_dict["real_span_mask_token"].append(real_span_mask_token)
+        npy_dict["all_span_idx_list"].append(all_span_idx_list)
+
+        npy_dict["pos_ids"].append(pos_target_onehot)
+
+        if debug_mode:
+            print(span_idx_label_dict)
+            print(span_idx_new_label_dict)
+            print(tokenizer.tokenize(src_item.text))
+            print(f"NE_items: {src_item.ne_list}")
+            for i, (ids, t, l) in enumerate(zip(input_ids, text_tokens, label_ids)):
+                if "[PAD]" == t:
+                    break
+                print(i, t, ne_detail_ids2_tok[l])
+            input()
+
+            for sp_idx, sp_len, p_t_oh in zip(all_span_idx_list, all_span_len_list, pos_target_onehot):
+                print(sp_idx, sp_len, p_t_oh, text_tokens[sp_idx[0]:sp_idx[1]+1])
+            input()
 
     if not debug_mode:
         save_span_npy(npy_dict, total_data_size, save_npy_path, train_data_ratio)
@@ -1002,24 +1308,30 @@ if "__main__" == __name__:
     # target_tag_list = [v for k, v in MECAB_POS_TAG.items() if 0 != k]
 
     start_time = time.time()
-    making_mode = "character"
+    making_mode = "wordpiece"
     if "character" == making_mode:
-        tokenizer_name = "monologg/koelectra-base-v3-discriminator"
+        tokenizer_name = "monologg/kocharelectra-base-discriminator"
         make_span_char_npy(
             tokenizer_name=tokenizer_name,
             src_list=all_sent_list, seq_max_len=128, span_max_len=8,
-            debug_mode=False, save_npy_path="span_ner_char",
-            target_n_pos=target_n_pos, target_tag_list=target_tag_list, train_data_ratio=7,
+            debug_mode=True, save_npy_path="span_ner_char",
+            target_n_pos=target_n_pos, target_tag_list=target_tag_list, train_data_ratio=8,
         )
     elif "wordpiece" == making_mode:
-        pass
-    elif "morp-aware" == making_mode:
-        tokenizer_name = "monologg/kocharelectra-base-discriminator"
-        make_span_npy(
+        tokenizer_name = "monologg/koelectra-base-v3-discriminator"
+        make_span_wordpiece_npy(
             tokenizer_name=tokenizer_name,
             src_list=all_sent_list, seq_max_len=128, span_max_len=8,
-            debug_mode=False, save_npy_path="span_ner",
-            target_n_pos=target_n_pos, target_tag_list=target_tag_list, train_data_ratio=7
+            debug_mode=True, save_npy_path="span_ner_char",
+            target_n_pos=target_n_pos, target_tag_list=target_tag_list, train_data_ratio=8,
+        )
+    elif "morp-aware" == making_mode:
+        tokenizer_name = "monologg/koelectra-base-v3-discriminator"
+        make_span_morp_aware_npy(
+            tokenizer_name=tokenizer_name,
+            src_list=all_sent_list, seq_max_len=128, span_max_len=8,
+            debug_mode=True, save_npy_path="span_ner",
+            target_n_pos=target_n_pos, target_tag_list=target_tag_list, train_data_ratio=8
         )
     else:
         raise Exception(f"Plz Check making mode: {making_mode}")
