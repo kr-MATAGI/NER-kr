@@ -7,7 +7,6 @@ import pickle
 
 from eunjeon import Mecab
 # from konlpy.tag import Mecab
-from numpy.matlib import empty
 
 from tag_def import ETRI_TAG, NIKL_POS_TAG, MECAB_POS_TAG
 from data_def import Sentence, NE, Morp, Word
@@ -1322,7 +1321,7 @@ if "__main__" == __name__:
         make_span_wordpiece_npy(
             tokenizer_name=tokenizer_name,
             src_list=all_sent_list, seq_max_len=128, span_max_len=8,
-            debug_mode=True, save_npy_path="span_ner_char",
+            debug_mode=True, save_npy_path="span_ner_wp",
             target_n_pos=target_n_pos, target_tag_list=target_tag_list, train_data_ratio=8,
         )
     elif "morp-aware" == making_mode:

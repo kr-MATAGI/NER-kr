@@ -27,7 +27,7 @@ class ElectraSpanNER(ElectraPreTrainedModel):
         self.span_len_emb_dim = 100
         ''' morp는 origin에서 {'isupper': 1, 'islower': 2, 'istitle': 3, 'isdigit': 4, 'other': 5}'''
         self.pos_emb_dim = 100
-        self.n_pos = 15 # 일반/교유 명사 통합
+        self.n_pos = 14 # 일반/교유 명사 통합
         # self.n_pos = 43 # 모든 품사 사용
 
         ''' 원본 Git에서는 Method 적용 개수에 따라 달라짐 '''
@@ -44,7 +44,7 @@ class ElectraSpanNER(ElectraPreTrainedModel):
         print("self.input_dim: ", self.input_dim)
 
         # Model
-        self.electra = ElectraModel.from_pretrained("monologg/koelectra-base-v3-discriminator", config=config)
+        self.electra = ElectraModel.from_pretrained("monologg/kocharelectra-base-discriminator", config=config)
 
         self.endpoint_span_extractor = EndpointSpanExtractor(input_dim=self.hidden_size,
                                                              combination=self.span_combi_mode,
