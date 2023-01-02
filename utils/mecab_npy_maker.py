@@ -1687,13 +1687,15 @@ def make_mecab_char_npy(
         label_ids = [ETRI_TAG["O"]] * token_pair_len
         b_check_use = [False for _ in range(token_pair_len)]
         for ne_idx, ne_item in enumerate(src_item.ne_list):
-            ne_char_list = list(ne_item.text.replace(" ", ""))
+            # ne_char_list = list(ne_item.text.replace(" ", ""))
+            ne_char_list = list(ne_item.text)
             concat_item_list = []
             for m_idx, mecab_item in enumerate(text_tokens):
                 if b_check_use[m_idx]:
                     continue
                 for sub_idx in range(m_idx + 1, len(text_tokens)):
-                    concat_word = ["".join(x).replace("##", "") for x in text_tokens[m_idx:sub_idx]]
+                    # concat_word = ["".join(x).replace("##", "") for x in text_tokens[m_idx:sub_idx]]
+                    concat_word = ["".join(x) for x in text_tokens[m_idx:sub_idx]]
                     concat_item_list.append(("".join(concat_word), (m_idx, sub_idx)))
             concat_item_list = [x for x in concat_item_list if "".join(ne_char_list) in x[0]]
             concat_item_list.sort(key=lambda x: len(x[0]))
@@ -1741,7 +1743,6 @@ def make_mecab_char_npy(
             ''' For POS Embedding '''
             pos_ids += [[0 for _ in range(max_pos_size)]] * (token_max_len - pos_ids_size)
 
-        label_ids.insert(0, ETRI_TAG["O"])
         if token_max_len <= len(label_ids):
             label_ids = label_ids[:token_max_len - 1]
             label_ids.append(ETRI_TAG["O"])
@@ -1800,6 +1801,7 @@ if "__main__" == __name__:
 
     # make *.npy (use Mecab)
     make_npy_mode = "character"
+    print(f"[mecab_npy_maker] make_npy_mode: {make_npy_mode}")
     if "eojeol" == make_npy_mode:
         make_mecab_eojeol_npy(
             tokenizer_name="monologg/koelectra-base-v3-discriminator",
@@ -1815,7 +1817,7 @@ if "__main__" == __name__:
         ]
         make_mecab_wordpiece_npy(
             tokenizer_name="monologg/koelectra-base-v3-discriminator",
-            src_list=all_sent_list, token_max_len=128, debug_mode=False,
+            src_list=all_sent_list, token_max_len=128, debug_mode=True,
             save_model_dir="mecab_wordpiece_electra", target_n_pos=target_n_pos,
             target_tag_list=target_tag_list
         )
