@@ -758,8 +758,6 @@ def make_mecab_wordpiece_npy(
                     break
                 print(t_tok, ne_ids2tag[lab], p)
             input()
-        if 100 == proc_idx:
-            break
 
     if not debug_mode:
         save_mecab_morp_npy(npy_dict, src_list_len=total_data_count, save_dir=save_model_dir)
