@@ -44,7 +44,7 @@ class ElectraSpanNER(ElectraPreTrainedModel):
         print("self.input_dim: ", self.input_dim)
 
         # Model
-        self.electra = ElectraModel.from_pretrained("monologg/kocharelectra-base-discriminator", config=config)
+        self.electra = ElectraModel.from_pretrained("monologg/koelectra-base-v3-discriminator", config=config)
 
         self.endpoint_span_extractor = EndpointSpanExtractor(input_dim=self.hidden_size,
                                                              combination=self.span_combi_mode,

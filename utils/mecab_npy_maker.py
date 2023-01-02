@@ -11,7 +11,9 @@ from eunjeon import Mecab # Window
 
 from tag_def import ETRI_TAG, NIKL_POS_TAG, MECAB_POS_TAG
 from data_def import Sentence, NE, Morp, Word
-from mecab_utils import convert_morp_connected_tokens
+from mecab_utils import (
+    convert_morp_connected_tokens, convert_character_pos_tokens
+)
 
 from gold_corpus_npy_maker import (
     convert_pos_tag_to_combi_tag,
@@ -1587,7 +1589,7 @@ def load_sentences_datasets(src_sents: List[Sentence]) -> Tuple[List[str], List[
 def make_mecab_char_npy(
         tokenizer_name: str, src_list: List[Sentence],
         token_max_len: int = 128, debug_mode: bool = False,
-        save_model_dir: str = None, is_make_pos_flag: bool = False,
+        save_model_dir: str = None,
         target_n_pos: int = 14, target_tag_list: List[str] = []
 ):
 #==========================================================================================
@@ -1596,17 +1598,17 @@ def make_mecab_char_npy(
         "labels": [],
         "attention_mask": [],
         "token_type_ids": [],
-        "pos_ids": [],
-        "pos_flag": []
+        "pos_ids": []
     }
 
     # shuffle
     random.shuffle(src_list)
 
     # Init
-    pos_tag2ids = {v: int(k) for k, v in MECAB_POS_TAG.items()}
+    pos_tag2ids = {v: k for k, v in MECAB_POS_TAG.items()}
     pos_ids2tag = {k: v for k, v in MECAB_POS_TAG.items()}
     ne_ids2tag = {v: k for k, v in ETRI_TAG.items()}
+    ne_tag2ids = {k: v for k, v in ETRI_TAG.items()}
 
     mecab = Mecab()
     tokenizer = KoCharElectraTokenizer.from_pretrained(tokenizer_name)
@@ -1628,12 +1630,45 @@ def make_mecab_char_npy(
         # MeCab
         res_mecab = mecab.pos(src_item.text)
         # [('전창수', 'NNP', False), ('(', 'SSO', False), ('42', 'SN', False)]
-        conv_mecab_res = convert_morp_connected_tokens(res_mecab, src_item.text)
+        conv_mecab_res = convert_character_pos_tokens(res_mecab, src_item.text)
 
         # Tokenize
-        text_tokens = tokenizer.tokenize(src_item.text)
-        print(text_tokens)
+        text_tokens = tokenizer.tokenize(src_item.text)  # 숫자도 다 분리됨
+
+        # pos_ids
+        pos_ids = [[0 for _ in range(target_n_pos)]] # [CLS]
+        target_tag2ids = {pos_tag2ids[x]: i for i, x in enumerate(target_tag_list)}
+        for tok_pos in conv_mecab_res:
+            curr_pos_ids = [0 for _ in range(target_n_pos)]
+            conv_mecab_pos = []
+            for pos in tok_pos[1]:
+                filter_pos = pos if "UNKNOWN" != pos and "NA" != pos and "UNA" != pos and "VSV" != pos else "O"
+                conv_mecab_pos.append(filter_pos)
+            for m_idx, morp in enumerate(list(tok_pos[0])):
+                if 0 == m_idx:
+                    for p_item in conv_mecab_pos:
+                        tag2id = pos_tag2ids[p_item]
+                        if tag2id in target_tag2ids.keys():
+                            if 0 == tag2id or 1 == tag2id:
+                                curr_pos_ids[0] = 1
+                            else:
+                                curr_pos_ids[target_tag2ids[tag2id]-1] = 1
+                elif " " == morp:
+                    pos_ids.append(curr_pos_ids)
+                else:
+                    curr_pos_ids[-1] = 1
+                    pos_ids.append(curr_pos_ids)
+
+        # TEST
+        for t, p in zip(text_tokens, pos_ids):
+            print(t, p)
         input()
+
+
+
+
+
+
 
 
 ### MAIN ###
@@ -1726,7 +1761,7 @@ if "__main__" == __name__:
             target_n_pos=target_n_pos, target_tag_list=target_tag_list
         )
     elif "character" == make_npy_mode:
-        target_n_pos = 14
+        target_n_pos = 15 # ##이 없기에 POS에서 첫 음절에 이어지는 부분은 맨 마지막 인덱스 사용
         target_tag_list = [  # NN은 NNG/NNP 통합
             "NNG", "NNP", "SN", "NNB", "NR", "NNBC",
             "JKS", "JKC", "JKG", "JKO", "JKB", "JX", "JC", "JKV", "JKQ",
@@ -1734,6 +1769,6 @@ if "__main__" == __name__:
         make_mecab_char_npy(
             tokenizer_name="monologg/kocharelectra-base-discriminator",
             src_list=all_sent_list, token_max_len=128, debug_mode=True,
-            save_model_dir="mecab_char_electra", is_make_pos_flag=True,
+            save_model_dir="mecab_char_electra",
             target_n_pos=target_n_pos, target_tag_list=target_tag_list
         )
