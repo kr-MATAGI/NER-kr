@@ -6,6 +6,8 @@ from transformers import ElectraModel, ElectraPreTrainedModel
 from transformers.modeling_outputs import TokenClassifierOutput
 
 from model.transformer_encoder import Trans_Encoder, Enc_Config
+from model.classifier.span_classifier import MultiNonLinearClassifier
+
 from model.crf_layer import CRF
 
 #==============================================================
@@ -47,6 +49,11 @@ class CHAR_ELECTRA_POS_LSTM(ElectraPreTrainedModel):
         self.classifier = nn.Linear(self.lstm_dim_size, config.num_labels)
         self.crf = CRF(num_tags=config.num_labels, batch_first=True)
 
+        ''' 뒷 부분에서 POS Embedding 추가하는 거 '''
+        self.post_pos_embed_dim = config.hidden_size + (self.pos_embed_dim * 14)
+        self.post_pos_embedding = MultiNonLinearClassifier(self.post_pos_embed_dim,
+                                                           config.num_labels, self.dropout_rate)
+
         # Initialize weights and apply final processing
         self.post_init()
 
@@ -87,6 +94,10 @@ class CHAR_ELECTRA_POS_LSTM(ElectraPreTrainedModel):
 
         # Classifier
         logits = self.classifier(lstm_out) # [128, 128, 31]
+
+        ''' 뒷 부분에서 POS Embedding 추가하는 거 '''
+        concat_pos_flag = torch.cat([enc_out, pos_flag_out])
+        logits = self.post_pos_embedding(concat_pos_flag)
 
         # Get Loss
         # loss = None

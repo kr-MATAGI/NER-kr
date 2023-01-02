@@ -665,8 +665,17 @@ def make_mecab_wordpiece_npy(
             pos_bit_flags.append(curr_pos_bit_flag)
         # end loop, pos_bit_flag
 
-        # Switching
-        pos_ids = pos_bit_flags
+        ''' Switching For POS Bit Flag '''
+        # pos_ids = pos_bit_flags
+
+        ''' For POS Embedding '''
+        max_pos_size = 10
+        for pos in pos_ids:
+            if max_pos_size < len(pos):
+                pos = pos[:max_pos_size]
+            else:
+                curr_len = len(pos)
+                pos += [pos_tag2ids["O"]] * (max_pos_size - curr_len)
 
         # TEST
         # for t, p_b, p_i in zip(text_tokens, pos_bit_flags, pos_ids):
@@ -720,10 +729,16 @@ def make_mecab_wordpiece_npy(
 
         if token_max_len <= len(pos_ids):
             pos_ids = pos_ids[:token_max_len - 1]
-            pos_ids.append([0 for _ in range(target_n_pos)])  # [SEP]
+            ''' For POS Bit Flag '''
+            # pos_ids.append([0 for _ in range(target_n_pos)])  # [SEP]
+            ''' For POS Embedding '''
+            pos_ids.append([0 for _ in range(max_pos_size)]) # SEP
         else:
             pos_ids_size = len(pos_ids)
-            pos_ids += [[0 for _ in range(target_n_pos)]] * (token_max_len - pos_ids_size)
+            ''' For POS Bit Flag '''
+            # pos_ids += [[0 for _ in range(target_n_pos)]] * (token_max_len - pos_ids_size)
+            ''' For POS Embedding '''
+            pos_ids += [[0 for _ in range(max_pos_size)]] * (token_max_len - pos_ids_size)
 
         if token_max_len <= len(label_ids):
             label_ids = label_ids[:token_max_len - 1]
@@ -1616,6 +1631,7 @@ def make_mecab_char_npy(
         text_tokens.insert(0, "[CLS]")
 
         # pos_ids
+        ''' For POS Bit Flag '''
         pos_ids = [[0 for _ in range(target_n_pos)]] # [CLS]
         target_tag2ids = {pos_tag2ids[x]: i for i, x in enumerate(target_tag_list)}
         for tok_pos in conv_mecab_res:
@@ -1641,6 +1657,18 @@ def make_mecab_char_npy(
                     curr_pos_ids[-1] = 1
                     pos_ids.append(curr_pos_ids)
         # end loop, pos_ids
+
+        ''' For POS Embedding '''
+        max_pos_size = 10
+        pos_ids = [[0 for _ in range(max_pos_size)]] # [CLS]
+        for tok_pos in conv_mecab_res:
+            conv_pos = [0 for _ in range(max_pos_size)]
+            for p_idx, pos in enumerate(tok_pos[1]):
+                if p_idx <= p_idx:
+                    break
+                filter_pos = pos if "UNKNOWN" != pos and "NA" != pos and "UNA" != pos and "VSV" != pos else "O"
+                conv_pos[p_idx] = filter_pos
+            pos_ids.append(conv_pos)
 
         # TEST
         # for t, p in zip(text_tokens, pos_ids):
@@ -1774,7 +1802,7 @@ if "__main__" == __name__:
             save_model_dir="mecab_wordpiece_electra", target_n_pos=target_n_pos,
             target_tag_list=target_tag_list
         )
-    elif "morp" == make_npy_mode:
+    elif "morp-aware" == make_npy_mode:
         target_n_pos = 14
         target_tag_list = [  # NN은 NNG/NNP 통합
             "NNG", "NNP", "SN", "NNB", "NR", "NNBC",

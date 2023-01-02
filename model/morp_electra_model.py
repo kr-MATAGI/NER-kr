@@ -38,6 +38,11 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
         self.encoder = nn.LSTM(input_size=self.lstm_dim, hidden_size=(config.hidden_size // 2),
                                num_layers=1, batch_first=True, bidirectional=True)
 
+        ''' 뒷 부분에서 POS Embedding 추가하는 거 '''
+        self.post_pos_embed_dim = config.hidden_size + (self.pos_embed_dim * 14)
+        self.post_pos_embedding = MultiNonLinearClassifier(self.post_pos_embed_dim,
+                                                           config.num_labels, self.dropout_rate)
+
         # Classifier
         self.classifier_dim = config.hidden_size
         self.classifier = nn.Linear(self.classifier_dim, config.num_labels)
@@ -88,8 +93,9 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
         # Classifier
         logits = self.classifier(enc_out)
 
-        ''' Add POS Features '''
-        # concat_pos_flag = torch.cat([enc_out, pos_flag_out])
+        ''' 뒷 부분에서 POS Embedding 추가하는 거 '''
+        concat_pos_flag = torch.cat([enc_out, pos_flag_out])
+        logits = self.post_pos_embedding(concat_pos_flag)
 
         # Get LossE
         # loss = None
