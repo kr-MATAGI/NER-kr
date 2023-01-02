@@ -5,6 +5,8 @@ import torch.nn.functional as F
 from transformers import ElectraModel, ElectraPreTrainedModel
 from transformers.modeling_outputs import TokenClassifierOutput
 
+from model.classifier.span_classifier import MultiNonLinearClassifier
+
 from model.crf_layer import CRF
 
 #==============================================================
@@ -85,6 +87,9 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
 
         # Classifier
         logits = self.classifier(enc_out)
+
+        ''' Add POS Features '''
+        # concat_pos_flag = torch.cat([enc_out, pos_flag_out])
 
         # Get LossE
         # loss = None

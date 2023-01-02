@@ -1745,18 +1745,6 @@ if "__main__" == __name__:
     all_sent_list = []
     all_sent_list = load_ne_entity_list(src_path=pkl_src_path)
 
-    # Make Char Dictionary
-    # b_make_char_dict = False
-    # char_lvl_dict = None
-    # char_dict_path = "../corpus/char_dict.pkl"
-    # if b_make_char_dict:
-    #     char_lvl_dict = make_char_dictionary(all_sent_list, save_path=char_dict_path)
-    # else:
-    #     with open(char_dict_path, mode="rb") as char_dict_pkl:
-    #         char_lvl_dict = pickle.load(char_dict_pkl)
-    # print(f"vocab_size:  {len(char_lvl_dict)}")
-
-
     # Mecab하고 모두의 말뭉치 비교
     '''
     compare_mecab_and_gold_corpus(src_corpus_list=all_sent_list)
@@ -1764,36 +1752,6 @@ if "__main__" == __name__:
     check_count_morp(src_sent_list=all_sent_list)
     exit()
     mecab_pos_unk_count(all_sent_list)
-    exit()
-    '''
-
-    ''' For CharELMo '''
-
-    '''
-    train_sents, dev_sents, test_sents = load_sentences_datasets(src_sents=all_sent_list)
-    print(f"train.len: {len(train_sents)}, dev.len: {len(dev_sents)}, test.len: {len(test_sents)}")
-    tokenizer = ElectraTokenizer.from_pretrained("monologg/koelectra-base-v3-discriminator")
-    comp_train_np = np.load("../corpus/npy/mecab_morp_electra/train.npy")
-    comp_dev_np = np.load("../corpus/npy/mecab_morp_electra/dev.npy")
-    comp_test_np = np.load("../corpus/npy/mecab_morp_electra/test.npy")
-    assert len(train_sents) == comp_train_np.shape[0], "Check - Train Len !"
-    assert len(dev_sents) == comp_dev_np.shape[0], "Check - Dev Len !"
-    assert len(test_sents) == comp_test_np.shape[0], "Check - Test Len !"
-    print(train_sents[256])
-    print(tokenizer.convert_ids_to_tokens(comp_train_np[256, :, 0]), "\n")
-    print(dev_sents[311])
-    print(tokenizer.convert_ids_to_tokens(comp_dev_np[311, :, 0]), "\n")
-    print(test_sents[4166])
-    print(tokenizer.convert_ids_to_tokens(comp_test_np[4166, :, 0]), "\n")
-    with open("../corpus/npy/mecab_morp_electra/train_sents.pkl", mode="wb") as train_sents_pkl:
-        pickle.dump(train_sents, train_sents_pkl)
-        print("save_train")
-    with open("../corpus/npy/mecab_morp_electra/dev_sents.pkl", mode="wb") as dev_sents_pkl:
-        pickle.dump(dev_sents, dev_sents_pkl)
-        print("save_dev")
-    with open("../corpus/npy/mecab_morp_electra/test_sents.pkl", mode="wb") as test_sents_pkl:
-        pickle.dump(test_sents, test_sents_pkl)
-        print("save_test")
     exit()
     '''
 
