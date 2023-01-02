@@ -1116,9 +1116,9 @@ def make_span_wordpiece_npy(
                 break
 
         # print(len(text_tokens))
-        # for i, j, k in pos_ids:
-        #     print(i, j, text_tokens[i], text_tokens[j], [mecab_id2tag[z] for z in k])
-        # print(pos_ids)
+        for i, j, k in pos_ids:
+            print(i, j, text_tokens[i], text_tokens[j], [mecab_id2tag[z] for z in k])
+        print(pos_ids)
 
         if seq_max_len <= len(pos_ids):
             pos_ids = pos_ids[:seq_max_len - 1]

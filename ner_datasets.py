@@ -12,7 +12,6 @@ class NER_POS_Dataset(Dataset):
     def __init__(
             self,
             data: np.ndarray, labels: np.ndarray, pos_ids: np.ndarray
-            #sentences: List[str], char_dic: Dict[str, int], seq_len: int = 128
     ):
         self.input_ids = data[:][:, :, 0]
         self.attention_mask = data[:][:, :, 1]
@@ -21,33 +20,12 @@ class NER_POS_Dataset(Dataset):
 
         self.pos_ids = pos_ids
 
-        # self.sentences = sentences
-        # self.seq_len = seq_len
-        # self.char_dic = char_dic
-        # self.vocab_size = len(char_dic)
-
-        # self.morp_ids = morp_ids
-        # self.ne_pos_one_hot = ne_pos_one_hot
-        # self.josa_pos_one_hot = josa_pos_one_hot
-
-        # self.jamo_ids = jamo_ids
-        # self.jamo_boundary = jamo_boundary
-
         self.input_ids = torch.tensor(self.input_ids, dtype=torch.long)
         self.attention_mask = torch.tensor(self.attention_mask, dtype=torch.long)
         self.token_type_ids = torch.tensor(self.token_type_ids, dtype=torch.long)
         self.labels = torch.tensor(self.labels, dtype=torch.long)
 
         self.pos_ids = torch.tensor(self.pos_ids, dtype=torch.long)
-
-        # self.sentences = self._char_elmo_sents_getitem(self.sentences)
-
-        # self.morp_ids = torch.tensor(self.morp_ids, dtype=torch.long)
-        # self.ne_pos_one_hot = torch.tensor(self.ne_pos_one_hot, dtype=torch.long)
-        # self.josa_pos_one_hot = torch.tensor(self.josa_pos_one_hot, dtype=torch.long)
-
-        # self.jamo_ids = torch.tensor(self.jamo_ids, dtype=torch.long)
-        # self.jamo_boundary = torch.tensor(self.jamo_boundary, dtype=torch.long)
 
     def _char_elmo_sents_getitem(self, src_sents):
         X = []

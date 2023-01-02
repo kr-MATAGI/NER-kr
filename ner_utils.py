@@ -127,7 +127,7 @@ def load_corpus_npy_datasets(src_path: str, mode: str="train"):
     dataset_npy = np.load(src_path)
 
     pos_ids_npy = np.load(root_path + "_pos_ids.npy")
-    label_ids_npy = np.load(root_path + "_labels.npy")
+    label_ids_npy = np.load(root_path + "_label_ids.npy")
 
     return dataset_npy, label_ids_npy, pos_ids_npy
 
@@ -259,7 +259,7 @@ def load_ner_config_and_model(user_select: int, args, tag_dict):
                                                id2label={str(i): label for i, label in enumerate(tag_dict.keys())},
                                                label2id={label: i for i, label in enumerate(tag_dict.keys())})
 
-        config.num_pos_labels = len(NIKL_POS_TAG.keys())  # 국립국어원 형태 분석 말뭉치
+        config.num_pos_labels = len(MECAB_POS_TAG.keys())  # MeCab
         config.max_seq_len = 128
     elif 11 == user_select:
         # ELECTRA+LSTM(MECAB)+CRF

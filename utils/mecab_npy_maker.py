@@ -608,36 +608,155 @@ def make_mecab_wordpiece_npy(
         text_tokens.insert(0, "[CLS]")
 
         # pos_ids
-        pos_ids = [[0 for _ in range(target_n_pos)]] # [CLS]
-        target_tag2ids = {pos_tag2ids[x]: i for i, x in enumerate(target_tag_list)}
+        mecab_tag2id = {v: k for k, v in MECAB_POS_TAG.items()}
+        mecab_id2tag = {k: v for k, v in MECAB_POS_TAG.items()}
+        pos_ids = [[mecab_tag2id["O"]] for _ in range(len(text_tokens))]
+        pos_ids[0] = [mecab_tag2id["O"]] # [CLS]
+        b_check_pos_use = [False for _ in range(len(text_tokens))]
         for tok_pos in conv_mecab_res:
-            conv_mecab_pos = []
+            curr_pos = []
             for pos in tok_pos[1]:
                 filter_pos = pos if "UNKNOWN" != pos and "NA" != pos and "UNA" != pos and "VSV" != pos else "O"
-                conv_mecab_pos.append(filter_pos)
-            for sy_idx, syllable in enumerate(list(tok_pos[0])):
-                curr_pos_ids = [0 for _ in range(target_n_pos)]
-                # print(sy_idx, syllable, tok_pos[1]) # TEST
-                if " " == syllable:
-                    pos_ids.append(curr_pos_ids)
-                elif 0 == sy_idx:
-                    for p_item in conv_mecab_pos:
-                        tag2id = pos_tag2ids[p_item]
-                        if tag2id in target_tag2ids.keys():
-                            if 0 == tag2id or 1 == tag2id:
-                                curr_pos_ids[0] = 1
-                            else:
-                                curr_pos_ids[target_tag2ids[tag2id] - 1] = 1
-                    pos_ids.append(curr_pos_ids)
-                else:
-                    curr_pos_ids[-1] = 1
-                    pos_ids.append(curr_pos_ids)
+                curr_pos.append(mecab_tag2id[filter_pos])
+
+            for root_idx in range(1, len(text_tokens)):
+                if b_check_pos_use[root_idx]:
+                    continue
+                concat_item_list = []
+                for tok_idx in range(root_idx, len(text_tokens)):
+                    if b_check_pos_use[tok_idx]:
+                        continue
+                    for sub_idx in range(tok_idx, len(text_tokens)):
+                        concat_word = ["".join(x).replace("##", "") for x in text_tokens[tok_idx:sub_idx + 1]]
+                        concat_item_list.append(("".join(concat_word), (tok_idx, sub_idx)))
+                concat_item_list = [x for x in concat_item_list if tok_pos[0] in x[0]]
+                if 0 >= len(concat_item_list):
+                    continue
+                concat_item_list.sort(key=lambda x: len(x[0]))
+                target_idx_pair = concat_item_list[0][1]
+                b_check_pos_use[target_idx_pair[0]] = b_check_pos_use[target_idx_pair[1]] = True
+                # print(concat_item_list[0][0], tok_pos[0], tok_pos[1])
+                if concat_item_list[0][0] == tok_pos[0]:
+                    pos_ids[target_idx_pair[0]] = curr_pos
+                break
         # end loop, pos_ids
 
         # TEST
-        for t, p in zip(text_tokens, pos_ids):
-            print(t, p)
-        input()
+        # print(len(text_tokens), len(pos_ids))
+        # for t, k in zip(text_tokens, pos_ids):
+        #     print(t, [mecab_id2tag[z] for z in k])
+        # print(pos_ids)
+        # print(text_tokens)
+        # print(conv_mecab_res)
+        # input()
+
+        # POS bit flag
+        target_tag2ids = {pos_tag2ids[x]: i for i, x in enumerate(target_tag_list)}
+        pos_bit_flags = []
+        for pos in pos_ids:
+            curr_pos_bit_flag = [0 for _ in range(target_n_pos)]
+            for p_id in pos:
+                if p_id in target_tag2ids.keys():
+                    if 0 == target_tag2ids[p_id] or 1 == target_tag2ids[p_id]:
+                        curr_pos_bit_flag[0] = 1
+                    else:
+                        curr_pos_bit_flag[target_tag2ids[p_id] - 1] = 1
+            pos_bit_flags.append(curr_pos_bit_flag)
+        # end loop, pos_bit_flag
+
+        # Switching
+        pos_ids = pos_bit_flags
+
+        # TEST
+        # for t, p_b, p_i in zip(text_tokens, pos_bit_flags, pos_ids):
+        #     print(t, p_b, p_i)
+        # input()
+
+        # Make NE Labels
+        token_pair_len = len(text_tokens)
+        label_ids = [ETRI_TAG["O"]] * token_pair_len
+        b_check_use = [False for _ in range(token_pair_len)]
+        for ne_idx, ne_item in enumerate(src_item.ne_list):
+            ne_char_list = list(ne_item.text.replace(" ", ""))
+            concat_item_list = []
+            for m_idx, mecab_item in enumerate(text_tokens):
+                if b_check_use[m_idx]:
+                    continue
+                for sub_idx in range(m_idx + 1, len(text_tokens)):
+                    concat_word = ["".join(x).replace("##", "") for x in text_tokens[m_idx:sub_idx]]
+                    concat_item_list.append(("".join(concat_word), (m_idx, sub_idx)))
+            concat_item_list = [x for x in concat_item_list if "".join(ne_char_list) in x[0]]
+            concat_item_list.sort(key=lambda x: len(x[0]))
+            if 0 >= len(concat_item_list):
+                continue
+            target_idx_pair = concat_item_list[0][1]
+
+            for bio_idx in range(target_idx_pair[0], target_idx_pair[1]):
+                b_check_use[bio_idx] = True
+                if bio_idx == target_idx_pair[0]:
+                    label_ids[bio_idx] = ETRI_TAG["B-" + ne_item.type]
+                else:
+                    label_ids[bio_idx] = ETRI_TAG["I-" + ne_item.type]
+        # end, Make NE Labels
+        # for t, l in zip(text_tokens, label_ids):
+        #     print(t, l)
+        # input()
+
+        # 길이 맞춰주기
+        valid_token_len = 0
+        if token_max_len <= len(text_tokens):
+            text_tokens = text_tokens[:token_max_len - 1]
+            text_tokens.append("[SEP]")
+            valid_token_len = token_max_len
+        else:
+            text_tokens.append("[SEP]")
+            valid_token_len = len(text_tokens)
+            text_tokens += ["[PAD]"] * (token_max_len - valid_token_len)
+
+        input_ids = tokenizer.convert_tokens_to_ids(text_tokens)
+        attention_mask = ([1] * valid_token_len) + ([0] * (token_max_len - valid_token_len))
+        token_type_ids = [0] * token_max_len
+
+        if token_max_len <= len(pos_ids):
+            pos_ids = pos_ids[:token_max_len - 1]
+            pos_ids.append([0 for _ in range(target_n_pos)])  # [SEP]
+        else:
+            pos_ids_size = len(pos_ids)
+            pos_ids += [[0 for _ in range(target_n_pos)]] * (token_max_len - pos_ids_size)
+
+        if token_max_len <= len(label_ids):
+            label_ids = label_ids[:token_max_len - 1]
+            label_ids.append(ETRI_TAG["O"])
+        else:
+            label_ids_size = len(label_ids)
+            label_ids += [ETRI_TAG["O"]] * (token_max_len - label_ids_size)
+
+        assert len(input_ids) == token_max_len, f"{len(input_ids)}"
+        assert len(attention_mask) == token_max_len, f"{len(attention_mask)}"
+        assert len(token_type_ids) == token_max_len, f"{len(token_type_ids)}"
+        assert len(label_ids) == token_max_len, f"{len(label_ids)}"
+        assert len(pos_ids) == token_max_len, f"{len(pos_ids)}"
+
+        # Insert npy_dict
+        npy_dict["input_ids"].append(input_ids)
+        npy_dict["attention_mask"].append(attention_mask)
+        npy_dict["token_type_ids"].append(token_type_ids)
+        npy_dict["labels"].append(label_ids)
+        npy_dict["pos_ids"].append(pos_ids)
+
+        # Debug mode
+        if debug_mode:
+            print(src_item.text)
+            print("Wordpiece: \n", tokenizer.tokenize(src_item.text))
+            print("Text tokens: \n", text_tokens)
+            print("NE labels: \n", src_item.ne_list)
+
+            # Token 별 확인
+            for t_tok, lab, p in zip(text_tokens, label_ids, pos_ids):
+                if "[PAD]" == t_tok:
+                    break
+                print(t_tok, ne_ids2tag[lab], p)
+            input()
 
     if not debug_mode:
         save_mecab_wordpiece_npy(npy_dict, src_list_len=len(src_list), save_dir=save_model_dir)
@@ -1561,6 +1680,7 @@ def make_mecab_char_npy(
         if token_max_len <= len(text_tokens):
             text_tokens = text_tokens[:token_max_len - 1]
             text_tokens.append("[SEP]")
+            valid_token_len = token_max_len
         else:
             text_tokens.append("[SEP]")
             valid_token_len = len(text_tokens)
@@ -1694,7 +1814,8 @@ if "__main__" == __name__:
         make_mecab_wordpiece_npy(
             tokenizer_name="monologg/koelectra-base-v3-discriminator",
             src_list=all_sent_list, token_max_len=128, debug_mode=False,
-            save_model_dir="mecab_wordpiece_electra"
+            save_model_dir="mecab_wordpiece_electra", target_n_pos=target_n_pos,
+            target_tag_list=target_tag_list
         )
     elif "morp" == make_npy_mode:
         target_n_pos = 14
