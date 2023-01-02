@@ -116,16 +116,3 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
         else:
             sequence_of_tags = self.crf.decode(logits)
             return sequence_of_tags
-
-    #===================================
-    def _make_pos_flag(self, pos_ids: torch.Tensor, n_pos: int):
-    #===================================
-        device = pos_ids.device
-        batch_size, seq_len, pos_size = pos_ids.size()
-
-        target_pos_list = [
-            "NNG", "NNP", "SN", "NNB", "NR", "NNBC",
-            "JKS", "JKC", "JKG", "JKO", "JKB", "JX", "JC", "JKV", "JKQ",
-        ]
-
-        ret_batch_pos_flag = torch.zeros((batch_size, seq_len, self.num_flag_pos), device=device, dtype=torch.long)
