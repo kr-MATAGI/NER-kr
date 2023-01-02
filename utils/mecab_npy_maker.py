@@ -598,6 +598,7 @@ def make_mecab_wordpiece_npy(
 
         if 0 == (proc_idx % 1000):
             print(f"{proc_idx} Processing... {src_item.text}")
+        total_data_count += 1
 
         # Mecab
         res_mecab = mecab.pos(src_item.text)
@@ -757,9 +758,11 @@ def make_mecab_wordpiece_npy(
                     break
                 print(t_tok, ne_ids2tag[lab], p)
             input()
+        if 100 == proc_idx:
+            break
 
     if not debug_mode:
-        save_mecab_wordpiece_npy(npy_dict, src_list_len=len(src_list), save_dir=save_model_dir)
+        save_mecab_morp_npy(npy_dict, src_list_len=total_data_count, save_dir=save_model_dir)
 
 #==========================================================================================
 def save_mecab_wordpiece_npy(npy_dict: Dict[str, List], src_list_len, save_dir: str = None):
@@ -769,9 +772,7 @@ def save_mecab_wordpiece_npy(npy_dict: Dict[str, List], src_list_len, save_dir: 
     npy_dict["token_type_ids"] = np.array(npy_dict["token_type_ids"])
     npy_dict["labels"] = np.array(npy_dict["labels"])
 
-    # npy_dict["pos_tag_ids"] = np.array(npy_dict["pos_tag_ids"])
-    # npy_dict["ne_one_hot"] = np.array(npy_dict["ne_one_hot"])
-    # npy_dict["josa_one_hot"] = np.array(npy_dict["josa_one_hot"])
+    npy_dict["pos_ids"] = np.array(npy_dict["pos_ids"])
 
     # 토큰 단위
     print(f"Unit: Tokens")
