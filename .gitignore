@@ -4,7 +4,7 @@ old_version/datasets
 *.npy
 
 # ide
-/.idea
+.idea
 
 # pycmache
 *.pyc

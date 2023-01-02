@@ -6,8 +6,8 @@ import pickle
 from dataclasses import dataclass, field
 from collections import deque
 
-from eunjeon import Mecab # Window
-# from konlpy.tag import Mecab # Linux
+# from eunjeon import Mecab # Window
+from konlpy.tag import Mecab # Linux
 
 from tag_def import ETRI_TAG, NIKL_POS_TAG, MECAB_POS_TAG
 from data_def import Sentence, NE, Morp, Word
@@ -1632,6 +1632,8 @@ def make_mecab_char_npy(
 
         # pos_ids
         ''' For POS Bit Flag '''
+
+        '''
         pos_ids = [[0 for _ in range(target_n_pos)]] # [CLS]
         target_tag2ids = {pos_tag2ids[x]: i for i, x in enumerate(target_tag_list)}
         for tok_pos in conv_mecab_res:
@@ -1655,8 +1657,9 @@ def make_mecab_char_npy(
                     pos_ids.append(curr_pos_ids)
                 else:
                     curr_pos_ids[-1] = 1
-                    pos_ids.append(curr_pos_ids)
+                    pos_ids.append(curr_pos_ids)                    
         # end loop, pos_ids
+        '''
 
         ''' For POS Embedding '''
         max_pos_size = 10
@@ -1664,11 +1667,15 @@ def make_mecab_char_npy(
         for tok_pos in conv_mecab_res:
             conv_pos = [0 for _ in range(max_pos_size)]
             for p_idx, pos in enumerate(tok_pos[1]):
-                if p_idx <= p_idx:
+                if max_pos_size <= p_idx:
                     break
                 filter_pos = pos if "UNKNOWN" != pos and "NA" != pos and "UNA" != pos and "VSV" != pos else "O"
-                conv_pos[p_idx] = filter_pos
-            pos_ids.append(conv_pos)
+                conv_pos[p_idx] = pos_tag2ids[filter_pos]
+            for insert_idx in range(len(tok_pos[0])):
+                if 0 == insert_idx:
+                    pos_ids.append(conv_pos)
+                else:
+                    pos_ids.append([0 for _ in range(max_pos_size)])
 
         # TEST
         # for t, p in zip(text_tokens, pos_ids):
@@ -1719,10 +1726,20 @@ def make_mecab_char_npy(
 
         if token_max_len <= len(pos_ids):
             pos_ids = pos_ids[:token_max_len - 1]
-            pos_ids.append([0 for _ in range(target_n_pos)]) # [SEP]
+
+            ''' For POS Bit Flag '''
+            # pos_ids.append([0 for _ in range(target_n_pos)]) # [SEP]
+
+            ''' For POS Embedding '''
+            pos_ids.append([0 for _ in range(max_pos_size)])  # [SEP]
         else:
             pos_ids_size = len(pos_ids)
-            pos_ids += [[0 for _ in range(target_n_pos)]] * (token_max_len - pos_ids_size)
+
+            ''' For POS Bit Flag '''
+            # pos_ids += [[0 for _ in range(target_n_pos)]] * (token_max_len - pos_ids_size)
+
+            ''' For POS Embedding '''
+            pos_ids += [[0 for _ in range(max_pos_size)]] * (token_max_len - pos_ids_size)
 
         label_ids.insert(0, ETRI_TAG["O"])
         if token_max_len <= len(label_ids):
@@ -1782,7 +1799,7 @@ if "__main__" == __name__:
     '''
 
     # make *.npy (use Mecab)
-    make_npy_mode = "wordpiece"
+    make_npy_mode = "character"
     if "eojeol" == make_npy_mode:
         make_mecab_eojeol_npy(
             tokenizer_name="monologg/koelectra-base-v3-discriminator",
