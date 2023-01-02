@@ -61,7 +61,30 @@ def convert_character_pos_tokens(sent_lvl_pos: Tuple[str, str], src_text: str):
         curr_char_cnt = 0
         for ej_idx, eojeol in enumerate(sent_lvl_pos):
             if char_cnt == curr_char_cnt:
-                total_eojeol_morp.append([" ", "O"])
+                total_eojeol_morp.append([" ", ["O"]])
+                break
+            if use_check[ej_idx]:
+                continue
+            total_eojeol_morp.append([eojeol[0], eojeol[1].split("+")])
+            curr_char_cnt += len(eojeol[0])
+            use_check[ej_idx] = True
+
+    return total_eojeol_morp
+
+
+#=======================================================================================
+def convert_wordpiece_pos_tokens(sent_lvl_pos: Tuple[str, str], src_text: str):
+#=======================================================================================
+    # 어절별 글자 수 체크해서 띄워쓰기 적기
+    split_text = src_text.split(" ")
+    char_cnt_list = [len(st) for st in split_text]
+
+    total_eojeol_morp = []
+    use_check = [False for _ in range(len(sent_lvl_pos))]
+    for char_cnt in char_cnt_list:
+        curr_char_cnt = 0
+        for ej_idx, eojeol in enumerate(sent_lvl_pos):
+            if char_cnt == curr_char_cnt:
                 break
             if use_check[ej_idx]:
                 continue

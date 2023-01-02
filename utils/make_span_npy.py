@@ -1085,9 +1085,6 @@ def make_span_wordpiece_npy(
         text_tokens = tokenizer.tokenize(src_item.text)
         text_tokens.insert(0, "[CLS]")
 
-        print(text_tokens)
-        print(conv_mecab_res)
-
         # pos_ids
         mecab_tag2id = {v: k for k, v in MECAB_POS_TAG.items()}
         mecab_id2tag = {k: v for k, v in MECAB_POS_TAG.items()}
@@ -1123,7 +1120,6 @@ def make_span_wordpiece_npy(
         #     print(i, j, text_tokens[i], text_tokens[j], [mecab_id2tag[z] for z in k])
         # print(pos_ids)
 
-        print(pos_ids)
         if seq_max_len <= len(pos_ids):
             pos_ids = pos_ids[:seq_max_len - 1]
             pos_ids.append((127, 127, [mecab_tag2id["O"]]))
