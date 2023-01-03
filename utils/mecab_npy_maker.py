@@ -1274,6 +1274,9 @@ def make_mecab_morp_npy(
             if not is_test_str:
                 continue
 
+        if 0 == len(src_item.ne_list) and 3 >= len(src_item.word_list):
+            continue
+
         if 0 == (proc_idx % 1000):
             print(f"{proc_idx} Processing... {src_item.text}")
         total_data_count += 1
