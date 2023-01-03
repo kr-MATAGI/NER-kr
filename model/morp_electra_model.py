@@ -79,7 +79,6 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
         ''' Add POS Embedding '''
         add_pos_embed = torch.add(pos_out_1, pos_out_2)
         add_pos_embed = torch.add(add_pos_embed, pos_out_3)
-        print(add_pos_embed.shape)
         concat_pos = torch.concat([electra_outputs, add_pos_embed], dim=-1)
 
         ''' POS Flag '''
