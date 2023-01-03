@@ -41,18 +41,18 @@ class CHAR_ELECTRA_POS_LSTM(ElectraPreTrainedModel):
         # self.dropout = nn.Dropout(self.dropout_rate)
 
         # LSTM
-        self.lstm_dim_size = config.hidden_size + (self.pos_embed_dim * self.num_flag_pos)
+        self.lstm_dim_size = config.hidden_size #+ (self.pos_embed_dim * self.num_flag_pos)
         self.lstm = nn.LSTM(input_size=self.lstm_dim_size, hidden_size=(self.lstm_dim_size // 2),
                             num_layers=1, batch_first=True, bidirectional=True, dropout=self.dropout_rate)
 
         # Classifier
-        self.classifier = nn.Linear(self.lstm_dim_size, config.num_labels)
+        # self.classifier = nn.Linear(self.lstm_dim_size, config.num_labels)
         self.crf = CRF(num_tags=config.num_labels, batch_first=True)
 
         ''' 뒷 부분에서 POS Embedding 추가하는 거 '''
-        # self.post_pos_embed_dim = config.hidden_size + (self.pos_embed_dim * self.num_flag_pos)
-        # self.post_pos_embedding = MultiNonLinearClassifier(self.post_pos_embed_dim,
-        #                                                    config.num_labels, self.dropout_rate)
+        self.post_pos_embed_dim = config.hidden_size + (self.pos_embed_dim * self.num_flag_pos)
+        self.post_pos_embedding = MultiNonLinearClassifier(self.post_pos_embed_dim,
+                                                           config.num_labels, self.dropout_rate)
 
         # Initialize weights and apply final processing
         self.post_init()
@@ -87,17 +87,17 @@ class CHAR_ELECTRA_POS_LSTM(ElectraPreTrainedModel):
         pos_flag_out = pos_flag_out.reshape(pos_flag_size[0], pos_flag_size[1], -1)
 
         # concat_pos_embed = torch.concat([pos_embed_1, pos_embed_2, pos_embed_3], dim=-1)
-        concat_embed = torch.concat([electra_outputs, pos_flag_out], dim=-1)
+        # concat_embed = torch.concat([electra_outputs, pos_flag_out], dim=-1)
 
         # LSTM
-        lstm_out, _ = self.lstm(concat_embed) # [batch_size, seq_len, hidden_size]
+        lstm_out, _ = self.lstm(electra_outputs) # [batch_size, seq_len, hidden_size]
 
         # Classifier
-        logits = self.classifier(lstm_out) # [128, 128, 31]
+        # logits = self.classifier(lstm_out) # [128, 128, 31]
 
         ''' 뒷 부분에서 POS Embedding 추가하는 거 '''
-        # concat_pos_flag = torch.cat([lstm_out, pos_flag_out])
-        # logits = self.post_pos_embedding(concat_pos_flag)
+        concat_pos_flag = torch.cat([lstm_out, pos_flag_out])
+        logits = self.post_pos_embedding(concat_pos_flag)
 
         # Get Loss
         # loss = None
