@@ -77,7 +77,8 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
         # concat_pos = torch.concat([electra_outputs, pos_out_1, pos_out_2, pos_out_3, pos_out_4], dim=-1)
 
         ''' Add POS Embedding '''
-        add_pos_embed = torch.sum(torch.stack([pos_out_1, pos_out_2, pos_out_3], 0))
+        add_pos_embed = torch.add(pos_out_1, pos_out_2)
+        add_pos_embed = torch.add(add_pos_embed, pos_out_3)
         print(add_pos_embed.shape)
         concat_pos = torch.concat([electra_outputs, add_pos_embed], dim=-1)
 
