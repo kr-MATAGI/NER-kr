@@ -897,6 +897,7 @@ def save_mecab_morp_npy(npy_dict: Dict[str, List], src_list_len, save_dir: str =
     npy_dict["token_type_ids"] = np.array(npy_dict["token_type_ids"])
     npy_dict["labels"] = np.array(npy_dict["labels"])
     npy_dict["pos_ids"] = np.array(npy_dict["pos_ids"])
+    npy_dict["pos_flag"] = np.array(npy_dict["pos_flag"])
 
     # 토큰 단위
     print(f"Unit: Tokens")
@@ -905,6 +906,7 @@ def save_mecab_morp_npy(npy_dict: Dict[str, List], src_list_len, save_dir: str =
     print(f"token_type_ids.shape: {npy_dict['token_type_ids'].shape}")
     print(f"labels.shape: {npy_dict['labels'].shape}")
     print(f"pos_ids.shape: {npy_dict['pos_ids'].shape}")
+    print(f"pos_flag.shape: {npy_dict['pos_flag'].shape}")
 
     # train/dev/test 분할
     split_size = int(src_list_len * 0.1)
@@ -918,9 +920,11 @@ def save_mecab_morp_npy(npy_dict: Dict[str, List], src_list_len, save_dir: str =
     train_np = np.stack(train_np, axis=-1)
     train_labels_np = npy_dict["labels"][:train_size]
     train_pos_tag_np = npy_dict["pos_ids"][:train_size]
+    train_pos_flag_np = npy_dict["pos_flag"][:train_size]
     print(f"train_np.shape: {train_np.shape}")
     print(f"train_labels_np.shape: {train_labels_np.shape}")
-    print(f"train_pos_tag_ids_np.shape: {train_pos_tag_np.shape}")
+    print(f"train_pos_ids_np.shape: {train_pos_tag_np.shape}")
+    print(f"train_pos_flag_np.shape: {train_pos_flag_np.shape}")
 
     # Dev
     dev_np = [npy_dict["input_ids"][train_size:valid_size],
@@ -929,9 +933,12 @@ def save_mecab_morp_npy(npy_dict: Dict[str, List], src_list_len, save_dir: str =
     dev_np = np.stack(dev_np, axis=-1)
     dev_labels_np = npy_dict["labels"][train_size:valid_size]
     dev_pos_tag_np = npy_dict["pos_ids"][train_size:valid_size]
+    dev_pos_flag_np = npy_dict["pos_flag"][train_size:valid_size]
     print(f"dev_np.shape: {dev_np.shape}")
     print(f"dev_labels_np.shape: {dev_labels_np.shape}")
-    print(f"dev_pos_tag_ids_np.shape: {dev_pos_tag_np.shape}")
+    print(f"dev_pos_ids_np.shape: {dev_pos_tag_np.shape}")
+    print(f"dev_pos_flag_np.shape: {dev_pos_flag_np.shape}")
+
 
     # Test
     test_np = [npy_dict["input_ids"][valid_size:],
@@ -1425,8 +1432,8 @@ def make_mecab_morp_npy(
             input()
 
     if not debug_mode:
-        if is_make_pos_flag:
-            npy_dict["pos_ids"] = npy_dict["pos_flag"]
+        # if is_make_pos_flag:
+            # npy_dict["pos_ids"] = npy_dict["pos_flag"]
         save_mecab_morp_npy(npy_dict, src_list_len=total_data_count, save_dir=save_model_dir)
 
 #======================================================
