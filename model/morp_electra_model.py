@@ -39,9 +39,9 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
                                num_layers=1, batch_first=True, bidirectional=True)
 
         ''' 뒷 부분에서 POS bit flag 추가하는 거 '''
-        self.post_pos_embed_dim = config.hidden_size + (self.pos_embed_dim * self.num_flag_pos)
-        self.post_pos_embedding = MultiNonLinearClassifier(self.post_pos_embed_dim,
-                                                           config.num_labels, self.dropout_rate)
+        # self.post_pos_embed_dim = config.hidden_size + (self.pos_embed_dim * self.num_flag_pos)
+        # self.post_pos_embedding = MultiNonLinearClassifier(self.post_pos_embed_dim,
+        #                                                    config.num_labels, self.dropout_rate)
 
         # Classifier
         ''' 앞 부분에서 POS 추가할 때 사용 '''
@@ -97,12 +97,12 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
         enc_out, _ = self.encoder(electra_outputs) # [batch_size, seq_len, hidden_size]
 
         # Classifier
-        # concat_pos = torch.concat([enc_out, concat_pos], dim=-1)
-        # logits = self.classifier(concat_pos)
+        concat_pos = torch.concat([enc_out, concat_pos], dim=-1)
+        logits = self.classifier(concat_pos)
 
         ''' 뒷 부분에서 POS Embedding 추가하는 거 '''
-        concat_pos_flag = torch.cat([enc_out, concat_pos], dim=-1)
-        logits = self.post_pos_embedding(concat_pos_flag)
+        # concat_pos_flag = torch.cat([enc_out, concat_pos], dim=-1)
+        # logits = self.post_pos_embedding(concat_pos_flag)
 
         # Get LossE
         # loss = None
