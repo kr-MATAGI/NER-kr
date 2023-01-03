@@ -752,7 +752,7 @@ def make_span_char_npy(
         seq_max_len: int = 128, debug_mode: bool = False,
         span_max_len: int = 8, save_npy_path: str = None,
         target_n_pos: int = 14, target_tag_list: List = [],
-        train_data_ratio: int = 7
+        train_data_ratio: int = 8
 ):
 #=======================================================================================
     print(f"target_n_pos: {target_n_pos}")
