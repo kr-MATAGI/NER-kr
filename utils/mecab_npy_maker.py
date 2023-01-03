@@ -1800,7 +1800,7 @@ if "__main__" == __name__:
     '''
 
     # make *.npy (use Mecab)
-    make_npy_mode = "character"
+    make_npy_mode = "morp-aware"
     print(f"[mecab_npy_maker] make_npy_mode: {make_npy_mode}")
     if "eojeol" == make_npy_mode:
         make_mecab_eojeol_npy(
