@@ -40,7 +40,7 @@ class CHAR_ELECTRA_POS_LSTM(ElectraPreTrainedModel):
         self.electra = ElectraModel.from_pretrained("monologg/kocharelectra-base-discriminator", config=config)
 
         # LSTM
-        self.lstm_dim_size = config.hidden_size + (self.pos_embed_dim * 3)
+        self.lstm_dim_size = config.hidden_size + (self.pos_embed_dim)
         self.lstm = nn.LSTM(input_size=self.lstm_dim_size, hidden_size=(self.lstm_dim_size // 2),
                             num_layers=1, batch_first=True, bidirectional=True, dropout=self.dropout_rate)
 
