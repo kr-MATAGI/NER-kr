@@ -39,13 +39,13 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
                                num_layers=1, batch_first=True, bidirectional=True)
 
         ''' 뒷 부분에서 POS bit flag 추가하는 거 '''
-        # self.post_pos_embed_dim = config.hidden_size + (self.pos_embed_dim * self.num_flag_pos)
-        # self.post_pos_embedding = MultiNonLinearClassifier(self.post_pos_embed_dim,
-        #                                                    config.num_labels, self.dropout_rate)
+        self.post_pos_embed_dim = config.hidden_size + (self.pos_embed_dim * self.num_flag_pos)
+        self.post_pos_embedding = MultiNonLinearClassifier(self.post_pos_embed_dim,
+                                                           config.num_labels, self.dropout_rate)
 
         # Classifier
         ''' 앞 부분에서 POS 추가할 때 사용 '''
-        self.classifier_dim = config.hidden_size + self.pos_embed_dim
+        self.classifier_dim = config.hidden_size + (self.pos_embed_dim * 3)
         self.classifier = nn.Linear(self.classifier_dim, config.num_labels)
         self.crf = CRF(num_tags=config.num_labels, batch_first=True)
 
@@ -74,11 +74,11 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
         pos_out_2 = F.relu(pos_out_2)
         pos_out_3 = F.relu(pos_out_3)
         # pos_out_4 = F.relu(pos_out_4)
-        # concat_pos = torch.concat([electra_outputs, pos_out_1, pos_out_2, pos_out_3, pos_out_4], dim=-1)
+        concat_pos = torch.concat([pos_out_1, pos_out_2, pos_out_3], dim=-1)
 
         ''' Add POS Embedding '''
-        add_pos_embed = torch.add(pos_out_1, pos_out_2)
-        add_pos_embed = torch.add(add_pos_embed, pos_out_3)
+        # add_pos_embed = torch.add(pos_out_1, pos_out_2)
+        # add_pos_embed = torch.add(add_pos_embed, pos_out_3)
         # concat_pos = torch.concat([electra_outputs, add_pos_embed], dim=-1)
 
         ''' POS Flag '''
@@ -97,12 +97,12 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
         enc_out, _ = self.encoder(electra_outputs) # [batch_size, seq_len, hidden_size]
 
         # Classifier
-        concat_pos = torch.concat([enc_out, add_pos_embed], dim=-1)
-        logits = self.classifier(concat_pos)
+        # concat_pos = torch.concat([enc_out, concat_pos], dim=-1)
+        # logits = self.classifier(concat_pos)
 
         ''' 뒷 부분에서 POS Embedding 추가하는 거 '''
-        # concat_pos_flag = torch.cat([enc_out, pos_flag_out], dim=-1)
-        # logits = self.post_pos_embedding(concat_pos_flag)
+        concat_pos_flag = torch.cat([enc_out, concat_pos], dim=-1)
+        logits = self.post_pos_embedding(concat_pos_flag)
 
         # Get LossE
         # loss = None
