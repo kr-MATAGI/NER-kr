@@ -912,6 +912,7 @@ def save_mecab_morp_npy(npy_dict: Dict[str, List], src_list_len, save_dir: str =
     split_size = int(src_list_len * 0.1)
     train_size = split_size * 8
     valid_size = train_size + split_size
+    print(split_size, train_size, valid_size)
 
     # Train
     train_np = [npy_dict["input_ids"][:train_size],
@@ -939,7 +940,6 @@ def save_mecab_morp_npy(npy_dict: Dict[str, List], src_list_len, save_dir: str =
     print(f"dev_pos_ids_np.shape: {dev_pos_tag_np.shape}")
     print(f"dev_pos_flag_np.shape: {dev_pos_flag_np.shape}")
 
-
     # Test
     test_np = [npy_dict["input_ids"][valid_size:],
                npy_dict["attention_mask"][valid_size:],
@@ -947,9 +947,11 @@ def save_mecab_morp_npy(npy_dict: Dict[str, List], src_list_len, save_dir: str =
     test_np = np.stack(test_np, axis=-1)
     test_labels_np = npy_dict["labels"][valid_size:]
     test_pos_tag_np = npy_dict["pos_ids"][valid_size:]
+    test_pos_flag_np = npy_dict["pos_flag"][valid_size:]
     print(f"test_np.shape: {test_np.shape}")
     print(f"test_labels_np.shape: {test_labels_np.shape}")
     print(f"test_pos_tag_ids_np.shape: {test_pos_tag_np.shape}")
+    print(f"test_pos_flag_np.shape: {test_pos_flag_np.shape}")
 
     root_path = "../corpus/npy/" + save_dir
     # save input_ids, attention_mask, token_type_ids
@@ -965,6 +967,10 @@ def save_mecab_morp_npy(npy_dict: Dict[str, List], src_list_len, save_dir: str =
     np.save(root_path + "/train_pos_ids", train_pos_tag_np)
     np.save(root_path + "/dev_pos_ids", dev_pos_tag_np)
     np.save(root_path + "/test_pos_ids", test_pos_tag_np)
+
+    np.save(root_path + "/train_pos_flag", train_pos_flag_np)
+    np.save(root_path + "/dev_pos_flag", dev_pos_flag_np)
+    np.save(root_path + "/test_pos_flag", test_pos_tag_np)
 
     print(f"Complete - Save all npy files !")
 
@@ -1595,7 +1601,8 @@ def make_mecab_char_npy(
         "labels": [],
         "attention_mask": [],
         "token_type_ids": [],
-        "pos_ids": []
+        "pos_ids": [],
+        "pos_flag": []
     }
 
     # shuffle
@@ -1639,9 +1646,7 @@ def make_mecab_char_npy(
 
         # pos_ids
         ''' For POS Bit Flag '''
-
-        '''
-        pos_ids = [[0 for _ in range(target_n_pos)]] # [CLS]
+        pos_flag = [[0 for _ in range(target_n_pos)]] # [CLS]
         target_tag2ids = {pos_tag2ids[x]: i for i, x in enumerate(target_tag_list)}
         for tok_pos in conv_mecab_res:
             conv_mecab_pos = []
@@ -1652,7 +1657,7 @@ def make_mecab_char_npy(
                 curr_pos_ids = [0 for _ in range(target_n_pos)]
                 # print(sy_idx, syllable, tok_pos[1]) # TEST
                 if " " == syllable:
-                    pos_ids.append(curr_pos_ids)
+                    pos_flag.append(curr_pos_ids)
                 elif 0 == sy_idx:
                     for p_item in conv_mecab_pos:
                         tag2id = pos_tag2ids[p_item]
@@ -1661,12 +1666,11 @@ def make_mecab_char_npy(
                                 curr_pos_ids[0] = 1
                             else:
                                 curr_pos_ids[target_tag2ids[tag2id] - 1] = 1
-                    pos_ids.append(curr_pos_ids)
+                    pos_flag.append(curr_pos_ids)
                 else:
                     curr_pos_ids[-1] = 1
-                    pos_ids.append(curr_pos_ids)                    
+                    pos_flag.append(curr_pos_ids)
         # end loop, pos_ids
-        '''
 
         ''' For POS Embedding '''
         max_pos_size = 10
@@ -1733,22 +1737,21 @@ def make_mecab_char_npy(
         attention_mask = ([1] * valid_token_len) + ([0] * (token_max_len - valid_token_len))
         token_type_ids = [0] * token_max_len
 
+        ''' POS Embedding '''
         if token_max_len <= len(pos_ids):
             pos_ids = pos_ids[:token_max_len - 1]
-
-            ''' For POS Bit Flag '''
-            # pos_ids.append([0 for _ in range(target_n_pos)]) # [SEP]
-
-            ''' For POS Embedding '''
             pos_ids.append([0 for _ in range(max_pos_size)])  # [SEP]
         else:
             pos_ids_size = len(pos_ids)
-
-            ''' For POS Bit Flag '''
-            # pos_ids += [[0 for _ in range(target_n_pos)]] * (token_max_len - pos_ids_size)
-
-            ''' For POS Embedding '''
             pos_ids += [[0 for _ in range(max_pos_size)]] * (token_max_len - pos_ids_size)
+
+        ''' POS bit flag '''
+        if token_max_len <= len(pos_flag):
+            pos_flag = pos_flag[:token_max_len - 1]
+            pos_flag.append([0 for _ in range(target_n_pos)]) # [SEP]
+        else:
+            pos_flag_size = len(pos_flag)
+            pos_flag += [[0 for _ in range(target_n_pos)]] * (token_max_len - pos_flag_size)
 
         if token_max_len <= len(label_ids):
             label_ids = label_ids[:token_max_len - 1]
@@ -1762,6 +1765,7 @@ def make_mecab_char_npy(
         assert len(token_type_ids) == token_max_len, f"{len(token_type_ids)}"
         assert len(label_ids) == token_max_len, f"{len(label_ids)}"
         assert len(pos_ids) == token_max_len, f"{len(pos_ids)}"
+        assert len(pos_flag) == token_max_len, f"{len(pos_flag)}"
 
         # Insert npy_dict
         npy_dict["input_ids"].append(input_ids)
@@ -1769,6 +1773,7 @@ def make_mecab_char_npy(
         npy_dict["token_type_ids"].append(token_type_ids)
         npy_dict["labels"].append(label_ids)
         npy_dict["pos_ids"].append(pos_ids)
+        npy_dict["pos_flag"].append(pos_flag)
 
         # Debug mode
         if debug_mode:
@@ -1807,7 +1812,7 @@ if "__main__" == __name__:
     '''
 
     # make *.npy (use Mecab)
-    make_npy_mode = "morp-aware"
+    make_npy_mode = "character"
     print(f"[mecab_npy_maker] make_npy_mode: {make_npy_mode}")
     if "eojeol" == make_npy_mode:
         make_mecab_eojeol_npy(
