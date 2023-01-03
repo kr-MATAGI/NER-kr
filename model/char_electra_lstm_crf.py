@@ -96,7 +96,7 @@ class CHAR_ELECTRA_POS_LSTM(ElectraPreTrainedModel):
         # logits = self.classifier(lstm_out) # [128, 128, 31]
 
         ''' 뒷 부분에서 POS Embedding 추가하는 거 '''
-        concat_pos_flag = torch.cat([lstm_out, pos_flag_out])
+        concat_pos_flag = torch.cat([lstm_out, pos_flag_out], dim=-1)
         logits = self.post_pos_embedding(concat_pos_flag)
 
         # Get Loss
