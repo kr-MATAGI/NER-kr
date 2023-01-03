@@ -23,9 +23,9 @@ class CHAR_ELECTRA_POS_LSTM(ElectraPreTrainedModel):
         self.num_flag_pos = 15 # "##" 대신 마지막 인덱스에 1
 
         ''' POS Embedding '''
-        self.pos_embedding_1 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
-        self.pos_embedding_2 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
-        self.pos_embedding_3 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
+        self.pos_embedding_1 = nn.Embedding(self.num_pos_labels, self.pos_embed_dim)
+        self.pos_embedding_2 = nn.Embedding(self.num_pos_labels, self.pos_embed_dim)
+        self.pos_embedding_3 = nn.Embedding(self.num_pos_labels, self.pos_embed_dim)
 
         ''' POS Bit Flag'''
         # self.pos_flag_embedding = nn.Embedding(self.num_flag_pos, self.pos_embed_dim)
