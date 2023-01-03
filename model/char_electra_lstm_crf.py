@@ -18,17 +18,17 @@ class CHAR_ELECTRA_POS_LSTM(ElectraPreTrainedModel):
         self.max_seq_len = config.max_seq_len
         self.num_labels = config.num_labels
         self.num_pos_labels = config.num_pos_labels
-        self.pos_embed_out_dim = 100
+        self.pos_embed_dim = 100
         self.dropout_rate = 0.1
         self.num_flag_pos = 15 # "##" 대신 마지막 인덱스에 1
 
-        # pos tag embedding
+        ''' POS Embedding '''
         # self.pos_embedding_1 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
         # self.pos_embedding_2 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
         # self.pos_embedding_3 = nn.Embedding(self.num_pos_labels, self.pos_embed_out_dim)
 
-        # POS bit flag
-        self.pos_flag_embedding = nn.Embedding(self.num_flag_pos, self.pos_embed_out_dim)
+        ''' POS Bit Flag'''
+        self.pos_flag_embedding = nn.Embedding(self.num_flag_pos, self.pos_embed_dim)
 
         '''
             @ Note
@@ -41,7 +41,7 @@ class CHAR_ELECTRA_POS_LSTM(ElectraPreTrainedModel):
         # self.dropout = nn.Dropout(self.dropout_rate)
 
         # LSTM
-        self.lstm_dim_size = config.hidden_size + (self.pos_embed_out_dim * self.num_flag_pos)
+        self.lstm_dim_size = config.hidden_size + (self.pos_embed_dim * self.num_flag_pos)
         self.lstm = nn.LSTM(input_size=self.lstm_dim_size, hidden_size=(self.lstm_dim_size // 2),
                             num_layers=1, batch_first=True, bidirectional=True, dropout=self.dropout_rate)
 
@@ -50,9 +50,9 @@ class CHAR_ELECTRA_POS_LSTM(ElectraPreTrainedModel):
         self.crf = CRF(num_tags=config.num_labels, batch_first=True)
 
         ''' 뒷 부분에서 POS Embedding 추가하는 거 '''
-        self.post_pos_embed_dim = config.hidden_size + (self.pos_embed_dim * 14)
-        self.post_pos_embedding = MultiNonLinearClassifier(self.post_pos_embed_dim,
-                                                           config.num_labels, self.dropout_rate)
+        # self.post_pos_embed_dim = config.hidden_size + (self.pos_embed_dim * self.num_flag_pos)
+        # self.post_pos_embedding = MultiNonLinearClassifier(self.post_pos_embed_dim,
+        #                                                    config.num_labels, self.dropout_rate)
 
         # Initialize weights and apply final processing
         self.post_init()
@@ -96,8 +96,8 @@ class CHAR_ELECTRA_POS_LSTM(ElectraPreTrainedModel):
         logits = self.classifier(lstm_out) # [128, 128, 31]
 
         ''' 뒷 부분에서 POS Embedding 추가하는 거 '''
-        concat_pos_flag = torch.cat([lstm_out, pos_flag_out])
-        logits = self.post_pos_embedding(concat_pos_flag)
+        # concat_pos_flag = torch.cat([lstm_out, pos_flag_out])
+        # logits = self.post_pos_embedding(concat_pos_flag)
 
         # Get Loss
         # loss = None
