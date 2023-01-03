@@ -1239,7 +1239,7 @@ def check_count_morp(src_sent_list):
 def make_mecab_morp_npy(
         tokenizer_name: str, src_list: List[Sentence],
         token_max_len: int = 128, debug_mode: bool = False,
-        save_model_dir: str = None, is_make_pos_flag: bool = False,
+        save_model_dir: str = None,
         target_n_pos: int = 14, target_tag_list: List[str] = []
 ):
 #==========================================================================================
@@ -1812,7 +1812,7 @@ if "__main__" == __name__:
     '''
 
     # make *.npy (use Mecab)
-    make_npy_mode = "character"
+    make_npy_mode = "morp-aware"
     print(f"[mecab_npy_maker] make_npy_mode: {make_npy_mode}")
     if "eojeol" == make_npy_mode:
         make_mecab_eojeol_npy(
@@ -1842,8 +1842,8 @@ if "__main__" == __name__:
         # target_tag_list = [v for k, v in MECAB_POS_TAG.items() if 0 != k]
         make_mecab_morp_npy(
             tokenizer_name="monologg/koelectra-base-v3-discriminator",
-            src_list=all_sent_list, token_max_len=128, debug_mode=True,
-            save_model_dir="mecab_morp_electra", is_make_pos_flag=True,
+            src_list=all_sent_list, token_max_len=128, debug_mode=False,
+            save_model_dir="mecab_morp_electra",
             target_n_pos=target_n_pos, target_tag_list=target_tag_list
         )
     elif "character" == make_npy_mode:
@@ -1858,3 +1858,5 @@ if "__main__" == __name__:
             save_model_dir="mecab_char_electra",
             target_n_pos=target_n_pos, target_tag_list=target_tag_list
         )
+    else:
+        raise Exception(f"Check making mode: {make_npy_mode}")

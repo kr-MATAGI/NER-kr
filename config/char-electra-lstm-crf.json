@@ -1,7 +1,7 @@
 {
   "task": "custom",
   "data_dir": "data",
-  "ckpt_dir": "ckpt-electra-bilstm-crf-mecab-char-post-pos-flag-0103",
+  "ckpt_dir": "ckpt-electra-mecab-char-add-front-pos-embed-0103",
   "train_npy": "./corpus/npy/mecab_char_electra/train.npy",
   "dev_npy": "./corpus/npy/mecab_char_electra/dev.npy",
   "test_npy": "./corpus/npy/mecab_char_electra/test.npy",
@@ -22,7 +22,7 @@
   "no_cuda": false,
   "model_type": "monologg/kocharelectra-base-discriminator",
   "model_name_or_path": "monologg/kocharelectra-base-discriminator",
-  "output_dir": "klue-electra-bilstm-crf-mecab-char-post-pos-flag-0103",
+  "output_dir": "klue-electra-mecab-char-add-front-pos-embed-0103",
   "seed": 42,
   "train_batch_size": 64,
   "eval_batch_size": 128,

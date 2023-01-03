@@ -64,21 +64,23 @@ class CHAR_ELECTRA_POS_LSTM(ElectraPreTrainedModel):
     #===================================
         # pos embedding
         # pos_tag_ids : [batch_size, seq_len, num_pos_tags]
-        pos_embed_1 = self.pos_embedding_1(pos_tag_ids[:, :, 0]) # [batch_size, seq_len, pos_tag_embed]
-        pos_embed_2 = self.pos_embedding_2(pos_tag_ids[:, :, 1])  # [batch_size, seq_len, pos_tag_embed]
-        pos_embed_3 = self.pos_embedding_3(pos_tag_ids[:, :, 2])  # [batch_size, seq_len, pos_tag_embed]
+        pos_embed_1 = self.pos_embedding_1(pos_ids[:, :, 0]) # [batch_size, seq_len, pos_tag_embed]
+        pos_embed_2 = self.pos_embedding_2(pos_ids[:, :, 1])  # [batch_size, seq_len, pos_tag_embed]
+        pos_embed_3 = self.pos_embedding_3(pos_ids[:, :, 2])  # [batch_size, seq_len, pos_tag_embed]
 
         pos_embed_1 = F.relu(pos_embed_1)
         pos_embed_2 = F.relu(pos_embed_2)
         pos_embed_3 = F.relu(pos_embed_3)
 
-        ''' Add POS Embedding '''
-        # add_pos_embed = torch.sum(torch.stack([pos_embed_1, pos_embed_2, pos_embed_3], 0))
-
         electra_outputs = self.electra(input_ids=input_ids,
                                        attention_mask=attention_mask,
                                        token_type_ids=token_type_ids)
         electra_outputs = electra_outputs.last_hidden_state # [batch_size, seq_len, hidden_size]
+
+        ''' Add POS Embedding '''
+        add_pos_embed = torch.add(pos_embed_1, pos_embed_2)
+        add_pos_embed = torch.add(add_pos_embed, pos_embed_3)
+        concat_pos = torch.concat([electra_outputs, add_pos_embed], dim=-1)
 
         # POS Flag
         '''
@@ -88,11 +90,11 @@ class CHAR_ELECTRA_POS_LSTM(ElectraPreTrainedModel):
         pos_flag_out = pos_flag_out.reshape(pos_flag_size[0], pos_flag_size[1], -1)
         '''
 
-        concat_pos_embed = torch.concat([pos_embed_1, pos_embed_2, pos_embed_3], dim=-1)
+        # concat_pos_embed = torch.concat([pos_embed_1, pos_embed_2, pos_embed_3], dim=-1)
         # concat_embed = torch.concat([electra_outputs, pos_flag_out], dim=-1)
 
         # LSTM
-        lstm_out, _ = self.lstm(concat_pos_embed) # [batch_size, seq_len, hidden_size]
+        lstm_out, _ = self.lstm(concat_pos) # [batch_size, seq_len, hidden_size]
 
         # Classifier
         logits = self.classifier(lstm_out) # [128, 128, 31]
