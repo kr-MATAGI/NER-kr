@@ -45,8 +45,8 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
 
         # Classifier
         ''' 앞 부분에서 POS 추가할 때 사용 '''
-        # self.classifier_dim = config.hidden_size + (self.pos_embed_dim)
-        # self.classifier = nn.Linear(self.classifier_dim, config.num_labels)
+        self.classifier_dim = config.hidden_size #+ (self.pos_embed_dim)
+        self.classifier = nn.Linear(self.classifier_dim, config.num_labels)
         self.crf = CRF(num_tags=config.num_labels, batch_first=True)
 
         # Initialize weights and apply final processing
