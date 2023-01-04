@@ -1,7 +1,7 @@
 {
   "task": "custom",
   "data_dir": "data",
-  "ckpt_dir": "ckpt-electra-mecab-span-ner-14pos-8span-wp-with-pos-change-lr-0105",
+  "ckpt_dir": "ckpt-electra-mecab-span-ner-14pos-8span-morp-aware-no-pos-0105-re",
   "train_npy": "./corpus/npy/span_ner/train.npy",
   "dev_npy": "./corpus/npy/span_ner/dev.npy",
   "test_npy": "./corpus/npy/span_ner/test.npy",
@@ -22,12 +22,12 @@
   "no_cuda": false,
   "model_type": "monologg/koelectra-base-v3-discriminator",
   "model_name_or_path": "monologg/koelectra-base-v3-discriminator",
-  "output_dir": "electra-mecab-span-ner-14pos-8span--wp-with-pos-change-lr-0105",
+  "output_dir": "electra-mecab-span-ner-14pos-8span-morp-aware-no-pos-0105-re",
   "seed": 42,
   "train_batch_size": 64,
   "eval_batch_size": 128,
   "logging_steps": 3696,
   "save_steps": 1876,
-  "learning_rate": 3e-5,
+  "learning_rate": 5e-5,
   "n_gpu": 1
 }
