@@ -1,7 +1,7 @@
 {
   "task": "custom",
   "data_dir": "data",
-  "ckpt_dir": "ckpt-electra-mecab-morp-aware-add-post-pos-embed-0104",
+  "ckpt_dir": "ckpt-electra-mecab-morp-aware-front-pos-flag-0104",
   "train_npy": "./corpus/npy/mecab_morp_electra/train.npy",
   "dev_npy": "./corpus/npy/mecab_morp_electra/dev.npy",
   "test_npy": "./corpus/npy/mecab_morp_electra/test.npy",
@@ -22,7 +22,7 @@
   "no_cuda": false,
   "model_type": "monologg/koelectra-base-v3-discriminator",
   "model_name_or_path": "monologg/koelectra-base-v3-discriminator",
-  "output_dir": "electra-electra-mecab-wordpiece-add-post-pos-embed-0104",
+  "output_dir": "electra-electra-mecab-morp-aware-front-pos-flag-0104",
   "seed": 42,
   "train_batch_size": 64,
   "eval_batch_size": 128,
