@@ -100,13 +100,13 @@ class ElectraSpanNER(ElectraPreTrainedModel):
 
         # [batch, n_span, num_pos]
         ''' Flag POS Embedding '''
-        # span_morp_rep = self.pos_embedding(pos_ids) # [batch, n_span, num_pos, pos_emb_dim]
-        # span_morp_rep = F.relu(span_morp_rep)
-        # morp_rep_size = span_morp_rep.size()
-        # span_morp_rep = span_morp_rep.reshape(morp_rep_size[0], morp_rep_size[1], -1)
+        span_morp_rep = self.pos_embedding(pos_ids) # [batch, n_span, num_pos, pos_emb_dim]
+        span_morp_rep = F.relu(span_morp_rep)
+        morp_rep_size = span_morp_rep.size()
+        span_morp_rep = span_morp_rep.reshape(morp_rep_size[0], morp_rep_size[1], -1)
 
-        all_span_rep = torch.cat((all_span_rep, span_len_rep), dim=-1)
-        # all_span_rep = torch.cat((all_span_rep, span_len_rep, span_morp_rep), dim=-1)
+        # all_span_rep = torch.cat((all_span_rep, span_len_rep), dim=-1)
+        all_span_rep = torch.cat((all_span_rep, span_len_rep, span_morp_rep), dim=-1)
         all_span_rep = self.span_embedding(all_span_rep) # [batch, n_span, n_class] : [64, 502, 16]
         predict_prob = self.softmax(all_span_rep)
 
