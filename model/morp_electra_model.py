@@ -100,7 +100,7 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
 
         # Classifier
         concat_pos = torch.concat([enc_out, concat_pos], dim=-1)
-        logits = self.classifier(enc_out)
+        logits = self.classifier(concat_pos)
 
         ''' 뒷 부분에서 POS Embedding 추가하는 거 '''
         # concat_pos_flag = torch.cat([enc_out, concat_pos], dim=-1)
