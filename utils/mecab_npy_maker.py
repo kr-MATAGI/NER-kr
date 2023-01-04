@@ -970,7 +970,7 @@ def save_mecab_morp_npy(npy_dict: Dict[str, List], src_list_len, save_dir: str =
 
     np.save(root_path + "/train_pos_flag", train_pos_flag_np)
     np.save(root_path + "/dev_pos_flag", dev_pos_flag_np)
-    np.save(root_path + "/test_pos_flag", test_pos_tag_np)
+    np.save(root_path + "/test_pos_flag", test_pos_flag_np)
 
     print(f"Complete - Save all npy files !")
 
