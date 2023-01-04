@@ -34,7 +34,7 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
         self.electra = ElectraModel.from_pretrained("monologg/koelectra-base-v3-discriminator", config=config)
 
         # LSTM
-        self.lstm_dim = config.hidden_size #+ (self.pos_embed_dim)
+        self.lstm_dim = config.hidden_size #+ (self.pos_embed_dim * 3)
         self.encoder = nn.LSTM(input_size=self.lstm_dim, hidden_size=(config.hidden_size // 2),
                                num_layers=1, batch_first=True, bidirectional=True)
 
@@ -94,11 +94,13 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
             hidden: [n_layers * n_directions, batch_size, hidden_dim]
             cell: [n_layers * n_directions, batch_size, hidden_dim]
         '''
+
+        # concat_pos = torch.cat([electra_outputs, concat_pos], dim=-1)
         enc_out, _ = self.encoder(electra_outputs) # [batch_size, seq_len, hidden_size]
 
         # Classifier
         concat_pos = torch.concat([enc_out, concat_pos], dim=-1)
-        logits = self.classifier(concat_pos)
+        logits = self.classifier(enc_out)
 
         ''' 뒷 부분에서 POS Embedding 추가하는 거 '''
         # concat_pos_flag = torch.cat([enc_out, concat_pos], dim=-1)
