@@ -45,7 +45,7 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
 
         # Classifier
         ''' 앞 부분에서 POS 추가할 때 사용 '''
-        self.classifier_dim = config.hidden_size + (self.pos_embed_dim * 3)
+        self.classifier_dim = config.hidden_size + (self.pos_embed_dim)
         self.classifier = nn.Linear(self.classifier_dim, config.num_labels)
         self.crf = CRF(num_tags=config.num_labels, batch_first=True)
 
@@ -74,12 +74,12 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
         pos_out_2 = F.relu(pos_out_2)
         pos_out_3 = F.relu(pos_out_3)
         # pos_out_4 = F.relu(pos_out_4)
-        concat_pos = torch.concat([pos_out_1, pos_out_2, pos_out_3], dim=-1)
+        # concat_pos = torch.concat([pos_out_1, pos_out_2, pos_out_3], dim=-1)
 
         ''' Add POS Embedding '''
-        # add_pos_embed = torch.add(pos_out_1, pos_out_2)
-        # add_pos_embed = torch.add(add_pos_embed, pos_out_3)
-        # concat_pos = torch.concat([electra_outputs, add_pos_embed], dim=-1)
+        add_pos_embed = torch.add(pos_out_1, pos_out_2)
+        add_pos_embed = torch.add(add_pos_embed, pos_out_3)
+        concat_pos = torch.concat([electra_outputs, add_pos_embed], dim=-1)
 
         ''' POS Flag '''
         # pos_flag_out = self.pos_flag_embedding(pos_ids)  # [batch, seq_len, num_pos, pos_emb_dim]
