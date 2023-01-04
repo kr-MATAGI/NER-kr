@@ -77,11 +77,11 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
                 "label_ids": batch["label_ids"].to(args.device),
                 "pos_ids": batch["pos_ids"].to(args.device),
 
-                # "all_span_idxs_ltoken": batch["all_span_idx"].to(args.device),
-                # "all_span_lens": batch["all_span_len"].to(args.device),
-                # "real_span_mask_ltoken": batch["real_span_mask"].to(args.device),
-                # "span_only_label": batch["span_only_label"].to(args.device),
-                # "mode": "eval"
+                "all_span_idxs_ltoken": batch["all_span_idx"].to(args.device),
+                "all_span_lens": batch["all_span_len"].to(args.device),
+                "real_span_mask_ltoken": batch["real_span_mask"].to(args.device),
+                "span_only_label": batch["span_only_label"].to(args.device),
+                "mode": "eval"
             }
 
             if 12 == g_user_select:
@@ -263,11 +263,11 @@ def train(args, model, train_dataset, dev_dataset):
                 "label_ids": batch["label_ids"].to(args.device),
                 "pos_ids": batch["pos_ids"].to(args.device),
 
-                # "all_span_idxs_ltoken": batch["all_span_idx"].to(args.device),
-                # "all_span_lens": batch["all_span_len"].to(args.device),
-                # "real_span_mask_ltoken": batch["real_span_mask"].to(args.device),
-                # "span_only_label": batch["span_only_label"].to(args.device),
-                # "mode": "train"
+                "all_span_idxs_ltoken": batch["all_span_idx"].to(args.device),
+                "all_span_lens": batch["all_span_len"].to(args.device),
+                "real_span_mask_ltoken": batch["real_span_mask"].to(args.device),
+                "span_only_label": batch["span_only_label"].to(args.device),
+                "mode": "train"
             }
 
             if 12 == g_user_select:
