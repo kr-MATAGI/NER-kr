@@ -31,7 +31,7 @@ class ElectraSpanNER(ElectraPreTrainedModel):
         # self.n_pos = 43 # 모든 품사 사용
 
         ''' 원본 Git에서는 Method 적용 개수에 따라 달라짐 '''
-        self.input_dim = self.hidden_size * 2 + self.token_len_emb_dim + self.span_len_emb_dim #+ (self.pos_emb_dim * self.n_pos)
+        self.input_dim = self.hidden_size * 2 + self.token_len_emb_dim + self.span_len_emb_dim + (self.pos_emb_dim * self.n_pos)
         self.model_dropout = 0.1
 
         # loss and softmax
