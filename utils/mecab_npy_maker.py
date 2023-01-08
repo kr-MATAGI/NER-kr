@@ -6,8 +6,8 @@ import pickle
 from dataclasses import dataclass, field
 from collections import deque
 
-# from eunjeon import Mecab # Window
-from konlpy.tag import Mecab # Linux
+from eunjeon import Mecab # Window
+# from konlpy.tag import Mecab # Linux
 
 from tag_def import ETRI_TAG, NIKL_POS_TAG, MECAB_POS_TAG
 from data_def import Sentence, NE, Morp, Word

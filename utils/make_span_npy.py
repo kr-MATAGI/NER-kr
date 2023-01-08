@@ -5,8 +5,8 @@ import copy
 import numpy as np
 import pickle
 
-# from eunjeon import Mecab
-from konlpy.tag import Mecab
+from eunjeon import Mecab
+# from konlpy.tag import Mecab
 
 from tag_def import ETRI_TAG, NIKL_POS_TAG, MECAB_POS_TAG
 from data_def import Sentence, NE, Morp, Word
@@ -360,6 +360,9 @@ def make_span_morp_aware_npy(tokenizer_name: str, src_list: List[Sentence],
         mecab_res = mecab.pos(src_item.text)
         # [('전창수', 'NNP', False), ('(', 'SSO', False), ('42', 'SN', False)]
         conv_mecab_res = convert_morp_connected_tokens(mecab_res, src_text=src_item.text)
+        print(mecab_res)
+        print(conv_mecab_res)
+        input()
 
         origin_tokens = []
         text_tokens = []
@@ -1303,7 +1306,7 @@ if "__main__" == __name__:
     # target_tag_list = [v for k, v in MECAB_POS_TAG.items() if 0 != k]
 
     start_time = time.time()
-    making_mode = "wordpiece"
+    making_mode = "character"
     if "character" == making_mode:
         tokenizer_name = "monologg/kocharelectra-base-discriminator"
         make_span_char_npy(
@@ -1317,7 +1320,7 @@ if "__main__" == __name__:
         make_span_wordpiece_npy(
             tokenizer_name=tokenizer_name,
             src_list=all_sent_list, seq_max_len=128, span_max_len=8,
-            debug_mode=False, save_npy_path="span_ner_wp",
+            debug_mode=True, save_npy_path="span_ner_wp",
             target_n_pos=target_n_pos, target_tag_list=target_tag_list, train_data_ratio=8,
         )
     elif "morp-aware" == making_mode:
