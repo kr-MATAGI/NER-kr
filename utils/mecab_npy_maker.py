@@ -557,10 +557,9 @@ def mecab_pos_unk_count(src_sent_list: str = ""):
 
 #==========================================================================================
 def make_mecab_wordpiece_npy(
-        tokenizer_name: str, src_list: List[Sentence],
+        tokenizer_name: str, src_list: List[Sentence], target_n_pos: int,
         token_max_len: int = 128, debug_mode: bool = False,
         save_model_dir: str = None,
-        target_n_pos: int = 20
 ):
 #==========================================================================================
     print("[make_mecab_wordpiece_npy] START !, src_list.len: ", len(src_list))
@@ -663,16 +662,13 @@ def make_mecab_wordpiece_npy(
                 if 0 == p_id:
                     continue
                 conv_flag_idx = conv_mecab_pos_groping_index(pos_ids2tag[p_id])
-                if 10 == conv_flag_idx:
+                if 11 == conv_flag_idx:
                     josa_ids = conv_mecab_josa_index(pos_ids2tag[p_id])
                     curr_token_bit_flag[conv_flag_idx] = josa_ids
                 else:
                     curr_token_bit_flag[conv_flag_idx] = 1
             pos_bit_flags.append(curr_token_bit_flag)
         # end loop, pos_bit_flag
-
-        ''' Switching For POS Bit Flag '''
-        # pos_ids = pos_bit_flags
 
         ''' For POS Embedding '''
         max_pos_size = 10
@@ -792,45 +788,47 @@ def conv_mecab_pos_groping_index(origin_pos: str):
     ret_conv_idx = None
     if origin_pos in ["NNG", "NNP"]: # 일반 명사, 고유 명사
         ret_conv_idx = 0
-    elif origin_pos in ["NNB", "NNBC"]: # 의존 명사, 단위를 나타내는 명사
+    elif origin_pos in ["NNB"]: # 의존 명사
         ret_conv_idx = 1
-    elif origin_pos in ["SN", "NR"]: # 숫자, 수사
+    elif origin_pos in ["NNBC"]:  # 단위를 나타내는 명사
         ret_conv_idx = 2
-    elif origin_pos in ["NP"]: # 대명사
+    elif origin_pos in ["SN", "NR"]: # 숫자, 수사
         ret_conv_idx = 3
-    elif origin_pos in ["VV"]: # 동사
+    elif origin_pos in ["NP"]: # 대명사
         ret_conv_idx = 4
-    elif origin_pos in ["VA"]: # 형용사
+    elif origin_pos in ["VV"]: # 동사
         ret_conv_idx = 5
-    elif origin_pos in ["VX"]: # 보조 용언
+    elif origin_pos in ["VA"]: # 형용사
         ret_conv_idx = 6
-    elif origin_pos in ["VCP", "VCN"]: # 긍정 지정사, 부정 지정사
+    elif origin_pos in ["VX"]: # 보조 용언
         ret_conv_idx = 7
-    elif origin_pos in ["MM", "MAG", "MAJ"]: # 관형사, 일반 부사, 접속 부사
+    elif origin_pos in ["VCP", "VCN"]: # 긍정 지정사, 부정 지정사
         ret_conv_idx = 8
-    elif origin_pos in ["IC"]: # 감탄사
+    elif origin_pos in ["MM", "MAG", "MAJ"]: # 관형사, 일반 부사, 접속 부사
         ret_conv_idx = 9
+    elif origin_pos in ["IC"]: # 감탄사
+        ret_conv_idx = 10
     elif origin_pos in ["JKS", "JKC", "JKG", "JKO", "JKB", "JKV", "JKQ"]:
         # 주격 조사, 보격 조사, 관형격 조사, 목적격 조사, 부사격 조사, 호격 조사, 인용격 조사
-        ret_conv_idx = 10
-    elif origin_pos in ["JX"]: # 보조사
         ret_conv_idx = 11
-    elif origin_pos in ["JC"]: # 접속 조사
+    elif origin_pos in ["JX"]: # 보조사
         ret_conv_idx = 12
+    elif origin_pos in ["JC"]: # 접속 조사
+        ret_conv_idx = 13
     elif origin_pos in ["EP", "EF", "EC", "ETN", "ETM"]:
         # 선어말 어미, 종결 어미, 연결 어미, 명사형 전성 어미, 관형형 전성 어미
-        ret_conv_idx = 13
-    elif origin_pos in ["XPN", "XSN"]: # 체언 접두사, 명사 파생 접미사
         ret_conv_idx = 14
-    elif origin_pos in ["XSV", "XSA", "XR"]: # 동사 파생 접미사, 형용사 파생 접미사, 어근
+    elif origin_pos in ["XPN", "XSN"]: # 체언 접두사, 명사 파생 접미사
         ret_conv_idx = 15
+    elif origin_pos in ["XSV", "XSA", "XR"]: # 동사 파생 접미사, 형용사 파생 접미사, 어근
+        ret_conv_idx = 16
     elif origin_pos in ["SF", "SE", "SSO", "SSC", "SC", "SY"]:
         # (마침표, 물음표, 느낌표), 줄임표, 여는 괄호, 닫는 괄호, 구분자, (붙임표, 기타 기호)
-        ret_conv_idx = 16
-    elif origin_pos in ["SL"]: # 외국어
         ret_conv_idx = 17
-    elif origin_pos in ["SH"]: # 한자
+    elif origin_pos in ["SL"]: # 외국어
         ret_conv_idx = 18
+    elif origin_pos in ["SH"]: # 한자
+        ret_conv_idx = 19
     
     return ret_conv_idx
 
