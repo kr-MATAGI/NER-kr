@@ -35,7 +35,7 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
 
         # LSTM
         self.lstm_dim = config.hidden_size + (self.pos_embed_dim * self.num_flag_pos)
-        self.encoder = nn.LSTM(input_size=self.lstm_dim, hidden_size=(config.hidden_size // 2),
+        self.encoder = nn.LSTM(input_size=self.lstm_dim, hidden_size=(self.lstm_dim // 2),
                                num_layers=1, batch_first=True, bidirectional=True)
 
         ''' 뒷 부분에서 POS bit flag 추가하는 거 '''
@@ -86,12 +86,10 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
         pos_flag_out = F.relu(pos_flag_out)
         pos_flag_size = pos_flag_out.size()
         pos_flag_out = pos_flag_out.reshape(pos_flag_size[0], pos_flag_size[1], -1)
-        print(pos_flag_out.shape)
 
         # LSTM
         concat_pos = torch.concat([electra_outputs, pos_flag_out], dim=-1)
         enc_out, _ = self.encoder(concat_pos) # [batch_size, seq_len, hidden_size]
-        print(enc_out.shape)
         # Classifier
         # concat_pos = torch.concat([enc_out, add_pos_embed], dim=-1)
         logits = self.classifier(enc_out)
