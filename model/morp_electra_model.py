@@ -86,6 +86,7 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
         pos_flag_out = F.relu(pos_flag_out)
         pos_flag_size = pos_flag_out.size()
         pos_flag_out = pos_flag_out.reshape(pos_flag_size[0], pos_flag_size[1], -1)
+        print(pos_flag_out.shape)
         # concat_pos = torch.concat([electra_outputs, pos_flag_out], dim=-1)
 
         # LSTM
