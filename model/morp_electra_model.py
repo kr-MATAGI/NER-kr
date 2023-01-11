@@ -97,7 +97,7 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
 
         concat_pos = torch.cat([electra_outputs, pos_flag_out], dim=-1)
         enc_out, _ = self.encoder(concat_pos) # [batch_size, seq_len, hidden_size]
-
+        print(enc_out.shape)
         # Classifier
         # concat_pos = torch.concat([enc_out, add_pos_embed], dim=-1)
         logits = self.classifier(enc_out)
