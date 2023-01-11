@@ -665,9 +665,6 @@ def make_mecab_wordpiece_npy(
                     curr_token_bit_flag[conv_flag_idx] = josa_ids
                 else:
                     curr_token_bit_flag[conv_flag_idx] = 1
-                print(pos_ids2tag[p_id], conv_flag_idx)
-            print(curr_token_bit_flag)
-            input()
             pos_bit_flags.append(curr_token_bit_flag)
         # end loop, pos_bit_flag
 
@@ -735,16 +732,17 @@ def make_mecab_wordpiece_npy(
 
         if token_max_len <= len(pos_ids):
             pos_ids = pos_ids[:token_max_len - 1]
-            ''' For POS Bit Flag '''
-            # pos_ids.append([0 for _ in range(target_n_pos)])  # [SEP]
-            ''' For POS Embedding '''
             pos_ids.append([0 for _ in range(max_pos_size)]) # SEP
         else:
             pos_ids_size = len(pos_ids)
-            ''' For POS Bit Flag '''
-            # pos_ids += [[0 for _ in range(target_n_pos)]] * (token_max_len - pos_ids_size)
-            ''' For POS Embedding '''
             pos_ids += [[0 for _ in range(max_pos_size)]] * (token_max_len - pos_ids_size)
+
+        if token_max_len <= len(pos_bit_flags):
+            pos_bit_flags = pos_bit_flags[:token_max_len]
+            pos_bit_flags.append([0 for _ in range(target_n_pos)])  # [SEP]
+        else:
+            pos_ids_size = len(pos_bit_flags)
+            pos_bit_flags += [[0 for _ in range(target_n_pos)]] * (token_max_len - pos_ids_size)
 
         if token_max_len <= len(label_ids):
             label_ids = label_ids[:token_max_len - 1]
@@ -758,6 +756,7 @@ def make_mecab_wordpiece_npy(
         assert len(token_type_ids) == token_max_len, f"{len(token_type_ids)}"
         assert len(label_ids) == token_max_len, f"{len(label_ids)}"
         assert len(pos_ids) == token_max_len, f"{len(pos_ids)}"
+        assert len(pos_bit_flags) == token_max_len, f"{len(pos_bit_flags)}"
 
         # Insert npy_dict
         npy_dict["input_ids"].append(input_ids)
@@ -765,6 +764,7 @@ def make_mecab_wordpiece_npy(
         npy_dict["token_type_ids"].append(token_type_ids)
         npy_dict["labels"].append(label_ids)
         npy_dict["pos_ids"].append(pos_ids)
+        npy_dict["pos_flag"].append(pos_bit_flags)
 
         # Debug mode
         if debug_mode:
@@ -789,7 +789,7 @@ def conv_mecab_pos_groping_index(origin_pos: str):
     ret_conv_idx = None
     if origin_pos in ["NNG", "NNP"]: # 일반 명사, 고유 명사
         ret_conv_idx = 0
-    elif origin_pos in ["NNB", "NNP"]: # 의존 명사, 단위를 나타내는 명사
+    elif origin_pos in ["NNB", "NNBC"]: # 의존 명사, 단위를 나타내는 명사
         ret_conv_idx = 1
     elif origin_pos in ["SN", "NR"]: # 숫자, 수사
         ret_conv_idx = 2
@@ -987,7 +987,7 @@ def save_mecab_morp_npy(npy_dict: Dict[str, List], src_list_len, save_dir: str =
     split_size = int(src_list_len * 0.1)
     train_size = split_size * 8
     valid_size = train_size + split_size
-    print(split_size, train_size, valid_size)
+    print(f"split_size: {split_size}, train_size: {train_size}, valid_size: {valid_size}")
 
     # Train
     train_np = [npy_dict["input_ids"][:train_size],
@@ -1035,9 +1035,9 @@ def save_mecab_morp_npy(npy_dict: Dict[str, List], src_list_len, save_dir: str =
     np.save(root_path + "/test", test_np)
 
     # save labels
-    np.save(root_path + "/train_labels", train_labels_np)
-    np.save(root_path + "/dev_labels", dev_labels_np)
-    np.save(root_path + "/test_labels", test_labels_np)
+    np.save(root_path + "/train_label_ids", train_labels_np)
+    np.save(root_path + "/dev_label_ids", dev_labels_np)
+    np.save(root_path + "/test_label_ids", test_labels_np)
 
     np.save(root_path + "/train_pos_ids", train_pos_tag_np)
     np.save(root_path + "/dev_pos_ids", dev_pos_tag_np)
@@ -1903,7 +1903,7 @@ if "__main__" == __name__:
         target_n_pos = 19
         make_mecab_wordpiece_npy(
             tokenizer_name="monologg/koelectra-base-v3-discriminator",
-            src_list=all_sent_list, token_max_len=128, debug_mode=True,
+            src_list=all_sent_list, token_max_len=128, debug_mode=False,
             save_model_dir="mecab_wordpiece_electra", target_n_pos=target_n_pos
         )
     elif "morp-aware" == make_npy_mode:
