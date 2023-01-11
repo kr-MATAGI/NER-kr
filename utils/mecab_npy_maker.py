@@ -741,7 +741,7 @@ def make_mecab_wordpiece_npy(
             pos_ids += [[0 for _ in range(max_pos_size)]] * (token_max_len - pos_ids_size)
 
         if token_max_len <= len(pos_bit_flags):
-            pos_bit_flags = pos_bit_flags[:token_max_len]
+            pos_bit_flags = pos_bit_flags[:token_max_len - 1]
             pos_bit_flags.append([0 for _ in range(target_n_pos)])  # [SEP]
         else:
             pos_ids_size = len(pos_bit_flags)
