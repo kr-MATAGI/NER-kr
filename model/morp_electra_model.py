@@ -87,16 +87,9 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
         pos_flag_size = pos_flag_out.size()
         pos_flag_out = pos_flag_out.reshape(pos_flag_size[0], pos_flag_size[1], -1)
         print(pos_flag_out.shape)
-        # concat_pos = torch.concat([electra_outputs, pos_flag_out], dim=-1)
 
         # LSTM
-        '''
-            output: [seq_len, batch_size, hidden_dim * n_direction]
-            hidden: [n_layers * n_directions, batch_size, hidden_dim]
-            cell: [n_layers * n_directions, batch_size, hidden_dim]
-        '''
-
-        concat_pos = torch.cat([electra_outputs, pos_flag_out], dim=-1)
+        concat_pos = torch.concat([electra_outputs, pos_flag_out], dim=-1)
         enc_out, _ = self.encoder(concat_pos) # [batch_size, seq_len, hidden_size]
         print(enc_out.shape)
         # Classifier
