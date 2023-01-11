@@ -557,7 +557,7 @@ def make_mecab_wordpiece_npy(
         tokenizer_name: str, src_list: List[Sentence],
         token_max_len: int = 128, debug_mode: bool = False,
         save_model_dir: str = None,
-        target_n_pos: int = 14, target_tag_list: List[str] = []
+        target_n_pos: int = 20
 ):
 #==========================================================================================
     print("[make_mecab_wordpiece_npy] START !, src_list.len: ", len(src_list))
@@ -570,7 +570,8 @@ def make_mecab_wordpiece_npy(
         "labels": [],
         "attention_mask": [],
         "token_type_ids": [],
-        "pos_ids": []
+        "pos_ids": [],
+        "pos_flag": []
     }
 
     # Init
@@ -652,17 +653,22 @@ def make_mecab_wordpiece_npy(
         # input()
 
         # POS bit flag
-        target_tag2ids = {pos_tag2ids[x]: i for i, x in enumerate(target_tag_list)}
         pos_bit_flags = []
         for pos in pos_ids:
-            curr_pos_bit_flag = [0 for _ in range(target_n_pos)]
+            curr_token_bit_flag = [0 for _ in range(target_n_pos)]
             for p_id in pos:
-                if p_id in target_tag2ids.keys():
-                    if 0 == target_tag2ids[p_id] or 1 == target_tag2ids[p_id]:
-                        curr_pos_bit_flag[0] = 1
-                    else:
-                        curr_pos_bit_flag[target_tag2ids[p_id] - 1] = 1
-            pos_bit_flags.append(curr_pos_bit_flag)
+                if 0 == p_id:
+                    continue
+                conv_flag_idx = conv_mecab_pos_groping_index(pos_ids2tag[p_id])
+                if 10 == conv_flag_idx:
+                    josa_ids = conv_mecab_josa_index(pos_ids2tag[p_id])
+                    curr_token_bit_flag[conv_flag_idx] = josa_ids
+                else:
+                    curr_token_bit_flag[conv_flag_idx] = 1
+                print(pos_ids2tag[p_id], conv_flag_idx)
+            print(curr_token_bit_flag)
+            input()
+            pos_bit_flags.append(curr_token_bit_flag)
         # end loop, pos_bit_flag
 
         ''' Switching For POS Bit Flag '''
@@ -776,6 +782,75 @@ def make_mecab_wordpiece_npy(
 
     if not debug_mode:
         save_mecab_morp_npy(npy_dict, src_list_len=total_data_count, save_dir=save_model_dir)
+
+#==========================================================================================
+def conv_mecab_pos_groping_index(origin_pos: str):
+#==========================================================================================
+    ret_conv_idx = None
+    if origin_pos in ["NNG", "NNP"]: # 일반 명사, 고유 명사
+        ret_conv_idx = 0
+    elif origin_pos in ["NNB", "NNP"]: # 의존 명사, 단위를 나타내는 명사
+        ret_conv_idx = 1
+    elif origin_pos in ["SN", "NR"]: # 숫자, 수사
+        ret_conv_idx = 2
+    elif origin_pos in ["NP"]: # 대명사
+        ret_conv_idx = 3
+    elif origin_pos in ["VV"]: # 동사
+        ret_conv_idx = 4
+    elif origin_pos in ["VA"]: # 형용사
+        ret_conv_idx = 5
+    elif origin_pos in ["VX"]: # 보조 용언
+        ret_conv_idx = 6
+    elif origin_pos in ["VCP", "VCN"]: # 긍정 지정사, 부정 지정사
+        ret_conv_idx = 7
+    elif origin_pos in ["MM", "MAG", "MAJ"]: # 관형사, 일반 부사, 접속 부사
+        ret_conv_idx = 8
+    elif origin_pos in ["IC"]: # 감탄사
+        ret_conv_idx = 9
+    elif origin_pos in ["JKS", "JKC", "JKG", "JKO", "JKB", "JKV", "JKQ"]:
+        # 주격 조사, 보격 조사, 관형격 조사, 목적격 조사, 부사격 조사, 호격 조사, 인용격 조사
+        ret_conv_idx = 10
+    elif origin_pos in ["JX"]: # 보조사
+        ret_conv_idx = 11
+    elif origin_pos in ["JC"]: # 접속 조사
+        ret_conv_idx = 12
+    elif origin_pos in ["EP", "EF", "EC", "ETN", "ETM"]:
+        # 선어말 어미, 종결 어미, 연결 어미, 명사형 전성 어미, 관형형 전성 어미
+        ret_conv_idx = 13
+    elif origin_pos in ["XPN", "XSN"]: # 체언 접두사, 명사 파생 접미사
+        ret_conv_idx = 14
+    elif origin_pos in ["XSV", "XSA", "XR"]: # 동사 파생 접미사, 형용사 파생 접미사, 어근
+        ret_conv_idx = 15
+    elif origin_pos in ["SF", "SE", "SSO", "SSC", "SC", "SY"]:
+        # (마침표, 물음표, 느낌표), 줄임표, 여는 괄호, 닫는 괄호, 구분자, (붙임표, 기타 기호)
+        ret_conv_idx = 16
+    elif origin_pos in ["SL"]: # 외국어
+        ret_conv_idx = 17
+    elif origin_pos in ["SH"]: # 한자
+        ret_conv_idx = 18
+    
+    return ret_conv_idx
+
+#==========================================================================================
+def conv_mecab_josa_index(origin_pos: str):
+#==========================================================================================
+    josa_ids = None
+    if "JKS" == origin_pos: # 주격 조사
+        josa_ids = 1
+    elif "JKC" == origin_pos: # 보격 조사
+        josa_ids = 2
+    elif "JKG" == origin_pos: # 관형격 조사
+        josa_ids = 3
+    elif "JKO" == origin_pos: # 목적격 조사
+        josa_ids = 4
+    elif "JKB" == origin_pos: # 부사격 조사
+        josa_ids = 5
+    elif "JKV" == origin_pos: # 호격 조사
+        josa_ids = 6
+    elif "JKQ" == origin_pos: # 인용격 조사
+        josa_ids = 7
+
+    return josa_ids
 
 #==========================================================================================
 def save_mecab_wordpiece_npy(npy_dict: Dict[str, List], src_list_len, save_dir: str = None):
@@ -1815,7 +1890,7 @@ if "__main__" == __name__:
     '''
 
     # make *.npy (use Mecab)
-    make_npy_mode = "morp-aware"
+    make_npy_mode = "wordpiece"
     print(f"[mecab_npy_maker] make_npy_mode: {make_npy_mode}")
     if "eojeol" == make_npy_mode:
         make_mecab_eojeol_npy(
@@ -1825,16 +1900,11 @@ if "__main__" == __name__:
             save_model_dir="mecab_split_josa_electra"
         )
     elif "wordpiece" == make_npy_mode:
-        target_n_pos = 14
-        target_tag_list = [  # NN은 NNG/NNP 통합
-            "NNG", "NNP", "SN", "NNB", "NR", "NNBC",
-            "JKS", "JKC", "JKG", "JKO", "JKB", "JX", "JC", "JKV", "JKQ",
-        ]
+        target_n_pos = 19
         make_mecab_wordpiece_npy(
             tokenizer_name="monologg/koelectra-base-v3-discriminator",
             src_list=all_sent_list, token_max_len=128, debug_mode=True,
-            save_model_dir="mecab_wordpiece_electra", target_n_pos=target_n_pos,
-            target_tag_list=target_tag_list
+            save_model_dir="mecab_wordpiece_electra", target_n_pos=target_n_pos
         )
     elif "morp-aware" == make_npy_mode:
         target_n_pos = 14
