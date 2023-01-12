@@ -701,6 +701,10 @@ def make_mecab_wordpiece_npy(
                     concat_item_list.append(("".join(concat_word), (m_idx, sub_idx)))
             concat_item_list = [x for x in concat_item_list if "".join(ne_char_list) in x[0]]
             concat_item_list.sort(key=lambda x: len(x[0]))
+            '''
+                @TODO: 가장 좋은 TEST Case에서 완전 일치 아니면 O하는 걸로 해보면?
+                근데 어차피 같은 형태의 개체명이면 동일하게 짤릴거 같은데
+            '''
             if 0 >= len(concat_item_list):
                 continue
             target_idx_pair = concat_item_list[0][1]
