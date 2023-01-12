@@ -662,7 +662,9 @@ def make_mecab_wordpiece_npy(
                 if 0 == p_id:
                     continue
                 conv_flag_idx = conv_mecab_pos_groping_index(pos_ids2tag[p_id])
-                if 11 == conv_flag_idx:
+                if not conv_flag_idx:
+                    continue
+                elif 11 == conv_flag_idx:
                     josa_ids = conv_mecab_josa_index(pos_ids2tag[p_id])
                     curr_token_bit_flag[conv_flag_idx] = josa_ids
                 else:
@@ -820,13 +822,13 @@ def conv_mecab_pos_groping_index(origin_pos: str):
         ret_conv_idx = 14
     elif origin_pos in ["XSV", "XSA", "XR"]: # 동사 파생 접미사, 형용사 파생 접미사, 어근
         ret_conv_idx = 15
-    elif origin_pos in ["SF", "SE", "SSO", "SSC", "SC", "SY"]:
-        # (마침표, 물음표, 느낌표), 줄임표, 여는 괄호, 닫는 괄호, 구분자, (붙임표, 기타 기호)
-        ret_conv_idx = 16
-    elif origin_pos in ["SL"]: # 외국어
-        ret_conv_idx = 17
-    elif origin_pos in ["SH"]: # 한자
-        ret_conv_idx = 18
+    # elif origin_pos in ["SF", "SE", "SSO", "SSC", "SC", "SY"]:
+    #     # (마침표, 물음표, 느낌표), 줄임표, 여는 괄호, 닫는 괄호, 구분자, (붙임표, 기타 기호)
+    #     ret_conv_idx = 16
+    # elif origin_pos in ["SL"]: # 외국어
+    #     ret_conv_idx = 17
+    # elif origin_pos in ["SH"]: # 한자
+    #     ret_conv_idx = 18
     
     return ret_conv_idx
 
@@ -1899,7 +1901,7 @@ if "__main__" == __name__:
             save_model_dir="mecab_split_josa_electra"
         )
     elif "wordpiece" == make_npy_mode:
-        target_n_pos = 19
+        target_n_pos = 16
         make_mecab_wordpiece_npy(
             tokenizer_name="monologg/koelectra-base-v3-discriminator",
             src_list=all_sent_list, token_max_len=128, debug_mode=False,
