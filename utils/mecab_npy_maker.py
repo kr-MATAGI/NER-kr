@@ -804,14 +804,14 @@ def conv_mecab_pos_groping_index(origin_pos: str):
         ret_conv_idx = 6
     elif origin_pos in ["VX"]: # 보조 용언
         ret_conv_idx = 7
-    elif origin_pos in ["VCP", "VCN"]: # 긍정 지정사, 부정 지정사
+    elif origin_pos in ["VCP"]: # 긍정 지정사
         ret_conv_idx = 8
-    elif origin_pos in ["MM", "MAG", "MAJ"]: # 관형사, 일반 부사, 접속 부사
+    elif origin_pos in ["MM", "MAG"]: # 관형사, 일반 부사
         ret_conv_idx = 9
     elif origin_pos in ["IC"]: # 감탄사
         ret_conv_idx = 10
-    elif origin_pos in ["JKS", "JKC", "JKG", "JKO", "JKB", "JKV", "JKQ"]:
-        # 주격 조사, 보격 조사, 관형격 조사, 목적격 조사, 부사격 조사, 호격 조사, 인용격 조사
+    elif origin_pos in ["JKS", "JKG", "JKO", "JKB"]:
+        # 주격 조사, 관형격 조사, 목적격 조사, 부사격 조사
         ret_conv_idx = 11
     elif origin_pos in ["JX"]: # 보조사
         ret_conv_idx = 12
@@ -838,18 +838,18 @@ def conv_mecab_josa_index(origin_pos: str):
     josa_ids = None
     if "JKS" == origin_pos: # 주격 조사
         josa_ids = 1
-    elif "JKC" == origin_pos: # 보격 조사
-        josa_ids = 2
+    # elif "JKC" == origin_pos: # 보격 조사
+    #     josa_ids = 2
     elif "JKG" == origin_pos: # 관형격 조사
-        josa_ids = 3
+        josa_ids = 2
     elif "JKO" == origin_pos: # 목적격 조사
-        josa_ids = 4
+        josa_ids = 3
     elif "JKB" == origin_pos: # 부사격 조사
-        josa_ids = 5
-    elif "JKV" == origin_pos: # 호격 조사
-        josa_ids = 6
-    elif "JKQ" == origin_pos: # 인용격 조사
-        josa_ids = 7
+        josa_ids = 4
+    # elif "JKV" == origin_pos: # 호격 조사
+    #     josa_ids = 6
+    # elif "JKQ" == origin_pos: # 인용격 조사
+    #     josa_ids = 7
 
     return josa_ids
 
