@@ -664,7 +664,7 @@ def make_mecab_wordpiece_npy(
                 conv_flag_idx = conv_mecab_pos_groping_index(pos_ids2tag[p_id])
                 if not conv_flag_idx:
                     continue
-                elif 11 == conv_flag_idx:
+                elif 9 == conv_flag_idx:
                     josa_ids = conv_mecab_josa_index(pos_ids2tag[p_id])
                     curr_token_bit_flag[conv_flag_idx] = josa_ids
                 else:
@@ -802,34 +802,26 @@ def conv_mecab_pos_groping_index(origin_pos: str):
         ret_conv_idx = 5
     elif origin_pos in ["VA"]: # 형용사
         ret_conv_idx = 6
-    elif origin_pos in ["VX"]: # 보조 용언
-        ret_conv_idx = 7
-    elif origin_pos in ["VCP"]: # 긍정 지정사
-        ret_conv_idx = 8
     elif origin_pos in ["MM"]: # 관형사
-        ret_conv_idx = 9
+        ret_conv_idx = 7
     elif origin_pos in ["MAG"]: # 일반 부사
-        ret_conv_idx = 10
+        ret_conv_idx = 8
     elif origin_pos in ["JKS", "JKG", "JKO", "JKB"]: # 주격 조사, 관형격 조사, 목적격 조사, 부사격 조사
-        ret_conv_idx = 11
+        ret_conv_idx = 9
     elif origin_pos in ["JX"]: # 보조사
-        ret_conv_idx = 12
+        ret_conv_idx = 10
     elif origin_pos in ["JC"]: # 접속 조사
+        ret_conv_idx = 11
+    elif origin_pos in ["EP", "EF", "EC"]: # 선어말 어미, 종결 어미, 연결 어미
+        ret_conv_idx = 12
+    elif origin_pos in ["XPN"]: # 체언 접두사
         ret_conv_idx = 13
-    elif origin_pos in ["EP", "EF", "EC", "ETN", "ETM", "XPN", "XSN"]:
-        # 선어말 어미, 종결 어미, 연결 어미, 명사형 전성 어미, 관형형 전성 어미, 체언 접두사, 명사 파생 접미사
+    elif origin_pos in ["XSN"]: # 명사 파생 접미사
         ret_conv_idx = 14
-    elif origin_pos in ["XSV", "XSA", "XR"]: # 동사 파생 접미사, 형용사 파생 접미사, 어근
+    elif origin_pos in ["ETN"]: # 명사형 전성 어미
         ret_conv_idx = 15
-    # elif origin_pos in ["SN"]: # 숫자
-    #     ret_conv_idx = 16
-    # elif origin_pos in ["SF", "SE", "SSO", "SSC", "SC", "SY"]:
-    #     # (마침표, 물음표, 느낌표), 줄임표, 여는 괄호, 닫는 괄호, 구분자, (붙임표, 기타 기호)
-    #     ret_conv_idx = 16
-    # elif origin_pos in ["SL"]: # 외국어
-    #     ret_conv_idx = 17
-    # elif origin_pos in ["SH"]: # 한자
-    #     ret_conv_idx = 18
+    elif origin_pos in ["ETM"]: # 관형형 전성 어미
+        ret_conv_idx = 16
     
     return ret_conv_idx
 
@@ -1902,7 +1894,7 @@ if "__main__" == __name__:
             save_model_dir="mecab_split_josa_electra"
         )
     elif "wordpiece" == make_npy_mode:
-        target_n_pos = 16
+        target_n_pos = 17
         make_mecab_wordpiece_npy(
             tokenizer_name="monologg/koelectra-base-v3-discriminator",
             src_list=all_sent_list, token_max_len=128, debug_mode=False,
