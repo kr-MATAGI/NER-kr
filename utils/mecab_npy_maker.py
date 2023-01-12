@@ -831,18 +831,12 @@ def conv_mecab_josa_index(origin_pos: str):
     josa_ids = None
     if "JKS" == origin_pos: # 주격 조사
         josa_ids = 1
-    # elif "JKC" == origin_pos: # 보격 조사
-    #     josa_ids = 2
     elif "JKG" == origin_pos: # 관형격 조사
         josa_ids = 2
     elif "JKO" == origin_pos: # 목적격 조사
         josa_ids = 3
     elif "JKB" == origin_pos: # 부사격 조사
         josa_ids = 4
-    # elif "JKV" == origin_pos: # 호격 조사
-    #     josa_ids = 6
-    # elif "JKQ" == origin_pos: # 인용격 조사
-    #     josa_ids = 7
 
     return josa_ids
 
