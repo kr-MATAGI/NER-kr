@@ -821,8 +821,8 @@ def conv_mecab_pos_groping_index(origin_pos: str):
         ret_conv_idx = 14
     elif origin_pos in ["XSV", "XSA", "XR"]: # 동사 파생 접미사, 형용사 파생 접미사, 어근
         ret_conv_idx = 15
-    elif origin_pos in ["SN"]: # 숫자
-        ret_conv_idx = 16
+    # elif origin_pos in ["SN"]: # 숫자
+    #     ret_conv_idx = 16
     # elif origin_pos in ["SF", "SE", "SSO", "SSC", "SC", "SY"]:
     #     # (마침표, 물음표, 느낌표), 줄임표, 여는 괄호, 닫는 괄호, 구분자, (붙임표, 기타 기호)
     #     ret_conv_idx = 16
@@ -1902,7 +1902,7 @@ if "__main__" == __name__:
             save_model_dir="mecab_split_josa_electra"
         )
     elif "wordpiece" == make_npy_mode:
-        target_n_pos = 17
+        target_n_pos = 16
         make_mecab_wordpiece_npy(
             tokenizer_name="monologg/koelectra-base-v3-discriminator",
             src_list=all_sent_list, token_max_len=128, debug_mode=False,
