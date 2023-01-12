@@ -794,7 +794,7 @@ def conv_mecab_pos_groping_index(origin_pos: str):
         ret_conv_idx = 1
     elif origin_pos in ["NNBC"]:  # 단위를 나타내는 명사
         ret_conv_idx = 2
-    elif origin_pos in ["SN", "NR"]: # 숫자, 수사
+    elif origin_pos in ["NR"]: # 수사
         ret_conv_idx = 3
     elif origin_pos in ["NP"]: # 대명사
         ret_conv_idx = 4
