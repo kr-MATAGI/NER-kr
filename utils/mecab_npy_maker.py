@@ -836,6 +836,8 @@ def conv_mecab_josa_index(origin_pos: str):
         josa_ids = 3
     elif "JKB" == origin_pos: # 부사격 조사
         josa_ids = 4
+    elif "JKC" == origin_pos: # 보격 조사
+        josa_ids = 5
 
     return josa_ids
 
@@ -1887,7 +1889,7 @@ if "__main__" == __name__:
             save_model_dir="mecab_split_josa_electra"
         )
     elif "wordpiece" == make_npy_mode:
-        target_n_pos = 17
+        target_n_pos = 14
         make_mecab_wordpiece_npy(
             tokenizer_name="monologg/koelectra-base-v3-discriminator",
             src_list=all_sent_list, token_max_len=128, debug_mode=False,
