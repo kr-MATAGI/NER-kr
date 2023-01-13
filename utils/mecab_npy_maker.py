@@ -1867,7 +1867,7 @@ if "__main__" == __name__:
     print("[mecab_npy_maker] __main__ !")
 
     # load corpus
-    pkl_src_path = "../corpus/pkl/NIKL_ne_pos_300M.pkl"
+    pkl_src_path = "../corpus/pkl/NIKL_ne_pos.pkl"
     all_sent_list = []
     all_sent_list = load_ne_entity_list(src_path=pkl_src_path)
 
