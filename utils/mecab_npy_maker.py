@@ -664,7 +664,7 @@ def make_mecab_wordpiece_npy(
                 conv_flag_idx = conv_mecab_pos_groping_index(pos_ids2tag[p_id])
                 if not conv_flag_idx:
                     continue
-                elif 9 == conv_flag_idx:
+                elif 7 == conv_flag_idx:
                     josa_ids = conv_mecab_josa_index(pos_ids2tag[p_id])
                     curr_token_bit_flag[conv_flag_idx] = josa_ids
                 else:
@@ -804,24 +804,20 @@ def conv_mecab_pos_groping_index(origin_pos: str):
         ret_conv_idx = 4
     elif origin_pos in ["VA"]: # 형용사
         ret_conv_idx = 5
-    elif origin_pos in ["VX"]: # 보조 용언
-        ret_conv_idx = 6
-    elif origin_pos in ["VCP"]: # 긍정 지정사
-        ret_conv_idx = 7
     elif origin_pos in ["MM", "MAG"]: # 관형사, 일반 부사
-        ret_conv_idx = 8
+        ret_conv_idx = 6
     elif origin_pos in ["JKS", "JKG", "JKO", "JKB", "JKC", "JX", "JC"]:
         # 주격 조사, 관형격 조사, 목적격 조사, 부사격 조사, 보격 조사, 보조사, 접속 조사
-        ret_conv_idx = 9
-    elif origin_pos in ["EP", "EF", "EC", "ETN", "ETM", "XSN"]:
-        # 선어말 어미, 종결 어미, 연결 어미, 명사형 전성 어미, 관형형 전성 어미, 명사 파생 접미사
-        ret_conv_idx = 10
+        ret_conv_idx = 7
+    elif origin_pos in ["EP", "EF", "EC", "ETN", "ETM", "XSN", "VCP"]:
+        # 선어말 어미, 종결 어미, 연결 어미, 명사형 전성 어미, 관형형 전성 어미, 명사 파생 접미사, 긍정 지정사
+        ret_conv_idx = 8
     elif origin_pos in ["XSV", "XSA", "XR"]: # 동사 파생 접미사, 형용사 파생 접미사, 어근
-        ret_conv_idx = 11
+        ret_conv_idx = 9
     elif origin_pos in ["SN"]: # 숫자
-        ret_conv_idx = 12
+        ret_conv_idx = 10
     elif origin_pos in ["XPN"]: # 체언 접두사
-        ret_conv_idx = 13
+        ret_conv_idx = 11
 
     return ret_conv_idx
 
