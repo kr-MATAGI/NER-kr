@@ -806,11 +806,12 @@ def conv_mecab_pos_groping_index(origin_pos: str):
         ret_conv_idx = 5
     elif origin_pos in ["VX"]: # 보조 용언
         ret_conv_idx = 6
-    elif origin_pos in ["VCN"]: # 긍정 지정사
+    elif origin_pos in ["VCP"]: # 긍정 지정사
         ret_conv_idx = 7
     elif origin_pos in ["MM", "MAG"]: # 관형사, 일반 부사
         ret_conv_idx = 8
-    elif origin_pos in ["JKS", "JKG", "JKO", "JKB", "JKC"]: # 주격 조사, 관형격 조사, 목적격 조사, 부사격 조사
+    elif origin_pos in ["JKS", "JKG", "JKO", "JKB", "JKC"]:
+        # 주격 조사, 관형격 조사, 목적격 조사, 부사격 조사, 보격 조사
         ret_conv_idx = 9
     elif origin_pos in ["JX"]: # 보조사
         ret_conv_idx = 10
@@ -821,6 +822,8 @@ def conv_mecab_pos_groping_index(origin_pos: str):
         ret_conv_idx = 12
     elif origin_pos in ["XSV", "XSA", "XR"]: # 동사 파생 접미사, 형용사 파생 접미사, 어근
         ret_conv_idx = 13
+    elif origin_pos in ["SN"]: # 숫자
+        ret_conv_idx = 14
     
     return ret_conv_idx
 
@@ -1864,7 +1867,7 @@ if "__main__" == __name__:
     print("[mecab_npy_maker] __main__ !")
 
     # load corpus
-    pkl_src_path = "../corpus/pkl/NIKL_ne_pos.pkl"
+    pkl_src_path = "../corpus/pkl/NIKL_ne_pos_300M.pkl"
     all_sent_list = []
     all_sent_list = load_ne_entity_list(src_path=pkl_src_path)
 
@@ -1889,7 +1892,7 @@ if "__main__" == __name__:
             save_model_dir="mecab_split_josa_electra"
         )
     elif "wordpiece" == make_npy_mode:
-        target_n_pos = 14
+        target_n_pos = 15
         make_mecab_wordpiece_npy(
             tokenizer_name="monologg/koelectra-base-v3-discriminator",
             src_list=all_sent_list, token_max_len=128, debug_mode=False,
