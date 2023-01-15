@@ -802,6 +802,10 @@ def conv_mecab_pos_groping_index(origin_pos: str):
         ret_conv_idx = 7
     elif origin_pos in ["VA"]: # 형용사
         ret_conv_idx = 8
+    elif origin_pos in ["EP", "EF", "EC"]: # 선어말 어미, 종결 어미, 연결 어미
+        ret_conv_idx = 9
+    elif origin_pos in ["XR"]: # 어근
+        ret_conv_idx = 10
 
     return ret_conv_idx
 
@@ -1872,7 +1876,7 @@ if "__main__" == __name__:
             save_model_dir="mecab_split_josa_electra"
         )
     elif "wordpiece" == make_npy_mode:
-        target_n_pos = 9
+        target_n_pos = 11
         make_mecab_wordpiece_npy(
             tokenizer_name="monologg/koelectra-base-v3-discriminator",
             src_list=all_sent_list, token_max_len=128, debug_mode=False,
