@@ -645,15 +645,6 @@ def make_mecab_wordpiece_npy(
                 break
         # end loop, pos_ids
 
-        # TEST
-        # print(len(text_tokens), len(pos_ids))
-        # for t, k in zip(text_tokens, pos_ids):
-        #     print(t, [mecab_id2tag[z] for z in k])
-        # print(pos_ids)
-        # print(text_tokens)
-        # print(conv_mecab_res)
-        # input()
-
         # POS bit flag
         pos_bit_flags = []
         for pos in pos_ids:
@@ -664,7 +655,7 @@ def make_mecab_wordpiece_npy(
                 conv_flag_idx = conv_mecab_pos_groping_index(pos_ids2tag[p_id])
                 if not conv_flag_idx:
                     continue
-                elif 7 == conv_flag_idx:
+                elif 5 == conv_flag_idx:
                     josa_ids = conv_mecab_josa_index(pos_ids2tag[p_id])
                     curr_token_bit_flag[conv_flag_idx] = josa_ids
                 else:
@@ -794,30 +785,23 @@ def conv_mecab_pos_groping_index(origin_pos: str):
     ret_conv_idx = None
     if origin_pos in ["NNG", "NNP"]: # 일반 명사, 고유 명사
         ret_conv_idx = 0
-    elif origin_pos in ["NNB"]: # 의존 명사
-        ret_conv_idx = 1
-    elif origin_pos in ["NNBC"]:  # 단위를 나타내는 명사
-        ret_conv_idx = 2
-    elif origin_pos in ["NR"]: # 수사
-        ret_conv_idx = 3
-    elif origin_pos in ["VV"]: # 동사
-        ret_conv_idx = 4
-    elif origin_pos in ["VA"]: # 형용사
-        ret_conv_idx = 5
-    elif origin_pos in ["MM", "MAG"]: # 관형사, 일반 부사
-        ret_conv_idx = 6
-    elif origin_pos in ["JKS", "JKG", "JKO", "JKB", "JKC", "JX", "JC"]:
-        # 주격 조사, 관형격 조사, 목적격 조사, 부사격 조사, 보격 조사, 보조사, 접속 조사
-        ret_conv_idx = 7
-    elif origin_pos in ["EP", "EF", "EC", "ETN", "ETM", "XSN", "VCP"]:
-        # 선어말 어미, 종결 어미, 연결 어미, 명사형 전성 어미, 관형형 전성 어미, 명사 파생 접미사, 긍정 지정사
-        ret_conv_idx = 8
-    elif origin_pos in ["XSV", "XSA", "XR"]: # 동사 파생 접미사, 형용사 파생 접미사, 어근
-        ret_conv_idx = 9
     elif origin_pos in ["SN"]: # 숫자
-        ret_conv_idx = 10
-    elif origin_pos in ["XPN"]: # 체언 접두사
-        ret_conv_idx = 11
+        ret_conv_idx = 1
+    elif origin_pos in ["NNB"]: # 의존 명사
+        ret_conv_idx = 2
+    elif origin_pos in ["NNBC"]: # 단위를 나타내는 명사
+        ret_conv_idx = 3
+    elif origin_pos in ["NR"]: # 수사
+        ret_conv_idx = 4
+    elif origin_pos in ["JKS", "JKG", "JKO", "JKB", "JKC", "JC"]:
+        # 주격 조사, 관형격 조사, 목적격 조사, 부사격 조사, 보격 조사, 접속 조사
+        ret_conv_idx = 5
+    elif origin_pos in ["JX"]: # 보조사
+        ret_conv_idx = 6
+    elif origin_pos in ["VV"]: # 동사
+        ret_conv_idx = 7
+    elif origin_pos in ["VA"]: # 형용사
+        ret_conv_idx = 8
 
     return ret_conv_idx
 
@@ -835,10 +819,8 @@ def conv_mecab_josa_index(origin_pos: str):
         josa_ids = 4
     elif "JKC" == origin_pos: # 보격 조사
         josa_ids = 5
-    elif "JX" == origin_pos:
-        josa_ids = 6
     elif "JC" == origin_pos:
-        josa_ids = 7
+        josa_ids = 6
 
     return josa_ids
 
@@ -1890,7 +1872,7 @@ if "__main__" == __name__:
             save_model_dir="mecab_split_josa_electra"
         )
     elif "wordpiece" == make_npy_mode:
-        target_n_pos = 14
+        target_n_pos = 9
         make_mecab_wordpiece_npy(
             tokenizer_name="monologg/koelectra-base-v3-discriminator",
             src_list=all_sent_list, token_max_len=128, debug_mode=False,
