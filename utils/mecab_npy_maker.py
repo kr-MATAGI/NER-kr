@@ -48,7 +48,7 @@ test_str_list = [
     "금리설계형의 경우 변동금리(6개월 변동 코픽스 연동형)는", "현재 중국의 공항은 400여 개다.",
     "'중국 편'이라고 믿었던 박 대통령에게", "2001년 한·미 주둔군지위협정(소파·SOFA)"
 ]
-test_str_list = ["상위 1% 대기업이 총액의 "]
+test_str_list = ["김행 청와대 대변인은 이날"]
 
 ## Structured
 @dataclass
@@ -1884,7 +1884,7 @@ if "__main__" == __name__:
         target_n_pos = 12
         make_mecab_wordpiece_npy(
             tokenizer_name="monologg/koelectra-base-v3-discriminator",
-            src_list=all_sent_list, token_max_len=128, debug_mode=False,
+            src_list=all_sent_list, token_max_len=128, debug_mode=True,
             save_model_dir="mecab_wordpiece_electra", target_n_pos=target_n_pos
         )
     elif "morp-aware" == make_npy_mode:
