@@ -17,7 +17,7 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
         self.num_labels = config.num_labels
         self.num_pos_tag = config.num_pos_labels
         self.dropout_rate = 0.1
-        self.num_flag_pos = 16
+        self.num_flag_pos = 12
         self.pos_embed_dim = 100
 
         ''' POS Embedding '''
@@ -34,19 +34,19 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
         self.electra = ElectraModel.from_pretrained("monologg/koelectra-base-v3-discriminator", config=config)
 
         # LSTM
-        self.lstm_dim = config.hidden_size #+ (self.pos_embed_dim * self.num_flag_pos)
+        self.lstm_dim = config.hidden_size + (self.pos_embed_dim * self.num_flag_pos)
         self.encoder = nn.LSTM(input_size=self.lstm_dim, hidden_size=(self.lstm_dim // 2),
                                num_layers=1, batch_first=True, bidirectional=True)
 
         ''' 뒷 부분에서 POS bit flag 추가하는 거 '''
-        self.post_pos_embed_dim = config.hidden_size + (self.pos_embed_dim * self.num_flag_pos)
-        self.post_pos_embedding = MultiNonLinearClassifier(self.post_pos_embed_dim,
-                                                           config.num_labels, self.dropout_rate)
+        # self.post_pos_embed_dim = config.hidden_size + (self.pos_embed_dim * self.num_flag_pos)
+        # self.post_pos_embedding = MultiNonLinearClassifier(self.post_pos_embed_dim,
+        #                                                    config.num_labels, self.dropout_rate)
 
         # Classifier
         ''' 앞 부분에서 POS 추가할 때 사용 '''
-        # self.classifier_dim = config.hidden_size + (self.pos_embed_dim * self.num_flag_pos)
-        # self.classifier = nn.Linear(self.classifier_dim, config.num_labels)
+        self.classifier_dim = config.hidden_size + (self.pos_embed_dim * self.num_flag_pos)
+        self.classifier = nn.Linear(self.classifier_dim, config.num_labels)
         self.crf = CRF(num_tags=config.num_labels, batch_first=True)
 
         # Initialize weights and apply final processing
@@ -88,15 +88,15 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
         pos_flag_out = pos_flag_out.reshape(pos_flag_size[0], pos_flag_size[1], -1)
 
         # LSTM
-        # concat_pos = torch.concat([electra_outputs, pos_flag_out], dim=-1)
-        enc_out, _ = self.encoder(electra_outputs) # [batch_size, seq_len, hidden_size]
+        concat_pos = torch.concat([electra_outputs, pos_flag_out], dim=-1)
+        enc_out, _ = self.encoder(concat_pos) # [batch_size, seq_len, hidden_size]
+
         # Classifier
-        # concat_pos = torch.concat([enc_out, add_pos_embed], dim=-1)
-        # logits = self.classifier(enc_out)
+        logits = self.classifier(enc_out)
 
         ''' 뒷 부분에서 POS Embedding 추가하는 거 '''
-        concat_pos_flag = torch.cat([enc_out, pos_flag_out], dim=-1)
-        logits = self.post_pos_embedding(concat_pos_flag)
+        # concat_pos_flag = torch.cat([enc_out, pos_flag_out], dim=-1)
+        # logits = self.post_pos_embedding(concat_pos_flag)
 
         # Get LossE
         # loss = None
