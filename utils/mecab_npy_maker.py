@@ -48,6 +48,7 @@ test_str_list = [
     "금리설계형의 경우 변동금리(6개월 변동 코픽스 연동형)는", "현재 중국의 공항은 400여 개다.",
     "'중국 편'이라고 믿었던 박 대통령에게", "2001년 한·미 주둔군지위협정(소파·SOFA)"
 ]
+test_str_list = ["상위 1% 대기업이 총액의 "]
 
 ## Structured
 @dataclass
@@ -596,7 +597,7 @@ def make_mecab_wordpiece_npy(
                 continue
 
         # 데이터 필터링
-        if 0 == len(src_item.ne_list) and 3 >= len(src_item.word_list):
+        if 0 == len(src_item.ne_list) or 3 >= len(src_item.word_list):
             continue
 
         if 0 == (proc_idx % 1000):
@@ -655,7 +656,7 @@ def make_mecab_wordpiece_npy(
                 conv_flag_idx = conv_mecab_pos_groping_index(pos_ids2tag[p_id])
                 if not conv_flag_idx:
                     continue
-                elif 9 == conv_flag_idx:
+                elif 8 == conv_flag_idx:
                     josa_ids = conv_mecab_josa_index(pos_ids2tag[p_id])
                     curr_token_bit_flag[conv_flag_idx] = josa_ids
                 else:
@@ -789,28 +790,27 @@ def conv_mecab_pos_groping_index(origin_pos: str):
         ret_conv_idx = 1
     elif origin_pos in ["NNBC"]: # 단위를 나타내는 명사
         ret_conv_idx = 2
-    elif origin_pos in ["NR"]: # 수사
+    elif origin_pos in ["SN"]: # 숫자
         ret_conv_idx = 3
     elif origin_pos in ["VV"]: # 동사
         ret_conv_idx = 4
     elif origin_pos in ["VA"]: # 형용사
         ret_conv_idx = 5
-    elif origin_pos in ["VX"]: # 보조 용언
+    elif origin_pos in ["JX"]: # 보조사
         ret_conv_idx = 6
-    elif origin_pos in ["VCP"]: # 긍정 지정사
-        ret_conv_idx = 7
     elif origin_pos in ["MM", "MAG"]: # 관형사, 일반 부사
-        ret_conv_idx = 8
+        ret_conv_idx = 7
     elif origin_pos in ["JKS", "JKG", "JKO", "JKB", "JC"]:
         # 주격 조사, 관형격 조사, 목적격 조사, 부사격 조사, 접속 조사
+        ret_conv_idx = 8
+    elif origin_pos in ["XSN"]: # 명사 파생 접미사
         ret_conv_idx = 9
-    elif origin_pos in ["JX"]: # 보조사
+    elif origin_pos in ["EC", "EP", "EF", "XSV", "XSA", "ETM", "ETN", "VX"]:
+        # 연결 어미, 선어말 어미, 종결 어미, 동사 파생 접미사, 형용사 파생 접미사, 관형형 전성어미, 명사형 전성어미, 보조 용언
         ret_conv_idx = 10
-    elif origin_pos in ["EP", "EF", "EC", "ETN", "ETM", "XPN", "XSN"]:
-        # 선어말 어미, 종결 어미, 연결 어미, 명사형 전성 어미, 관형형 전성 어미, 체언 접두사, 명사 파생 접미사
+    elif origin_pos in ["SSO", "SSC", "SY", "SC"]:
+        # 여는 괄호, 닫는 괄호, (붙임표, 기타기호), 구분자
         ret_conv_idx = 11
-    elif origin_pos in ["XSV", "XSA", "XR"]:
-        ret_conv_idx = 12
 
     return ret_conv_idx
 
@@ -1881,10 +1881,10 @@ if "__main__" == __name__:
             save_model_dir="mecab_split_josa_electra"
         )
     elif "wordpiece" == make_npy_mode:
-        target_n_pos = 13
+        target_n_pos = 12
         make_mecab_wordpiece_npy(
             tokenizer_name="monologg/koelectra-base-v3-discriminator",
-            src_list=all_sent_list, token_max_len=128, debug_mode=False,
+            src_list=all_sent_list, token_max_len=128, debug_mode=True,
             save_model_dir="mecab_wordpiece_electra", target_n_pos=target_n_pos
         )
     elif "morp-aware" == make_npy_mode:
