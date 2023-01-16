@@ -1884,7 +1884,7 @@ if "__main__" == __name__:
         target_n_pos = 12
         make_mecab_wordpiece_npy(
             tokenizer_name="monologg/koelectra-base-v3-discriminator",
-            src_list=all_sent_list, token_max_len=128, debug_mode=True,
+            src_list=all_sent_list, token_max_len=128, debug_mode=False,
             save_model_dir="mecab_wordpiece_electra", target_n_pos=target_n_pos
         )
     elif "morp-aware" == make_npy_mode:
