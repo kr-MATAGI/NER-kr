@@ -597,7 +597,7 @@ def make_mecab_wordpiece_npy(
                 continue
 
         # 데이터 필터링
-        if 0 == len(src_item.ne_list) or 3 >= len(src_item.word_list):
+        if 0 == len(src_item.ne_list) and 3 >= len(src_item.word_list):
             continue
 
         if 0 == (proc_idx % 1000):
