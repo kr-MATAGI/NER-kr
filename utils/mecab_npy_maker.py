@@ -786,33 +786,18 @@ def conv_mecab_pos_groping_index(origin_pos: str):
     ret_conv_idx = None
     if origin_pos in ["NNG", "NNP"]: # 일반 명사, 고유 명사
         ret_conv_idx = 0
-    elif origin_pos in ["NNB"]: # 의존 명사
-        ret_conv_idx = 1
-    elif origin_pos in ["NNBC"]: # 단위를 나타내는 명사
-        ret_conv_idx = 2
     elif origin_pos in ["SN"]: # 숫자
+        ret_conv_idx = 1
+    elif origin_pos in ["NNB"]: # 의존 명사
+        ret_conv_idx = 2
+    elif origin_pos in ["NNBC"]: # 단위 명사
         ret_conv_idx = 3
-    elif origin_pos in ["VV"]: # 동사
-        ret_conv_idx = 4
-    elif origin_pos in ["VA"]: # 형용사
-        ret_conv_idx = 5
     elif origin_pos in ["JX"]: # 보조사
+        ret_conv_idx = 4
+    elif origin_pos in ["JC"]: # 접속 조사
+        ret_conv_idx = 5
+    elif origin_pos in ["JKS", "JKC", "JKG", "JKO", "JKB", "JKV", "JKQ"]:
         ret_conv_idx = 6
-    elif origin_pos in ["MM", "MAG"]: # 관형사, 일반 부사
-        ret_conv_idx = 7
-    elif origin_pos in ["JKS", "JKG", "JKO", "JKB", "JC"]:
-        # 주격 조사, 관형격 조사, 목적격 조사, 부사격 조사, 접속 조사
-        ret_conv_idx = 8
-    # elif origin_pos in ["XSN"]: # 명사 파생 접미사
-    #     ret_conv_idx = 9
-    elif origin_pos in ["EC", "EP", "EF", "XSN", "XSV", "XSA", "ETM", "ETN", "VX"]:
-        # 연결 어미, 선어말 어미, 종결 어미,
-        # 명사 파생 접미사, 동사 파생 접미사, 형용사 파생 접미사,
-        # 관형형 전성어미, 명사형 전성어미, 보조 용언
-        ret_conv_idx = 9
-    # elif origin_pos in ["SSO", "SSC", "SY", "SC"]:
-    #     # 여는 괄호, 닫는 괄호, (붙임표, 기타기호), 구분자
-    #     ret_conv_idx = 11
 
     return ret_conv_idx
 
@@ -1883,7 +1868,7 @@ if "__main__" == __name__:
             save_model_dir="mecab_split_josa_electra"
         )
     elif "wordpiece" == make_npy_mode:
-        target_n_pos = 10
+        target_n_pos = 7
         make_mecab_wordpiece_npy(
             tokenizer_name="monologg/koelectra-base-v3-discriminator",
             src_list=all_sent_list, token_max_len=128, debug_mode=False,
