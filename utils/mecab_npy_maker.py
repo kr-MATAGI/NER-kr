@@ -808,9 +808,9 @@ def conv_mecab_pos_groping_index(origin_pos: str):
     elif origin_pos in ["EC", "EP", "EF", "XSV", "XSA", "ETM", "ETN", "VX"]:
         # 연결 어미, 선어말 어미, 종결 어미, 동사 파생 접미사, 형용사 파생 접미사, 관형형 전성어미, 명사형 전성어미, 보조 용언
         ret_conv_idx = 10
-    elif origin_pos in ["SSO", "SSC", "SY", "SC"]:
-        # 여는 괄호, 닫는 괄호, (붙임표, 기타기호), 구분자
-        ret_conv_idx = 11
+    # elif origin_pos in ["SSO", "SSC", "SY", "SC"]:
+    #     # 여는 괄호, 닫는 괄호, (붙임표, 기타기호), 구분자
+    #     ret_conv_idx = 11
 
     return ret_conv_idx
 
