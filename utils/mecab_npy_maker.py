@@ -803,11 +803,11 @@ def conv_mecab_pos_groping_index(origin_pos: str):
     elif origin_pos in ["JKS", "JKG", "JKO", "JKB", "JC"]:
         # 주격 조사, 관형격 조사, 목적격 조사, 부사격 조사, 접속 조사
         ret_conv_idx = 8
-    elif origin_pos in ["XSN"]: # 명사 파생 접미사
-        ret_conv_idx = 9
+    # elif origin_pos in ["XSN"]: # 명사 파생 접미사
+    #     ret_conv_idx = 9
     elif origin_pos in ["EC", "EP", "EF", "XSV", "XSA", "ETM", "ETN", "VX"]:
         # 연결 어미, 선어말 어미, 종결 어미, 동사 파생 접미사, 형용사 파생 접미사, 관형형 전성어미, 명사형 전성어미, 보조 용언
-        ret_conv_idx = 10
+        ret_conv_idx = 9
     # elif origin_pos in ["SSO", "SSC", "SY", "SC"]:
     #     # 여는 괄호, 닫는 괄호, (붙임표, 기타기호), 구분자
     #     ret_conv_idx = 11
@@ -1881,7 +1881,7 @@ if "__main__" == __name__:
             save_model_dir="mecab_split_josa_electra"
         )
     elif "wordpiece" == make_npy_mode:
-        target_n_pos = 11
+        target_n_pos = 10
         make_mecab_wordpiece_npy(
             tokenizer_name="monologg/koelectra-base-v3-discriminator",
             src_list=all_sent_list, token_max_len=128, debug_mode=False,
