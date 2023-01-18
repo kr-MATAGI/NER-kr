@@ -26,8 +26,8 @@
   "seed": 42,
   "train_batch_size": 64,
   "eval_batch_size": 128,
-  "logging_steps": 4438,
-  "save_steps": 2219,
+  "logging_steps": 17765,
+  "save_steps": 3553,
   "learning_rate": 5e-5,
   "n_gpu": 1
 }
