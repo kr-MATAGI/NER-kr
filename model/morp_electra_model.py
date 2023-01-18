@@ -85,10 +85,6 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
         self.encoder = nn.LSTM(input_size=self.lstm_dim, hidden_size=(self.lstm_dim // 2),
                                num_layers=1, batch_first=True, bidirectional=True)
 
-        # Attention
-        self.attn_compress = nn.Linear(self.lstm_dim, config.hidden_size)
-        self.attn_layer = Attention(hidden_size=config.hidden_size, num_heads=8)
-
         ''' 뒷 부분에서 POS bit flag 추가하는 거 '''
         # self.post_pos_embed_dim = config.hidden_size + (self.pos_embed_dim * self.num_flag_pos)
         # self.post_pos_embedding = MultiNonLinearClassifier(self.post_pos_embed_dim,
@@ -96,7 +92,7 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
 
         # Classifier
         ''' 앞 부분에서 POS 추가할 때 사용 '''
-        self.classifier_dim = config.hidden_size #+ (self.pos_embed_dim * self.num_flag_pos)
+        self.classifier_dim = config.hidden_size + (self.pos_embed_dim * self.num_flag_pos)
         self.classifier = nn.Linear(self.classifier_dim, config.num_labels)
         self.crf = CRF(num_tags=config.num_labels, batch_first=True)
 
@@ -143,14 +139,8 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
         concat_pos = torch.concat([electra_outputs, pos_flag_out], dim=-1)
         enc_out, _ = self.encoder(concat_pos) # [batch_size, seq_len, hidden_size]
 
-        # Attention
-        conv_attn_mask = attention_mask.unsqueeze(1).unsqueeze(2)
-        conv_attn_mask = conv_attn_mask.to(dtype=next(self.parameters()).dtype)
-        attn_input = self.attn_compress(enc_out)
-        attn_out = self.attn_layer(attn_input, conv_attn_mask)
-
         # Classifier
-        logits = self.classifier(attn_out)
+        logits = self.classifier(enc_out)
 
         ''' 뒷 부분에서 POS Embedding 추가하는 거 '''
         # concat_pos_flag = torch.cat([enc_out, pos_flag_out], dim=-1)
