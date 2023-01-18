@@ -656,7 +656,7 @@ def make_mecab_wordpiece_npy(
                 conv_flag_idx = conv_mecab_pos_groping_index(pos_ids2tag[p_id])
                 if not conv_flag_idx:
                     continue
-                elif 8 == conv_flag_idx:
+                elif 7 == conv_flag_idx:
                     josa_ids = conv_mecab_josa_index(pos_ids2tag[p_id])
                     curr_token_bit_flag[conv_flag_idx] = josa_ids
                 else:
@@ -790,14 +790,16 @@ def conv_mecab_pos_groping_index(origin_pos: str):
         ret_conv_idx = 1
     elif origin_pos in ["NNB"]: # 의존 명사
         ret_conv_idx = 2
-    elif origin_pos in ["NNBC"]: # 단위 명사
+    elif origin_pos in ["NR"]: # 수사
         ret_conv_idx = 3
-    elif origin_pos in ["JX"]: # 보조사
+    elif origin_pos in ["NNBC"]: # 단위 명사
         ret_conv_idx = 4
-    elif origin_pos in ["JC"]: # 접속 조사
+    elif origin_pos in ["JX"]: # 보조사
         ret_conv_idx = 5
-    elif origin_pos in ["JKS", "JKC", "JKG", "JKO", "JKB", "JKV", "JKQ"]:
+    elif origin_pos in ["JC"]: # 접속 조사
         ret_conv_idx = 6
+    elif origin_pos in ["JKS", "JKC", "JKG", "JKO", "JKB", "JKV", "JKQ"]:
+        ret_conv_idx = 7
 
     return ret_conv_idx
 
@@ -1868,7 +1870,7 @@ if "__main__" == __name__:
             save_model_dir="mecab_split_josa_electra"
         )
     elif "wordpiece" == make_npy_mode:
-        target_n_pos = 7
+        target_n_pos = 8
         make_mecab_wordpiece_npy(
             tokenizer_name="monologg/koelectra-base-v3-discriminator",
             src_list=all_sent_list, token_max_len=128, debug_mode=False,
