@@ -1,7 +1,7 @@
 {
   "task": "custom",
   "data_dir": "data",
-  "ckpt_dir": "ckpt-electra-mecab-wordpiece-pos-grouping-flag-test19-300M-or-relu",
+  "ckpt_dir": "ckpt-electra-mecab-wordpiece-pos-grouping-flag-test19-300M-multi-attn",
   "train_npy": "./corpus/npy/mecab_wordpiece_electra/train.npy",
   "dev_npy": "./corpus/npy/mecab_wordpiece_electra/dev.npy",
   "test_npy": "./corpus/npy/mecab_wordpiece_electra/test.npy",
@@ -22,11 +22,11 @@
   "no_cuda": false,
   "model_type": "monologg/koelectra-base-v3-discriminator",
   "model_name_or_path": "monologg/koelectra-base-v3-discriminator",
-  "output_dir": "electra-mecab-wordpiece-pos-grouping-flag-test19-300M-or-relu",
+  "output_dir": "electra-mecab-wordpiece-pos-grouping-flag-test19-300M-multi-attn",
   "seed": 42,
   "train_batch_size": 64,
   "eval_batch_size": 128,
-  "logging_steps": 17765,
+  "logging_steps": 7106,
   "save_steps": 3553,
   "learning_rate": 5e-5,
   "n_gpu": 1

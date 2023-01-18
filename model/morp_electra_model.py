@@ -1,12 +1,8 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import math
-
 from transformers import ElectraModel, ElectraPreTrainedModel
-from transformers.modeling_outputs import TokenClassifierOutput
 
-from model.classifier.span_classifier import MultiNonLinearClassifier
 from model.crf_layer import CRF
 
 #==============================================================
@@ -19,13 +15,7 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
         self.num_pos_tag = config.num_pos_labels
         self.dropout_rate = 0.1
         self.num_flag_pos = 11
-        self.pos_embed_dim = 100
-
-        ''' POS Embedding '''
-        # self.pos_embedding_1 = nn.Embedding(self.num_pos, self.pos_embed_dim)
-        # self.pos_embedding_2 = nn.Embedding(self.num_pos, self.pos_embed_dim)
-        # self.pos_embedding_3 = nn.Embedding(self.num_pos, self.pos_embed_dim)
-        # self.pos_embedding_4 = nn.Embedding(self.num_pos, self.pos_embed_dim)
+        self.pos_embed_dim = 128
 
         # POS Flag
         ''' POS bit flag 추가하는 거 '''
@@ -35,24 +25,21 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
         self.electra = ElectraModel.from_pretrained("monologg/koelectra-base-v3-discriminator", config=config)
         self.dropout = nn.Dropout(self.dropout_rate)
 
-        # LSTM
+        # LSTM - Encoder
         self.lstm_dim = config.hidden_size + (self.pos_embed_dim * self.num_flag_pos)
         self.encoder = nn.LSTM(input_size=self.lstm_dim, hidden_size=(self.lstm_dim // 2),
                                num_layers=1, batch_first=True, bidirectional=True)
 
-        ''' 뒷 부분에서 POS bit flag 추가하는 거 '''
-        # self.post_pos_embed_dim = config.hidden_size + (self.pos_embed_dim * self.num_flag_pos)
-        # self.post_pos_embedding = MultiNonLinearClassifier(self.post_pos_embed_dim,
-        #                                                    config.num_labels, self.dropout_rate)
+        self.mt_attn = nn.MultiheadAttention(embed_dim=self.lstm_dim, num_heads=8, dropout=0.1, batch_first=True)
 
         # Classifier
-        ''' 앞 부분에서 POS 추가할 때 사용 '''
         self.classifier_dim = config.hidden_size + (self.pos_embed_dim * self.num_flag_pos)
         self.classifier = nn.Linear(self.classifier_dim, config.num_labels)
         self.crf = CRF(num_tags=config.num_labels, batch_first=True)
 
         # Initialize weights and apply final processing
         self.post_init()
+
 
     #===================================
     def forward(self,
@@ -67,23 +54,6 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
         electra_outputs = electra_outputs.last_hidden_state # [batch_size, seq_len, hidden_size]
         electra_outputs = self.dropout(electra_outputs)
 
-        # POS
-        # pos_out_1 = self.pos_embedding_1(pos_ids[:, :, 0])
-        # pos_out_2 = self.pos_embedding_2(pos_ids[:, :, 1])
-        # pos_out_3 = self.pos_embedding_3(pos_ids[:, :, 2])
-        # pos_out_4 = self.pos_embedding_4(pos_ids[:, :, 3])
-
-        # pos_out_1 = F.relu(pos_out_1)
-        # pos_out_2 = F.relu(pos_out_2)
-        # pos_out_3 = F.relu(pos_out_3)
-        # pos_out_4 = F.relu(pos_out_4)
-        # concat_pos = torch.concat([pos_out_1, pos_out_2, pos_out_3], dim=-1)
-
-        ''' Add POS Embedding '''
-        # add_pos_embed = torch.add(pos_out_1, pos_out_2)
-        # add_pos_embed = torch.add(add_pos_embed, pos_out_3)
-        # concat_pos = torch.concat([electra_outputs, add_pos_embed], dim=-1)
-
         ''' POS Flag '''
         pos_flag_out = self.pos_flag_embedding(pos_ids)  # [batch, seq_len, num_pos, pos_emb_dim]
         pos_flag_out = F.relu(pos_flag_out)
@@ -92,25 +62,13 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
 
         # LSTM
         concat_pos = torch.concat([electra_outputs, pos_flag_out], dim=-1)
-        enc_out, _ = self.encoder(concat_pos) # [batch_size, seq_len, hidden_size]
+        enc_out, hidden = self.encoder(concat_pos) # [batch_size, seq_len, hidden_size]
+        hidden = torch.cat([hidden[-2], hidden[-1]], dim=-1)
+
+        attn_output, attn_output_weights = self.mt_attn(query=enc_out, key=enc_out, value=enc_out)
 
         # Classifier
-        logits = self.classifier(enc_out)
-
-        ''' 뒷 부분에서 POS Embedding 추가하는 거 '''
-        # concat_pos_flag = torch.cat([enc_out, pos_flag_out], dim=-1)
-        # logits = self.post_pos_embedding(concat_pos_flag)
-
-        # Get LossE
-        # loss = None
-        # if label_ids is not None:
-        #     loss_fct = nn.CrossEntropyLoss()
-        #     loss = loss_fct(logits.view(-1, self.config.num_labels), label_ids.view(-1))
-        #
-        # return TokenClassifierOutput(
-        #     loss=loss,
-        #     logits=logits
-        # )
+        logits = self.classifier(attn_output)
 
         # crf
         if label_ids is not None:
