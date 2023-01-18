@@ -78,6 +78,7 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
 
         # ELECTRA
         self.electra = ElectraModel.from_pretrained("monologg/koelectra-base-v3-discriminator", config=config)
+        self.dropout = nn.Dropout(self.dropout_rate)
 
         # LSTM
         self.lstm_dim = config.hidden_size + (self.pos_embed_dim * self.num_flag_pos)
@@ -113,6 +114,7 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
                                        token_type_ids=token_type_ids)
 
         electra_outputs = electra_outputs.last_hidden_state # [batch_size, seq_len, hidden_size]
+        electra_outputs = self.dropout(electra_outputs)
 
         # POS
         # pos_out_1 = self.pos_embedding_1(pos_ids[:, :, 0])
