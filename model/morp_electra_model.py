@@ -28,7 +28,7 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
         # LSTM - Encoder
         self.lstm_dim = config.hidden_size + (self.pos_embed_dim * self.num_flag_pos)
         self.encoder = nn.LSTM(input_size=self.lstm_dim, hidden_size=(self.lstm_dim // 2),
-                               num_layers=1, batcsh_first=True, bidirectional=True)
+                               num_layers=1, batch_first=True, bidirectional=True)
 
         self.mt_attn = nn.MultiheadAttention(embed_dim=config.hidden_size, num_heads=8, dropout=0.1, batch_first=True)
 
