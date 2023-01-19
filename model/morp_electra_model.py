@@ -4,6 +4,7 @@ import torch.nn.functional as F
 from transformers import ElectraModel, ElectraPreTrainedModel
 
 from model.crf_layer import CRF
+from model.classifier.span_classifier import MultiNonLinearClassifier
 
 #==============================================================
 class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
@@ -14,7 +15,7 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
         self.num_labels = config.num_labels
         self.num_pos_tag = config.num_pos_labels
         self.dropout_rate = 0.1
-        self.num_flag_pos = 12
+        self.num_flag_pos = 10
         self.pos_embed_dim = 128
 
         # POS Flag
@@ -34,7 +35,10 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
 
         # Classifier
         self.classifier_dim = config.hidden_size + (self.pos_embed_dim * self.num_flag_pos) + config.hidden_size
-        self.classifier = nn.Linear(self.classifier_dim, config.num_labels)
+        # self.classifier = nn.Linear(self.classifier_dim, config.num_labels)
+        self.multi_classifier = MultiNonLinearClassifier(hidden_size=self.classifier_dim, num_label=config.num_labels,
+                                                         dropout_rate=self.dropout_rate)
+
         self.crf = CRF(num_tags=config.num_labels, batch_first=True)
 
         # Initialize weights and apply final processing
@@ -69,7 +73,8 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
         enc_out = torch.concat([enc_out, attn_output], dim=-1)
 
         # Classifier
-        logits = self.classifier(enc_out)
+        # logits = self.classifier(enc_out)
+        logits = self.multi_classifier(enc_out)
 
         # crf
         if label_ids is not None:
