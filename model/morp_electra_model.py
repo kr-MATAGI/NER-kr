@@ -30,10 +30,10 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
         self.encoder = nn.LSTM(input_size=self.lstm_dim, hidden_size=(self.lstm_dim // 2),
                                num_layers=1, batch_first=True, bidirectional=True)
 
-        self.mt_attn = nn.MultiheadAttention(embed_dim=self.lstm_dim, num_heads=8, dropout=0.1, batch_first=True)
+        self.mt_attn = nn.MultiheadAttention(embed_dim=config.hidden_size, num_heads=8, dropout=0.1, batch_first=True)
 
         # Classifier
-        self.classifier_dim = config.hidden_size + (self.pos_embed_dim * self.num_flag_pos)
+        self.classifier_dim = config.hidden_size + (self.pos_embed_dim * self.num_flag_pos) + config.hidden_size
         self.classifier = nn.Linear(self.classifier_dim, config.num_labels)
         self.crf = CRF(num_tags=config.num_labels, batch_first=True)
 
@@ -63,12 +63,13 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
         # LSTM
         concat_pos = torch.concat([electra_outputs, pos_flag_out], dim=-1)
         enc_out, hidden = self.encoder(concat_pos) # [batch_size, seq_len, hidden_size]
-        hidden = torch.cat([hidden[-2], hidden[-1]], dim=-1)
+        # hidden = torch.cat([hidden[-2], hidden[-1]], dim=-1)
 
-        attn_output, attn_output_weights = self.mt_attn(query=enc_out, key=enc_out, value=enc_out)
+        attn_output, attn_output_weights = self.mt_attn(query=electra_outputs, key=electra_outputs, value=electra_outputs)
+        enc_out = torch.concat([enc_out, attn_output], dim=-1)
 
         # Classifier
-        logits = self.classifier(attn_output)
+        logits = self.classifier(enc_out)
 
         # crf
         if label_ids is not None:
