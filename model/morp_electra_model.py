@@ -14,7 +14,7 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
         self.num_labels = config.num_labels
         self.num_pos_tag = config.num_pos_labels
         self.dropout_rate = 0.1
-        self.num_flag_pos = 11
+        self.num_flag_pos = 12
         self.pos_embed_dim = 128
 
         # POS Flag
