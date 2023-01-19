@@ -44,3 +44,7 @@ utils/mecab_cmp
 utils/kiwi_cmp
 pattern_check/results
 
+# iml, xml
+*.iml
+*.xml
+
