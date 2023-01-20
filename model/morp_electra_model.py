@@ -66,8 +66,8 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
         enc_out, hidden = self.encoder(concat_pos) # [batch_size, seq_len, hidden_size]
         # hidden = torch.cat([hidden[-2], hidden[-1]], dim=-1)
 
-        attn_output, attn_output_weights = self.mt_attn(query=enc_out, key=enc_out, value=enc_out)
-        enc_out = torch.add(enc_out, attn_output)
+        # attn_output, attn_output_weights = self.mt_attn(query=electra_outputs, key=enc_out, value=enc_out)
+        enc_out = torch.add(enc_out, electra_outputs)
 
         # Classifier
         logits = self.classifier(enc_out)
