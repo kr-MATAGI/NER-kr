@@ -30,7 +30,7 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
         self.encoder = nn.LSTM(input_size=self.lstm_dim, hidden_size=(config.hidden_size // 2),
                                num_layers=1, batch_first=True, bidirectional=True)
 
-        # self.mt_attn = nn.MultiheadAttention(embed_dim=config.hidden_size, num_heads=8, dropout=0.1, batch_first=True)
+        self.mt_attn = nn.MultiheadAttention(embed_dim=config.hidden_size, num_heads=8, dropout=0.1, batch_first=True)
         self.norm = nn.LayerNorm(config.hidden_size)
 
         # Classifier
