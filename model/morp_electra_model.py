@@ -68,7 +68,7 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
         # hidden = torch.cat([hidden[-2], hidden[-1]], dim=-1)
 
         attn_output, attn_output_weights = self.mt_attn(query=enc_out, key=enc_out, value=enc_out)
-        enc_out = torch.add(enc_out, attn_output)
+        enc_out = torch.add(electra_outputs, attn_output)
         enc_out = self.norm(enc_out)
 
         # Classifier
