@@ -21,16 +21,6 @@ ETRI_TAG = {
 ### Model List
 NER_MODEL_LIST = {
     0: "NONE",
-    1: "BERT",
-    2: "ELECTRA",
-    3: "RoBERTa",
-    4: "BERT+LSTM(POS)+CRF",
-    5: "RoBERTa+LSTM(POS)+CRF",
-    6: "ELECTRA+LSTM(POS)+CRF",
-    7: "ELECTRA_EOJEOL_MODEL",
-    8: "ELECTRA_ALL_FEATURE_MODEL",
-    9: "ELECTRA_CNNBiF_MODEL",
-    10: "CHAR_ELECTRA+LSTM(POS)+CRF",
-    11: "ELECTRA+LSTM(MECAB)+CRF",
-    12: "SPAN_NER"
+    1: "ELECTRA+LSTM(MECAB)+CRF",
+    2: "SPAN_NER"
 }

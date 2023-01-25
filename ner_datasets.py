@@ -115,11 +115,8 @@ class SpanNERDataset(Dataset):
             data: np.ndarray, label_ids: np.ndarray,
             all_span_idx:np.ndarray, all_span_len: np.ndarray,
             real_span_mask: np.ndarray, span_only_label: np.ndarray,
-            pos_ids: np.ndarray,
-            is_use_klue: bool, char_len: np.ndarray = None, char_label_ids: np.ndarray = None
+            pos_ids: np.ndarray
     ):
-        self.is_use_klue = is_use_klue
-
         self.input_ids = torch.LongTensor(data[:][:, :, 0])
         self.attn_mask = torch.LongTensor(data[:][:, :, 1])
         self.token_type_ids = torch.LongTensor(data[:][:, :, 2])
@@ -132,45 +129,22 @@ class SpanNERDataset(Dataset):
 
         self.pos_ids = torch.LongTensor(pos_ids)
 
-        self.char_len = None
-        self.char_label_ids = None
-        if is_use_klue:
-            self.char_len = torch.IntTensor(char_len)
-            self.char_label_ids = torch.LongTensor(char_label_ids)
-
     def __len__(self):
         return self.input_ids.size()[0]
 
     def __getitem__(self, idx):
-        if self.is_use_klue:
-            items = {
-                "input_ids": self.input_ids[idx],
-                "attention_mask": self.attn_mask[idx],
-                "token_type_ids": self.token_type_ids[idx],
-                "label_ids": self.label_ids[idx],
+        items = {
+            "input_ids": self.input_ids[idx],
+            "attention_mask": self.attn_mask[idx],
+            "token_type_ids": self.token_type_ids[idx],
+            "label_ids": self.label_ids[idx],
 
-                "all_span_idx": self.all_span_idx[idx],
-                "all_span_len": self.all_span_len[idx],
-                "real_span_mask": self.real_span_mask[idx],
-                "span_only_label": self.span_only_label[idx],
+            "all_span_idx": self.all_span_idx[idx],
+            "all_span_len": self.all_span_len[idx],
+            "real_span_mask": self.real_span_mask[idx],
+            "span_only_label": self.span_only_label[idx],
 
-                "pos_ids": self.pos_ids[idx],
-                "char_len": self.char_len[idx],
-                "char_label_ids": self.char_label_ids[idx]
-            }
-        else:
-            items = {
-                "input_ids": self.input_ids[idx],
-                "attention_mask": self.attn_mask[idx],
-                "token_type_ids": self.token_type_ids[idx],
-                "label_ids": self.label_ids[idx],
-
-                "all_span_idx": self.all_span_idx[idx],
-                "all_span_len": self.all_span_len[idx],
-                "real_span_mask": self.real_span_mask[idx],
-                "span_only_label": self.span_only_label[idx],
-
-                "pos_ids": self.pos_ids[idx],
-            }
+            "pos_ids": self.pos_ids[idx],
+        }
 
         return items

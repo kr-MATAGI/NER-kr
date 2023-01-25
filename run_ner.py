@@ -28,23 +28,47 @@ from ner_utils import (
 
 ### Global variable
 g_user_select = 0
-g_use_crf = True
-g_use_klue_char_metric = False
 logger = init_logger()
 
 if not os.path.exists("./logs"):
     os.mkdir("./logs")
 tb_writer = SummaryWriter("./logs")
 
-# Dictionary
-dict_hash_table = None
+
+#===============================================================
+def make_inputs_from_batch(batch: torch.Tensor, device: str, user_select: int, mode: str):
+#===============================================================
+    inputs = None
+    if 2 == user_select:
+        inputs = {
+            "input_ids": batch["input_ids"].to(device),
+            "attention_mask": batch["attention_mask"].to(device),
+            "token_type_ids": batch["token_type_ids"].to(device),
+            "label_ids": batch["label_ids"].to(device),
+            "pos_ids": batch["pos_ids"].to(device),
+
+            "all_span_idxs_ltoken": batch["all_span_idx"].to(device),
+            "all_span_lens": batch["all_span_len"].to(device),
+            "real_span_mask_ltoken": batch["real_span_mask"].to(device),
+            "span_only_label": batch["span_only_label"].to(device),
+            "mode": mode
+        }
+    else:
+        inputs = {
+            "input_ids": batch["input_ids"].to(device),
+            "attention_mask": batch["attention_mask"].to(device),
+            "token_type_ids": batch["token_type_ids"].to(device),
+            "label_ids": batch["label_ids"].to(device),
+            "pos_ids": batch["pos_ids"].to(device)
+        }
+
+    return inputs
 
 ### Evaluate
 #===============================================================
 def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
 #===============================================================
     results = {}
-    ch_results = {}
 
     eval_sampler = SequentialSampler(eval_dataset)
     eval_dataloader = DataLoader(eval_dataset, sampler=eval_sampler, batch_size=args.eval_batch_size)
@@ -62,40 +86,18 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
     preds = None
     out_label_ids = None
 
-    char_preds = None
-    out_char_label_ids = None
-
     eval_pbar = tqdm(eval_dataloader)
     for batch in eval_pbar:
         model.eval()
         with torch.no_grad():
             label_ids = batch["label_ids"]
-            inputs = {
-                "input_ids": batch["input_ids"].to(args.device),
-                "attention_mask": batch["attention_mask"].to(args.device),
-                "token_type_ids": batch["token_type_ids"].to(args.device),
-                "label_ids": batch["label_ids"].to(args.device),
-                "pos_ids": batch["pos_ids"].to(args.device),
+            inputs = make_inputs_from_batch(batch, device=args.device, user_select=g_user_select, mode="eval")
 
-                # "all_span_idxs_ltoken": batch["all_span_idx"].to(args.device),
-                # "all_span_lens": batch["all_span_len"].to(args.device),
-                # "real_span_mask_ltoken": batch["real_span_mask"].to(args.device),
-                # "span_only_label": batch["span_only_label"].to(args.device),
-                # "mode": "eval"
-            }
-
-            if 12 == g_user_select:
+            if 2 == g_user_select:
                 loss, predict = model(**inputs) # predict [batch, seq_len] List
-                if g_use_klue_char_metric:
-                    char_label_ids = batch["char_label_ids"]
-                    char_len = batch["char_len"]
-            elif g_use_crf:
+            else:
                 loss, outputs = model(**inputs)
                 loss = -1 * loss
-            else:
-                outputs = model(**inputs)
-                loss = outputs.loss
-                logits = outputs.logits
 
             eval_loss += loss.mean().item()
 
@@ -103,21 +105,14 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
         tb_writer.add_scalar("Loss/val_" + str(train_epoch), eval_loss / nb_eval_steps, nb_eval_steps)
         eval_pbar.set_description("Eval Loss - %.04f" % (eval_loss / nb_eval_steps))
 
-        if g_use_klue_char_metric:
-            pass
-
-        if 12 == g_user_select:
+        if 2 == g_user_select:
             if preds is None:
                 preds = np.array(predict)
                 out_label_ids = label_ids.numpy()
-                if g_use_klue_char_metric:
-                    pass
             else:
                 preds = np.append(preds, np.array(predict), axis=0)
                 out_label_ids = np.append(out_label_ids, label_ids.numpy(), axis=0)
-                if g_use_klue_char_metric:
-                    pass
-        elif g_use_crf:
+        else:
             conv_outputs = np.zeros_like(inputs["label_ids"].detach().cpu().numpy())
             max_seq_len = conv_outputs.shape[1]
 
@@ -132,26 +127,12 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
             else:
                 preds = np.append(preds, np.array(conv_outputs), axis=0)
                 out_label_ids = np.append(out_label_ids, inputs["label_ids"].detach().cpu().numpy(), axis=0)
-        else:
-            # Not CRF
-            if preds is None:
-                preds = logits.detach().cpu().numpy()
-                preds = np.argmax(preds, axis=-1)
-                out_label_ids = inputs["label_ids"].detach().cpu().numpy()
-            else:
-                logits = logits.detach().cpu().numpy()
-                logits = np.argmax(logits, axis=-1)
-                preds = np.append(preds, logits, axis=0)
-                out_label_ids = np.append(out_label_ids, inputs["label_ids"].detach().cpu().numpy(), axis=0)
 
     logger.info("  Eval End !")
     eval_pbar.close()
 
     eval_loss = eval_loss / nb_eval_steps
     results = {
-        "loss": eval_loss
-    }
-    ch_results = {
         "loss": eval_loss
     }
 
@@ -169,17 +150,12 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
         for j in range(out_label_ids.shape[1]):
             if out_label_ids[i, j] != ignore_index:
                 out_label_list[i].append(label_map[out_label_ids[i][j]])
-                if 12 == g_user_select:
+                if 2 == g_user_select:
                     preds_list[i].append(preds[i][j])
                 else:
                     preds_list[i].append(label_map[preds[i][j]])
     result = f1_pre_rec(out_label_list, preds_list, is_ner=True)
     results.update(result)
-
-    out_label_char_list = None
-    char_preds_list = None
-    if g_use_klue_char_metric:
-        pass
 
     output_dir = os.path.join(args.output_dir, mode)
     if not os.path.exists(output_dir):
@@ -194,9 +170,6 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
             f_w.write("  {} = {}\n".format(key, str(results[key])))
         logger.info("\n" + show_ner_report(out_label_list, preds_list))  # Show report for each tag result
         f_w.write("\n" + show_ner_report(out_label_list, preds_list))
-
-    if g_use_klue_char_metric:
-        pass
 
     return results
 
@@ -256,28 +229,13 @@ def train(args, model, train_dataset, dev_dataset):
         pbar = tqdm(train_dataloader)
         for step, batch in enumerate(pbar):
             model.train()
-            inputs = {
-                "input_ids": batch["input_ids"].to(args.device),
-                "attention_mask": batch["attention_mask"].to(args.device),
-                "token_type_ids": batch["token_type_ids"].to(args.device),
-                "label_ids": batch["label_ids"].to(args.device),
-                "pos_ids": batch["pos_ids"].to(args.device),
+            inputs = make_inputs_from_batch(batch, device=args.device, user_select=g_user_select, mode="train")
 
-                # "all_span_idxs_ltoken": batch["all_span_idx"].to(args.device),
-                # "all_span_lens": batch["all_span_len"].to(args.device),
-                # "real_span_mask_ltoken": batch["real_span_mask"].to(args.device),
-                # "span_only_label": batch["span_only_label"].to(args.device),
-                # "mode": "train"
-            }
-
-            if 12 == g_user_select:
+            if 2 == g_user_select:
                 loss = model(**inputs)
-            elif g_use_crf:
+            else:
                 loss, outputs = model(**inputs)
                 loss = -1 * loss
-            else:
-                outputs = model(**inputs)
-                loss = outputs.loss
 
             if 1 < args.n_gpu:
                 loss = loss.mean()
@@ -340,61 +298,18 @@ def main():
     print("Please select model (default: 1):")
     print(f"1. {NER_MODEL_LIST[1]}")
     print(f"2. {NER_MODEL_LIST[2]}")
-    print(f"3. {NER_MODEL_LIST[3]}")
-    print(f"4. {NER_MODEL_LIST[4]}")
-    print(f"5. {NER_MODEL_LIST[5]}")
-    print(f"6. {NER_MODEL_LIST[6]}")
-    print(f"7. {NER_MODEL_LIST[7]}")
-    print(f"8. {NER_MODEL_LIST[8]}")
-    print(f"9. {NER_MODEL_LIST[9]}")
-    print(f"10. {NER_MODEL_LIST[10]}")
-    print(f"11. {NER_MODEL_LIST[11]}")
-    print(f"12. {NER_MODEL_LIST[12]}")
     print("=======================================")
     print(">>>> number: ")
 
     global g_user_select
-    global g_use_crf
-    global g_use_klue_char_metric
-
     g_user_select = int(input())
-    config_file_path = "./config/electra-pos-tag.json"
 
-    if g_user_select > len(NER_MODEL_LIST.keys()):
-        g_user_select = 1
-        g_use_crf = False
+    config_file_path = ""
     if 1 == g_user_select:
-        config_file_path = "./config/bert-base.json"
-        g_use_crf = False
-    elif 2 == g_user_select:
-        config_file_path = "./config/electra-base.json"
-        g_use_crf = False
-    elif 3 == g_user_select:
-        config_file_path = "./config/roberta-base.json"
-        g_use_crf = False
-    elif 4 == g_user_select:
-        config_file_path = "./config/bert-lstm-crf.json"
-    elif 5 == g_user_select:
-        config_file_path = "./config/roberta-lstm-crf.json"
-    elif 6 == g_user_select:
-        config_file_path = "./config/electra-lstm-crf.json"
-        # g_use_crf = False
-    elif 7 == g_user_select:
-        config_file_path = "./config/electra-eojeol-model.json"
-        g_use_crf = False
-    elif 8 == g_user_select:
-        config_file_path = "./config/electra-all-feature-model.json"
-    elif 9 == g_user_select:
-        config_file_path = "./config/electra-eojeol-cnnbif.json"
-        g_use_crf = False
-    elif 10 == g_user_select:
-        config_file_path = "./config/char-electra-lstm-crf.json"
-    elif 11 == g_user_select:
         config_file_path = "./config/electra-mecab.json"
         # g_use_crf = False
-    elif 12 == g_user_select:
+    elif 2 == g_user_select:
         config_file_path = "./config/electra-span-ner.json"
-        g_use_crf = False
 
     with open(config_file_path) as config_file:
         args = AttrDict(json.load(config_file))
@@ -419,21 +334,18 @@ def main():
     model.to(args.device)
 
     # load train/dev/test npy
-    if 12 == g_user_select:
-        print("IS USE KLUE Char Metric: ", g_use_klue_char_metric)
-
+    if 2 == g_user_select:
         train_npy, train_label_ids, \
         train_all_span_idx, train_all_span_len, train_real_span_mask, train_span_only_label, train_pos_ids = \
-            load_corpus_span_ner_npy(args.train_npy, mode="train", is_load_klue=g_use_klue_char_metric)
+            load_corpus_span_ner_npy(args.train_npy, mode="train")
 
         dev_npy, dev_label_ids, \
         dev_all_span_idx, dev_all_span_len, dev_real_span_mask, dev_span_only_label, dev_pos_ids = \
-            load_corpus_span_ner_npy(args.dev_npy, mode="dev", is_load_klue=g_use_klue_char_metric)
+            load_corpus_span_ner_npy(args.dev_npy, mode="dev")
 
         test_npy, test_label_ids, \
         test_all_span_idx, test_all_span_len, test_real_span_mask, test_span_only_label, test_pos_ids = \
-            load_corpus_span_ner_npy(args.test_npy, mode="test", is_load_klue=g_use_klue_char_metric)
-
+            load_corpus_span_ner_npy(args.test_npy, mode="test")
     else:
         train_npy, train_labels, train_pos_ids = load_corpus_npy_datasets(args.train_npy, mode="train")
         dev_npy, dev_labels, dev_pos_ids = load_corpus_npy_datasets(args.dev_npy, mode="dev")
@@ -443,27 +355,22 @@ def main():
         print(f"test.shape - dataset: {test_npy.shape}, labels: {test_labels.shape}, pos_ids: {test_pos_ids.shape}")
 
     # make train/dev/test dataset
-    if (5 == g_user_select) or (9 == g_user_select):
-        train_dataset = NER_Eojeol_Datasets(token_data=train_npy, labels=train_labels, eojeol_ids=None)
-        dev_dataset = NER_Eojeol_Datasets(token_data=dev_npy, labels=dev_labels, eojeol_ids=None)
-        test_dataset = NER_Eojeol_Datasets(token_data=test_npy, labels=test_labels, eojeol_ids=None)
-    elif 12 == g_user_select:
-        train_dataset = SpanNERDataset(data=train_npy, label_ids=train_label_ids, pos_ids=train_pos_ids,
-                                       span_only_label=train_span_only_label, real_span_mask=train_real_span_mask,
-                                       all_span_len=train_all_span_len, all_span_idx=train_all_span_idx,
-                                       is_use_klue=g_use_klue_char_metric, char_label_ids=None, char_len=None)
-        dev_dataset = SpanNERDataset(data=dev_npy, label_ids=dev_label_ids, pos_ids=dev_pos_ids,
-                                     span_only_label=dev_span_only_label, real_span_mask=dev_real_span_mask,
-                                     all_span_len=dev_all_span_len, all_span_idx=dev_all_span_idx,
-                                     is_use_klue=g_use_klue_char_metric, char_label_ids=None, char_len=None)
-        test_dataset = SpanNERDataset(data=test_npy, label_ids=test_label_ids, pos_ids=test_pos_ids,
-                                      span_only_label=test_span_only_label, real_span_mask=test_real_span_mask,
-                                      all_span_len=test_all_span_len, all_span_idx=test_all_span_idx,
-                                      is_use_klue=g_use_klue_char_metric, char_label_ids=None, char_len=None)
-    else:
+    train_dataset, dev_dataset, test_dataset = None, None, None
+    if 1 == g_user_select:
         train_dataset = NER_POS_Dataset(data=train_npy, labels=train_labels, pos_ids=train_pos_ids)
         dev_dataset = NER_POS_Dataset(data=dev_npy, labels=dev_labels, pos_ids=dev_pos_ids)
         test_dataset = NER_POS_Dataset(data=test_npy, labels=test_labels, pos_ids=test_pos_ids)
+
+    elif 12 == g_user_select:
+        train_dataset = SpanNERDataset(data=train_npy, label_ids=train_label_ids, pos_ids=train_pos_ids,
+                                       span_only_label=train_span_only_label, real_span_mask=train_real_span_mask,
+                                       all_span_len=train_all_span_len, all_span_idx=train_all_span_idx)
+        dev_dataset = SpanNERDataset(data=dev_npy, label_ids=dev_label_ids, pos_ids=dev_pos_ids,
+                                     span_only_label=dev_span_only_label, real_span_mask=dev_real_span_mask,
+                                     all_span_len=dev_all_span_len, all_span_idx=dev_all_span_idx)
+        test_dataset = SpanNERDataset(data=test_npy, label_ids=test_label_ids, pos_ids=test_pos_ids,
+                                      span_only_label=test_span_only_label, real_span_mask=test_real_span_mask,
+                                      all_span_len=test_all_span_len, all_span_idx=test_all_span_idx)
 
     if args.do_train:
         global_step, tr_loss = train(args, model, train_dataset, dev_dataset)

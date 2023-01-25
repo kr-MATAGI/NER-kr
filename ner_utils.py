@@ -13,14 +13,6 @@ from sklearn import metrics as sklearn_metrics
 # config, model
 from transformers import ElectraConfig, AutoConfig, AutoModelForTokenClassification, ElectraForTokenClassification
 
-from model.electra_lstm_crf import ELECTRA_POS_LSTM
-from model.bert_lstm_crf import BERT_LSTM_CRF
-from model.roberta_lstm_crf import RoBERTa_LSTM_CRF
-from model.electra_eojeol_model import Electra_Eojeol_Model
-from model.electra_feature_model import Electra_Feature_Model
-from model.CNNBiF_model import ELECTRA_CNNBiF_Model
-from model.char_electra_lstm_crf import CHAR_ELECTRA_POS_LSTM
-from model.mecab_electra_lstm_crf import ELECTRA_MECAB
 from model.morp_electra_model import ELECTRA_MECAB_MORP
 from model.span_ner_model import ElectraSpanNER
 
@@ -65,7 +57,7 @@ def print_parameters(args, logger):
     logger.info(f"save_steps: {args.save_steps}")
 
 #===============================================================
-def load_corpus_span_ner_npy(src_path: str, mode: str="train", is_load_klue: bool = False):
+def load_corpus_span_ner_npy(src_path: str, mode: str="train"):
 #===============================================================
     root_path = "/".join(src_path.split("/")[:-1]) + "/" + mode
 
@@ -81,40 +73,6 @@ def load_corpus_span_ner_npy(src_path: str, mode: str="train", is_load_klue: boo
     print(f"{mode}.shape - dataset: {input_token_attn_npy.shape}, label_ids: {label_ids.shape}, pos_ids: {pos_ids.shape}"
           f"all_span_idx: {all_span_idx.shape}, all_span_len: {all_span_len.shape}, "
           f"real_span_mask: {real_span_mask.shape}, span_only_label: {span_only_label.shape}")
-
-    if is_load_klue:
-        ''' KLUE는 char F1을 평가하기 위해 전처리 데이터셋 추가적으로 Load '''
-
-        char_len = np.load(root_path + "_char_len.npy")
-        char_label_ids = np.load(root_path + "_char_label_ids.npy")
-        print(f"char_len: {char_len.shape}, char_label_ids: {char_label_ids.shape}")
-
-        return input_token_attn_npy, label_ids, all_span_idx, all_span_len, \
-               real_span_mask, span_only_label, pos_ids, char_len, char_label_ids
-
-    '''
-    if is_load_klue:
-        print("[load_corpus_span_ner_npy] Use KLue Dataset")
-        klue_root_path = "./corpus/npy/klue_ner/" + mode
-
-        klue_input_token_attn_npy = np.load(klue_root_path+".npy")
-        klue_label_ids = np.load(klue_root_path + "_label_ids.npy")
-
-        klue_all_span_idx = np.load(klue_root_path + "_all_span_idx.npy")
-        klue_all_span_len = np.load(klue_root_path + "_all_span_len_list.npy")
-        klue_real_span_mask = np.load(klue_root_path + "_real_span_mask_token.npy")
-        klue_span_only_label = np.load(klue_root_path + "_span_only_label_token.npy")
-
-        klue_pos_ids = np.load(klue_root_path + "_pos_ids.npy")
-
-        input_token_attn_npy = np.vstack([input_token_attn_npy, klue_input_token_attn_npy])
-        label_ids = np.vstack([label_ids, klue_label_ids])
-        all_span_idx = np.vstack([all_span_idx, klue_all_span_idx])
-        all_span_len = np.vstack([all_span_len, klue_all_span_len])
-        real_span_mask = np.vstack([real_span_mask, klue_real_span_mask])
-        span_only_label = np.vstack([span_only_label, klue_span_only_label])
-        pos_ids = np.vstack([pos_ids, klue_pos_ids])
-    '''
 
     return input_token_attn_npy, label_ids, all_span_idx, all_span_len, real_span_mask, span_only_label, pos_ids
 
@@ -179,89 +137,7 @@ def load_ner_config_and_model(user_select: int, args, tag_dict):
     config = None
     model = None
 
-    # config
     if 1 == user_select:
-        # BERT
-        config = AutoConfig.from_pretrained("klue/bert-base",
-                                            num_labels=len(tag_dict.keys()),
-                                            id2label={str(i): label for i, label in enumerate(tag_dict.keys())},
-                                            label2id={label: i for i, label in enumerate(tag_dict.keys())})
-        config.max_seq_len = 128
-    elif 2 == user_select:
-        # ELECTRA
-        config = ElectraConfig.from_pretrained("monologg/koelectra-base-v3-discriminator",
-                                               num_labels=len(tag_dict.keys()),
-                                               id2label={str(i): label for i, label in enumerate(tag_dict.keys())},
-                                               label2id={label: i for i, label in enumerate(tag_dict.keys())})
-        config.max_seq_len = 128
-    elif 3 == user_select:
-        # RoBERTa
-        config = AutoConfig.from_pretrained("klue/roberta-base",
-                                            num_labels=len(tag_dict.keys()),
-                                            id2label={str(i): label for i, label in enumerate(tag_dict.keys())},
-                                            label2id={label: i for i, label in enumerate(tag_dict.keys())})
-        config.max_seq_len = 128
-    elif 4 == user_select:
-        # BERT+LSTM(POS)+CRF
-        config = AutoConfig.from_pretrained("klue/bert-base",
-                                            num_labels=len(tag_dict.keys()),
-                                            id2label={str(i): label for i, label in enumerate(tag_dict.keys())},
-                                            label2id={label: i for i, label in enumerate(tag_dict.keys())})
-        config.num_pos_labels = 49  # NIKL
-        config.max_seq_len = 128
-    elif 5 == user_select:
-        # RoBERTa+LSTM(POS)+CRF
-        config = AutoConfig.from_pretrained("klue/roberta-base",
-                                            num_labels=len(tag_dict.keys()),
-                                            id2label={str(i): label for i, label in enumerate(tag_dict.keys())},
-                                            label2id={label: i for i, label in enumerate(tag_dict.keys())})
-        config.num_pos_labels = 49  # NIKL
-        config.max_seq_len = 128
-    elif 6 == user_select:
-        # ELECTRA+LSTM(POS)+CRF
-        config = ElectraConfig.from_pretrained("monologg/koelectra-base-v3-discriminator",
-                                               num_labels=len(tag_dict.keys()),
-                                               id2label={str(i): label for i, label in enumerate(tag_dict.keys())},
-                                               label2id={label: i for i, label in enumerate(tag_dict.keys())})
-        config.num_pos_labels = len(NIKL_POS_TAG.keys())  # 국립국어원 형태 분석 말뭉치
-        config.max_seq_len = 128
-    elif 7 == user_select:
-        # ELECTRA + Eojeol Embedding -> Transformer
-        config = ElectraConfig.from_pretrained("monologg/koelectra-base-v3-discriminator",
-                                               num_labels=len(tag_dict.keys()),
-                                               id2label={str(i): label for i, label in enumerate(tag_dict.keys())},
-                                               label2id={label: i for i, label in enumerate(tag_dict.keys())})
-        config.model_name = "monologg/koelectra-base-v3-discriminator"
-        config.num_pos_labels = len(NIKL_POS_TAG.keys())  # NIKL
-        config.max_seq_len = 128
-    elif 8 == user_select:
-        # ELECTRA + ALL FEATURES (POS, Eojeol, Entity) -> Transformer + CRF
-        config = ElectraConfig.from_pretrained("monologg/koelectra-base-v3-discriminator",
-                                               num_labels=len(tag_dict.keys()),
-                                               id2label={str(i): label for i, label in enumerate(tag_dict.keys())},
-                                               label2id={label: i for i, label in enumerate(tag_dict.keys())})
-        config.num_pos_labels = 49  # NIKL
-        config.max_seq_len = 128
-        config.max_eojeol_len = 50
-    elif 9 == user_select:
-        # ELECTRA + CNNBiF
-        config = ElectraConfig.from_pretrained("monologg/koelectra-base-v3-discriminator",
-                                               num_labels=len(tag_dict.keys()),
-                                               id2label={str(i): label for i, label in enumerate(tag_dict.keys())},
-                                               label2id={label: i for i, label in enumerate(tag_dict.keys())})
-        config.num_pos_labels = len(NIKL_POS_TAG.keys()) # NIKL
-        config.max_seq_len = 128
-        config.max_eojeol_len = 50
-    elif 10 == user_select:
-        # CHAR_ELECTRA+LSTM(POS)+CRF
-        config = ElectraConfig.from_pretrained("monologg/kocharelectra-base-discriminator",
-                                               num_labels=len(tag_dict.keys()),
-                                               id2label={str(i): label for i, label in enumerate(tag_dict.keys())},
-                                               label2id={label: i for i, label in enumerate(tag_dict.keys())})
-
-        config.num_pos_labels = len(MECAB_POS_TAG.keys())  # MeCab
-        config.max_seq_len = 128
-    elif 11 == user_select:
         # ELECTRA+LSTM(MECAB)+CRF
         config = ElectraConfig.from_pretrained("monologg/koelectra-base-v3-discriminator",
                                                num_labels=len(tag_dict.keys()),
@@ -270,7 +146,7 @@ def load_ner_config_and_model(user_select: int, args, tag_dict):
 
         config.num_pos_labels = len(MECAB_POS_TAG.keys())  # Mecab All POS
         config.max_seq_len = 128
-    elif 12 == user_select:
+    elif 2 == user_select:
         # ELECTRA SPAN NER
         etri_tag_dict = {'O': 0,
                          'FD': 1, 'EV': 2, 'DT': 3, 'TI': 4, 'MT': 5,
@@ -291,39 +167,9 @@ def load_ner_config_and_model(user_select: int, args, tag_dict):
 
     # model
     if 1 == user_select:
-        # BERT-base
-        model = AutoModelForTokenClassification.from_pretrained(args.model_name_or_path, config=config)
-    elif 2 == user_select:
-        # ELECTRA-base
-        model = ElectraForTokenClassification.from_pretrained(args.model_name_or_path, config=config)
-    elif 3 == user_select:
-        # RoBERTa-base
-        model = AutoModelForTokenClassification.from_pretrained(args.model_name_or_path, config=config)
-    elif 4 == user_select:
-        # BERT+LSTM(POS)+CRF
-        model = BERT_LSTM_CRF.from_pretrained(args.model_name_or_path, config=config)
-    elif 5 == user_select:
-        # RoBERTa+LSTM(POS)+CRF
-        model = RoBERTa_LSTM_CRF.from_pretrained(args.model_name_or_path, config=config)
-    elif 6 == user_select:
-        # ELECTRA+LSTM(POS)+CRF
-        model = ELECTRA_POS_LSTM.from_pretrained(args.model_name_or_path, config=config)
-    elif 7 == user_select:
-        # ELECTRA + Eojeol Embedding -> Transformer + CRF
-        model = Electra_Eojeol_Model.from_pretrained(args.model_name_or_path, config=config)
-    elif 8 == user_select:
-        # ELECTRA + ALL FEATURES (POS, Eojeol, Entity) -> Transformer + CRF
-        model = Electra_Feature_Model.from_pretrained(args.model_name_or_path, config=config)
-    elif 9 == user_select:
-        # ELECTRA + CNNBiF
-        model = ELECTRA_CNNBiF_Model.from_pretrained(args.model_name_or_path, config=config)
-    elif 10 == user_select:
-        # ELECTRA + LSTM(POS) +CRF
-        model = CHAR_ELECTRA_POS_LSTM.from_pretrained(args.model_name_or_path, config=config)
-    elif 11 == user_select:
         # ELECTRA+LSTM(MECAB)+[CRF] (MOR)
         model = ELECTRA_MECAB_MORP.from_pretrained(args.model_name_or_path, config=config)
-    elif 12 == user_select:
+    elif 2 == user_select:
         # ELECTRA SPAN NER
         model = ElectraSpanNER.from_pretrained(args.model_name_or_path, config=config)
 
@@ -334,40 +180,11 @@ def load_model_checkpoints(user_select, checkpoint):
 #===============================================================
     # model
     model = None
+
     if 1 == user_select:
-        # BERT-base
-        model = AutoModelForTokenClassification.from_pretrained(checkpoint)
-    elif 2 == user_select:
-        # ELECTRA-base
-        model = ElectraForTokenClassification.from_pretrained(checkpoint)
-    elif 3 == user_select:
-        # RoBERTa-base
-        model = AutoModelForTokenClassification.from_pretrained(checkpoint)
-    elif 4 == user_select:
-        # BERT+LSTM(POS)+CRF
-        model = BERT_LSTM_CRF.from_pretrained(checkpoint)
-    elif 5 == user_select:
-        # RoBERTa+LSTM(POS)+CRF
-        model = RoBERTa_LSTM_CRF.from_pretrained(checkpoint)
-    elif 6 == user_select:
-        # ELECTRA+LSTM(POS)+CRF
-        model = ELECTRA_POS_LSTM.from_pretrained(checkpoint)
-    elif 7 == user_select:
-        # ELECTRA + Eojeol Embedding -> Transformer + CRF
-        model = Electra_Eojeol_Model.from_pretrained(checkpoint)
-    elif 8 == user_select:
-        # ELECTRA + ALL FEATURES (POS, Eojeol, Entity) -> Transformer + CRF
-        model = Electra_Feature_Model.from_pretrained(checkpoint)
-    elif 9 == user_select:
-        # ELECTRA + CNNBiF
-        model = ELECTRA_CNNBiF_Model.from_pretrained(checkpoint)
-    elif 10 == user_select:
-        # CHAR_ELECTRA+LSTM(POS)+CRF
-        model = CHAR_ELECTRA_POS_LSTM.from_pretrained(checkpoint)
-    elif 11 == user_select:
         # ELECTRA+LSTM(MECAB)+[CRF]
         model = ELECTRA_MECAB_MORP.from_pretrained(checkpoint)
-    elif 12 == user_select:
+    elif 2 == user_select:
         # Span NER (ELECTRA)
         model = ElectraSpanNER.from_pretrained(checkpoint)
 
