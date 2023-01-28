@@ -1,5 +1,7 @@
+import dataclasses
 from dataclasses import dataclass
 from typing import Optional
+import json
 
 KLUE_NER_TAG = {
     "O": 0,
@@ -13,3 +15,10 @@ class NerExample:
     text_a: str
     text_b: Optional[str] = None
     label: Optional[str] = None
+
+    def to_dict(self) -> Dict[str, str]:
+        return dataclasses.asdict(self)
+
+    def to_json_string(self) -> None:
+        """Serializes this instance to a JSON string."""
+        return json.dumps(self.to_dict(), indent=2) + "\n"
