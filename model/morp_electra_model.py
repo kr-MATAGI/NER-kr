@@ -26,12 +26,12 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
         self.dropout = nn.Dropout(self.dropout_rate)
 
         # LSTM - Encoder
-        self.lstm_dim = config.hidden_size + (self.pos_embed_dim * self.num_flag_pos)
+        self.lstm_dim = config.hidden_size #+ (self.pos_embed_dim * self.num_flag_pos)
         self.encoder = nn.LSTM(input_size=self.lstm_dim, hidden_size=(config.hidden_size // 2),
                                num_layers=1, batch_first=True, bidirectional=True)
 
-        self.mt_attn = nn.MultiheadAttention(embed_dim=config.hidden_size, num_heads=8, dropout=0.1, batch_first=True)
-        self.norm = nn.LayerNorm(config.hidden_size)
+        # self.mt_attn = nn.MultiheadAttention(embed_dim=config.hidden_size, num_heads=8, dropout=0.1, batch_first=True)
+        # self.norm = nn.LayerNorm(config.hidden_size)
 
         # Classifier
         self.classifier_dim = config.hidden_size #+ (self.pos_embed_dim * self.num_flag_pos) + config.hidden_size
@@ -57,19 +57,19 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
         electra_outputs = self.dropout(electra_outputs)
 
         ''' POS Flag '''
-        pos_flag_out = self.pos_flag_embedding(pos_ids)  # [batch, seq_len, num_pos, pos_emb_dim]
-        pos_flag_out = F.relu(pos_flag_out)
-        pos_flag_size = pos_flag_out.size()
-        pos_flag_out = pos_flag_out.reshape(pos_flag_size[0], pos_flag_size[1], -1)
+        # pos_flag_out = self.pos_flag_embedding(pos_ids)  # [batch, seq_len, num_pos, pos_emb_dim]
+        # pos_flag_out = F.relu(pos_flag_out)
+        # pos_flag_size = pos_flag_out.size()
+        # pos_flag_out = pos_flag_out.reshape(pos_flag_size[0], pos_flag_size[1], -1)
 
         # LSTM
-        concat_pos = torch.concat([electra_outputs, pos_flag_out], dim=-1)
-        enc_out, hidden = self.encoder(concat_pos) # [batch_size, seq_len, hidden_size]
+        # concat_pos = torch.concat([electra_outputs, pos_flag_out], dim=-1)
+        enc_out, hidden = self.encoder(electra_outputs) # [batch_size, seq_len, hidden_size]
         # hidden = torch.cat([hidden[-2], hidden[-1]], dim=-1)
 
-        attn_output, attn_output_weights = self.mt_attn(query=enc_out, key=enc_out, value=enc_out)
-        enc_out = torch.add(electra_outputs, attn_output)
-        enc_out = self.norm(enc_out)
+        # attn_output, attn_output_weights = self.mt_attn(query=enc_out, key=enc_out, value=enc_out)
+        # enc_out = torch.add(electra_outputs, attn_output)
+        # enc_out = self.norm(enc_out)
 
         # Classifier
         logits = self.classifier(enc_out)

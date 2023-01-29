@@ -11,41 +11,12 @@ class NER_POS_Dataset(Dataset):
 #===============================================================
     def __init__(
             self,
-            data: np.ndarray, labels: np.ndarray, pos_ids: np.ndarray
+            item_dict: Dict[str, torch.Tensor]
     ):
-        self.input_ids = data[:][:, :, 0]
-        self.attention_mask = data[:][:, :, 1]
-        self.token_type_ids = data[:][:, :, 2]
-        self.labels = labels
-
-        self.pos_ids = pos_ids
-
-        self.input_ids = torch.tensor(self.input_ids, dtype=torch.long)
-        self.attention_mask = torch.tensor(self.attention_mask, dtype=torch.long)
-        self.token_type_ids = torch.tensor(self.token_type_ids, dtype=torch.long)
-        self.labels = torch.tensor(self.labels, dtype=torch.long)
-
-        self.pos_ids = torch.tensor(self.pos_ids, dtype=torch.long)
-
-    def _char_elmo_sents_getitem(self, src_sents):
-        X = []
-        for sent in src_sents:
-            temp_X = []
-            for char in sent:
-                if re.search(r"[A-Z]+", char):
-                    char = char.lower()
-                if char in self.char_dic.keys():
-                    temp_X.append(self.char_dic[char])
-                else:
-                    temp_X.append(self.char_dic["[UNK]"])
-
-            if len(temp_X) >= self.seq_len:
-                temp_X = temp_X[:self.seq_len]
-            else:
-                temp_X += [0] * (self.seq_len - len(temp_X))
-            X.append(temp_X)
-        X = torch.LongTensor(X)
-        return X
+        self.input_ids = item_dict["input_ids"]
+        self.attention_mask = item_dict["attention_mask"]
+        self.token_type_ids = item_dict["token_type_ids"]
+        self.labels = item_dict["label_ids"]
 
     def __len__(self):
         return len(self.input_ids)
@@ -56,7 +27,7 @@ class NER_POS_Dataset(Dataset):
             "attention_mask": self.attention_mask[idx],
             "token_type_ids": self.token_type_ids[idx],
             "label_ids": self.labels[idx],
-            "pos_ids": self.pos_ids[idx]
+            # "pos_ids": self.pos_ids[idx]
         }
 
         return items

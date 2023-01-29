@@ -9,7 +9,7 @@ from attrdict import AttrDict
 import torch
 from torch.utils.data import RandomSampler, SequentialSampler, DataLoader
 from torch.utils.tensorboard import SummaryWriter
-from transformers import get_linear_schedule_with_warmup, ElectraTokenizer
+from transformers import get_linear_schedule_with_warmup
 
 from tqdm import tqdm
 
@@ -17,7 +17,8 @@ from tqdm import tqdm
 from ner_def import (
     ETRI_TAG, NER_MODEL_LIST,
 )
-from klue.klue_tag_def import KLUE_NER_TAG
+
+from klue.klue_utils import validation_epoch_end
 
 from ner_datasets import NER_POS_Dataset, NER_Eojeol_Datasets, SpanNERDataset
 from ner_utils import (
@@ -59,14 +60,14 @@ def make_inputs_from_batch(batch: torch.Tensor, device: str, user_select: int, m
             "attention_mask": batch["attention_mask"].to(device),
             "token_type_ids": batch["token_type_ids"].to(device),
             "label_ids": batch["label_ids"].to(device),
-            "pos_ids": batch["pos_ids"].to(device)
+            # "pos_ids": batch["pos_ids"].to(device)
         }
 
     return inputs
 
 ### Evaluate
 #===============================================================
-def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
+def evaluate(args, model, eval_dataset, eval_examples, mode, global_step=None, train_epoch=0):
 #===============================================================
     results = {}
 
@@ -157,6 +158,10 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
     result = f1_pre_rec(out_label_list, preds_list, is_ner=True)
     results.update(result)
 
+    # KLUE Metrics
+    validation_epoch_end(tokenizer_name="monologg/koelectra-base-v3-discriminator",
+                         list_of_subword_preds=preds_list, origin_datasets=eval_examples)
+
     output_dir = os.path.join(args.output_dir, mode)
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -175,7 +180,7 @@ def evaluate(args, model, eval_dataset, mode, global_step=None, train_epoch=0):
 
 ### Train
 #===============================================================
-def train(args, model, train_dataset, dev_dataset):
+def train(args, model, train_dataset, dev_dataset, dev_ori_examples):
 #===============================================================
     # torch.autograd.set_detect_anomaly(True)
     train_data_len = len(train_dataset)
@@ -262,7 +267,7 @@ def train(args, model, train_dataset, dev_dataset):
 
                 if (args.logging_steps > 0 and global_step % args.logging_steps == 0) and \
                         args.evaluate_test_during_training:
-                    evaluate(args, model, dev_dataset, "dev", global_step)
+                    evaluate(args, model, dev_dataset, dev_ori_examples, "dev", global_step)
 
                 if args.save_steps > 0 and global_step % args.save_steps == 0:
                     # Save samples checkpoint
@@ -347,21 +352,18 @@ def main():
         test_all_span_idx, test_all_span_len, test_real_span_mask, test_span_only_label, test_pos_ids = \
             load_corpus_span_ner_npy(args.test_npy, mode="test")
     else:
-        train_npy, train_labels, train_pos_ids = load_corpus_npy_datasets(args.train_npy, mode="train")
-        dev_npy, dev_labels, dev_pos_ids = load_corpus_npy_datasets(args.dev_npy, mode="dev")
-        test_npy, test_labels, test_pos_ids = load_corpus_npy_datasets(args.test_npy, mode="test")
-        print(f"train.shape - dataset: {train_npy.shape}, labels: {train_labels.shape}, pos_ids: {train_pos_ids.shape}")
-        print(f"dev.shape - dataset: {dev_npy.shape}, labels: {dev_labels.shape}, pos_ids: {dev_pos_ids.shape}")
-        print(f"test.shape - dataset: {test_npy.shape}, labels: {test_labels.shape}, pos_ids: {test_pos_ids.shape}")
+        train_dict, train_ori_examples = load_corpus_npy_datasets(args.train_npy, mode="train")
+        dev_dict, dev_ori_examples = load_corpus_npy_datasets(args.dev_npy, mode="dev")
+        test_dict, test_ori_examples = load_corpus_npy_datasets(args.test_npy, mode="dev")
 
     # make train/dev/test dataset
     train_dataset, dev_dataset, test_dataset = None, None, None
     if 1 == g_user_select:
-        train_dataset = NER_POS_Dataset(data=train_npy, labels=train_labels, pos_ids=train_pos_ids)
-        dev_dataset = NER_POS_Dataset(data=dev_npy, labels=dev_labels, pos_ids=dev_pos_ids)
-        test_dataset = NER_POS_Dataset(data=test_npy, labels=test_labels, pos_ids=test_pos_ids)
+        train_dataset = NER_POS_Dataset(item_dict=train_dict)
+        dev_dataset = NER_POS_Dataset(item_dict=dev_dict)
+        test_dataset = NER_POS_Dataset(item_dict=test_dict)
 
-    elif 12 == g_user_select:
+    elif 2 == g_user_select:
         train_dataset = SpanNERDataset(data=train_npy, label_ids=train_label_ids, pos_ids=train_pos_ids,
                                        span_only_label=train_span_only_label, real_span_mask=train_real_span_mask,
                                        all_span_len=train_all_span_len, all_span_idx=train_all_span_idx)
@@ -373,7 +375,7 @@ def main():
                                       all_span_len=test_all_span_len, all_span_idx=test_all_span_idx)
 
     if args.do_train:
-        global_step, tr_loss = train(args, model, train_dataset, dev_dataset)
+        global_step, tr_loss = train(args, model, train_dataset, dev_dataset, dev_ori_examples)
         logger.info(f"global_step = {global_step}, average loss = {tr_loss}")
 
     results = {}

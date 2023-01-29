@@ -1,12 +1,12 @@
 import dataclasses
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Dict, List, Union
 import json
 
 KLUE_NER_TAG = {
-    "O": 0,
-    "B-PS": 1, "I-PS": 2, "B-LC": 3, "I-LC": 4, "B-OG": 5, "I-OG": 6,
-    "B-DT": 7, "I-DT": 8, "B-TI": 9, "I-TI": 10, "B-QT": 11, "I-QT": 12,
+    "B-PS": 0, "I-PS": 1, "B-LC": 2, "I-LC": 3, "B-OG": 4, "I-OG": 5,
+    "B-DT": 6, "I-DT": 7, "B-TI": 8, "I-TI": 9, "B-QT": 10, "I-QT": 11,
+    "O": 12,
 }
 
 @dataclass
@@ -22,3 +22,13 @@ class NerExample:
     def to_json_string(self) -> None:
         """Serializes this instance to a JSON string."""
         return json.dumps(self.to_dict(), indent=2) + "\n"
+
+@dataclass(frozen=True)
+class NerFeatures:
+    input_ids: List[int]
+    attention_mask: Optional[List[int]] = None
+    token_type_ids: Optional[List[int]] = None
+    label: Optional[Union[int, float]] = None
+
+    def to_json_string(self) -> None:
+        return json.dumps(dataclasses.asdict(self)) + "\n"

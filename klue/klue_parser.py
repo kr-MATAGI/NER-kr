@@ -2,11 +2,13 @@ import random
 import copy
 import re
 import numpy as np
+import torch
+import pickle
 
 from pathlib import Path
-from klue_tag_def import KLUE_NER_TAG, NerExample
+from klue_tag_def import KLUE_NER_TAG, NerExample, NerFeatures
 from utils.tag_def import MECAB_POS_TAG
-from typing import List, Tuple
+from typing import List, Tuple, Union
 
 from transformers import ElectraTokenizer
 from eunjeon import Mecab
@@ -417,83 +419,166 @@ def create_span_npy_datasets(src_path: str, target_n_pos: int, target_tag_list: 
     create_span_features(examples, tokenizer, target_n_pos, target_tag_list, char_lvl_labels=all_char_lvl_labels,
                          mode=mode, max_seq_len=128, max_span_len=6)
 
+
 #===========================================================
-def create_wordpiece_examples(src_path: str, mode: str):
+class KlueWordpieceMaker:
 #===========================================================
-    print(f"[create_wordpiece_examples] {src_path}")
+    def __init__(self, tokenizer_name):
+        self.tokenizer = ElectraTokenizer.from_pretrained(tokenizer_name)
 
-    tokenizer = ElectraTokenizer.from_pretrained("monologg/koelectra-base-v3-discriminator")
-    strip_char = "##"
+    #===========================================================
+    def create_wordpiece_npy_datasets(self, src_path: str, mode: str, max_length=510):
+    #===========================================================
+        print(f"[create_wordpiece_npy_datasets] src_path: {src_path}")
 
-    examples = []
-    ori_examples = []
-    file_path = Path(src_path)
-    raw_text = file_path.read_text(encoding="utf-8").strip()
-    raw_docs = re.split(r"\n\t?\n", raw_text)
-    cnt = 0
+        examples, ori_examples = self.create_wordpiece_examples(src_path, mode)
+        features = self.convert_wordpiece_features(examples, label_list=self.get_labels(), max_length=max_length)
 
-    for doc in raw_docs:
-        original_clean_tokens = []  # clean tokens (bert clean func)
-        original_clean_labels = []  # clean labels (bert clean func)
-        sentence = ""
-        for line in doc.split("\n"):
-            if line[:2] == "##":
-                guid = line.split("\t")[0].replace("##", "")
-                continue
-            token, tag = line.split("\t")
-            sentence += token
-            if token == " ":
-                continue
-            original_clean_tokens.append(token)
-            original_clean_labels.append(tag)
-        # sentence: "안녕 하세요.."
-        # original_clean_labels: [안, 녕, 하, 세, 요, ., .]
-        sent_words = sentence.split(" ")
-        # sent_words: [안녕, 하세요..]
-        modi_labels = []
-        char_idx = 0
-        for word in sent_words:
-            # 안녕, 하세요
-            correct_syllable_num = len(word)
-            tokenized_word = tokenizer.tokenize(word)
-            # case1: 음절 tokenizer --> [안, ##녕]
-            # case2: wp tokenizer --> [안녕]
-            # case3: 음절, wp tokenizer에서 unk --> [unk]
-            # unk규칙 --> 어절이 통채로 unk로 변환, 단, 기호는 분리
-            contain_unk = True if tokenizer.unk_token in tokenized_word else False
-            for i, token in enumerate(tokenized_word):
-                token = token.replace(strip_char, "")
-                if not token:
-                    modi_labels.append("O")
+        all_input_ids = torch.tensor([f.input_ids for f in features], dtype=torch.long)
+        all_attention_mask = torch.tensor([f.attention_mask for f in features], dtype=torch.long)
+        all_token_type_ids = torch.tensor(
+            [0 if f.token_type_ids is None else f.token_type_ids for f in features], dtype=torch.long
+        )
+        all_labels = torch.tensor([f.label for f in features], dtype=torch.long)
+
+        assert max_length == all_input_ids.shape[1], f"all_input_ids.len: {all_input_ids.shape[1]}"
+        assert max_length == all_attention_mask.shape[1], f"all_attn_mask.len: {all_attention_mask.shape[1]}"
+        assert max_length == all_token_type_ids.shape[1], f"all_token_type_ids.len: {all_token_type_ids.shape[1]}"
+        assert max_length == all_labels.shape[1], f"all_labels.len: {all_labels.shape[1]}"
+
+        # Save Tensor
+        print(f"[create_wordpiece_npy_datasets] all_input_ids.shape: {all_input_ids.shape}")
+        print(f"[create_wordpiece_npy_datasets] all_attention_mask.shape: {all_attention_mask.shape}")
+        print(f"[create_wordpiece_npy_datasets] all_token_type_ids.shape: {all_token_type_ids.shape}")
+        print(f"[create_wordpiece_npy_datasets] all_labels.shape: {all_labels.shape}")
+
+        torch.save(all_input_ids, "../corpus/npy/klue_ner/" + mode + "_input_ids.pt")
+        torch.save(all_attention_mask, "../corpus/npy/klue_ner/" + mode + "_attention_mask.pt")
+        torch.save(all_token_type_ids, "../corpus/npy/klue_ner/" + mode + "_token_type_ids.pt")
+        torch.save(all_labels, "../corpus/npy/klue_ner/" + mode + "_label_ids.pt")
+
+        print(f"[create_wordpiece_npy_datasets] Save ids - Complete !")
+
+        # Save pickle
+        with open("../corpus/npy/klue_ner/" + mode + "_origin.pkl", mode="wb") as ori_file:
+            pickle.dump(ori_examples, ori_file)
+            print(f"[create_wordpiece_npy_datasets] pickle len: {len(ori_examples)}")
+
+    #===========================================================
+    def create_wordpiece_examples(self, src_path: str, mode: str):
+    #===========================================================
+        print(f"[create_wordpiece_examples] {src_path}")
+
+        tokenizer = ElectraTokenizer.from_pretrained("monologg/koelectra-base-v3-discriminator")
+        strip_char = "##"
+
+        examples = []
+        ori_examples = []
+        file_path = Path(src_path)
+        raw_text = file_path.read_text(encoding="utf-8").strip()
+        raw_docs = re.split(r"\n\t?\n", raw_text)
+        cnt = 0
+
+        for doc in raw_docs:
+            original_clean_tokens = []  # clean tokens (bert clean func)
+            original_clean_labels = []  # clean labels (bert clean func)
+            sentence = ""
+            for line in doc.split("\n"):
+                if line[:2] == "##":
+                    guid = line.split("\t")[0].replace("##", "")
                     continue
-                modi_labels.append(original_clean_labels[char_idx])
-                if not contain_unk:
-                    char_idx += len(token)
-            if contain_unk:
-                char_idx += correct_syllable_num
+                token, tag = line.split("\t")
+                sentence += token
+                if token == " ":
+                    continue
+                original_clean_tokens.append(token)
+                original_clean_labels.append(tag)
+            # sentence: "안녕 하세요.."
+            # original_clean_labels: [안, 녕, 하, 세, 요, ., .]
+            sent_words = sentence.split(" ")
+            # sent_words: [안녕, 하세요..]
+            modi_labels = []
+            char_idx = 0
+            for word in sent_words:
+                # 안녕, 하세요
+                correct_syllable_num = len(word)
+                tokenized_word = tokenizer.tokenize(word)
+                # case1: 음절 tokenizer --> [안, ##녕]
+                # case2: wp tokenizer --> [안녕]
+                # case3: 음절, wp tokenizer에서 unk --> [unk]
+                # unk규칙 --> 어절이 통채로 unk로 변환, 단, 기호는 분리
+                contain_unk = True if tokenizer.unk_token in tokenized_word else False
+                for i, token in enumerate(tokenized_word):
+                    token = token.replace(strip_char, "")
+                    if not token:
+                        modi_labels.append("O")
+                        continue
+                    modi_labels.append(original_clean_labels[char_idx])
+                    if not contain_unk:
+                        char_idx += len(token)
+                if contain_unk:
+                    char_idx += correct_syllable_num
 
-        text_a = sentence  # original sentence
-        examples.append(NerExample(guid=guid, text_a=text_a, label=modi_labels))
-        ori_examples.append({"original_sentence": text_a, "original_clean_labels": original_clean_labels})
-        cnt += 1
+            text_a = sentence  # original sentence
+            examples.append(NerExample(guid=guid, text_a=text_a, label=modi_labels))
+            ori_examples.append({"original_sentence": text_a, "original_clean_labels": original_clean_labels})
+            cnt += 1
 
-        if not is_training:
-            data = getattr(self.hparams, "data", {})
-            data[dataset_type] = {"original_examples": ori_examples}
-            setattr(self.hparams, "data", data)
-            setattr(self.hparams, "tokenizer", self.tokenizer)
-        return examples
+        return examples, ori_examples
 
+    #===========================================================
+    def convert_wordpiece_features(self, examples: List[NerExample],
+                                   label_list, max_length, task_mode="tagging") -> List[NerFeatures]:
+    #===========================================================
+        print(f"[convert_wordpiece_features] examples: {len(examples)}")
 
-#===========================================================
-def create_wordpiece_npy_datasets(src_path: str, mode: str):
-#===========================================================
-    print(f"[create_wordpiece_npy_datasets] src_path: {src_path}")
+        if max_length is None:
+            max_length = self.tokenizer.max_len
 
-    examples = create_wordpiece_examples(src_path, mode)
+        label_map = {label: i for i, label in enumerate(label_list)}
+        print(f"[convert_wordpiece_features] label_map: \n{label_map}")
 
+        def label_from_example(example: NerExample) -> Union[int, float, None, List[int]]:
+            if example.label is None:
+                return None
+            if task_mode == "classification":
+                return label_map[example.label]
+            elif task_mode == "regression":
+                return float(example.label)
+            elif task_mode == "tagging":  # See KLUE paper: https://arxiv.org/pdf/2105.09680.pdf
+                token_label = [label_map["O"]] * (max_length)
+                for i, label in enumerate(example.label[: max_length - 2]):  # last [SEP] label -> 'O'
+                    token_label[i + 1] = label_map[label]  # first [CLS] label -> 'O'
+                return token_label
+            raise KeyError(task_mode)
 
+        labels = [label_from_example(example) for example in examples]
 
+        batch_encoding = self.tokenizer(
+            [(example.text_a, example.text_b) for example in examples],
+            max_length=max_length,
+            padding="max_length",
+            truncation=True,
+        )
+
+        features = []
+        for i in range(len(examples)):
+            inputs = {k: batch_encoding[k][i] for k in batch_encoding}
+
+            feature = NerFeatures(**inputs, label=labels[i])
+            features.append(feature)
+
+        for i, example in enumerate(examples[:5]):
+            print("*** Example ***")
+            print("guid: %s" % (example.guid))
+            print("features: %s" % features[i])
+
+        return features
+
+    #===========================================================
+    def get_labels(self) -> List[str]:
+    #===========================================================
+        return KLUE_NER_TAG.keys()
 
 #=======================================================================================
 def convert_morp_connected_tokens(sent_lvl_pos: Tuple[str, str], src_text: str):
@@ -609,5 +694,6 @@ if "__main__" == __name__:
         create_span_npy_datasets(src_path=dev_data_path, target_n_pos=target_n_pos, target_tag_list=target_tag_list, mode="dev")
         create_span_npy_datasets(src_path=train_data_path, target_n_pos=target_n_pos, target_tag_list=target_tag_list, mode="train")
     else:
-        create_wordpiece_npy_datasets(src_path=dev_data_path, mode="dev")
-        # create_wordpiece_npy_datasets(src_path=train_data_path, mode="train")
+        wp_maker = KlueWordpieceMaker(tokenizer_name="monologg/koelectra-base-v3-discriminator")
+        wp_maker.create_wordpiece_npy_datasets(src_path=dev_data_path, mode="dev")
+        wp_maker.create_wordpiece_npy_datasets(src_path=train_data_path, mode="train")
