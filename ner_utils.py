@@ -161,7 +161,7 @@ def load_ner_config_and_model(user_select: int, args, tag_dict):
                                                label2id={label: i for i, label in enumerate(tag_dict.keys())})
 
         config.num_pos_labels = len(MECAB_POS_TAG.keys())  # Mecab All POS
-        config.max_seq_len = 128
+        config.max_seq_len = 510
     elif 2 == user_select:
         # ELECTRA SPAN NER
         etri_tag_dict = {'O': 0,

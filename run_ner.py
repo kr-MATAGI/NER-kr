@@ -325,7 +325,7 @@ def main():
     args.output_dir = os.path.join(args.ckpt_dir, args.output_dir)
 
     # Config
-    config, model = load_ner_config_and_model(g_user_select, args, ETRI_TAG)
+    config, model = load_ner_config_and_model(g_user_select, args, KLUE_NER_TAG)
 
     # print config / model
     logger.info(f"[run_ner][__main__] model: {args.model_name_or_path}")
