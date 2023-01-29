@@ -82,19 +82,19 @@ def load_corpus_npy_datasets(src_path: str, mode: str="train", dataset_type: str
 #===============================================================
     root_path = "/".join(src_path.split("/")[:-1]) + "/" + mode
 
-    input_ids = torch.load(root_path + "_input_ids.pt")
-    attention_mask = torch.load(root_path + "_attention_mask.pt")
-    token_type_ids = torch.load(root_path + "_token_type_ids.pt")
-    label_ids = torch.load(root_path + "_label_ids.pt")
+    input_ids = np.load(root_path + "_input_ids.npy")
+    attention_mask = np.load(root_path + "_attention_mask.npy")
+    token_type_ids = np.load(root_path + "_token_type_ids.npy")
+    label_ids = np.load(root_path + "_label_ids.npy")
 
     ori_examples = None
     with open(root_path+"_origin.pkl", mode="rb") as ori_f:
         ori_examples = pickle.load(ori_f)
 
-    print(f"[load_corpus_npy_datasets][{dataset_type}][{mode}] input_ids.shape: {input_ids.size()}")
-    print(f"[load_corpus_npy_datasets][{dataset_type}][{mode}] attention_mask.shape: {attention_mask.size()}")
-    print(f"[load_corpus_npy_datasets][{dataset_type}][{mode}] token_type_ids.shape: {token_type_ids.size()}")
-    print(f"[load_corpus_npy_datasets][{dataset_type}][{mode}] label_ids.shape: {label_ids.size()}")
+    print(f"[load_corpus_npy_datasets][{dataset_type}][{mode}] input_ids.shape: {input_ids.shape}")
+    print(f"[load_corpus_npy_datasets][{dataset_type}][{mode}] attention_mask.shape: {attention_mask.shape}")
+    print(f"[load_corpus_npy_datasets][{dataset_type}][{mode}] token_type_ids.shape: {token_type_ids.shape}")
+    print(f"[load_corpus_npy_datasets][{dataset_type}][{mode}] label_ids.shape: {label_ids.shape}")
     print(f"[load_corpus_npy_datasets][{dataset_type}][{mode}] origin_examples.len: {len(ori_examples)}")
 
     ret_dict = {

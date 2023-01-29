@@ -434,12 +434,12 @@ class KlueWordpieceMaker:
         examples, ori_examples = self.create_wordpiece_examples(src_path, mode)
         features = self.convert_wordpiece_features(examples, label_list=self.get_labels(), max_length=max_length)
 
-        all_input_ids = torch.tensor([f.input_ids for f in features], dtype=torch.long)
-        all_attention_mask = torch.tensor([f.attention_mask for f in features], dtype=torch.long)
-        all_token_type_ids = torch.tensor(
-            [0 if f.token_type_ids is None else f.token_type_ids for f in features], dtype=torch.long
+        all_input_ids = np.array([f.input_ids for f in features])
+        all_attention_mask = np.array([f.attention_mask for f in features])
+        all_token_type_ids = np.array(
+            [0 if f.token_type_ids is None else f.token_type_ids for f in features]
         )
-        all_labels = torch.tensor([f.label for f in features], dtype=torch.long)
+        all_labels = np.array([f.label for f in features])
 
         assert max_length == all_input_ids.shape[1], f"all_input_ids.len: {all_input_ids.shape[1]}"
         assert max_length == all_attention_mask.shape[1], f"all_attn_mask.len: {all_attention_mask.shape[1]}"
@@ -452,10 +452,10 @@ class KlueWordpieceMaker:
         print(f"[create_wordpiece_npy_datasets] all_token_type_ids.shape: {all_token_type_ids.shape}")
         print(f"[create_wordpiece_npy_datasets] all_labels.shape: {all_labels.shape}")
 
-        torch.save(all_input_ids, "../corpus/npy/klue_ner/" + mode + "_input_ids.pt")
-        torch.save(all_attention_mask, "../corpus/npy/klue_ner/" + mode + "_attention_mask.pt")
-        torch.save(all_token_type_ids, "../corpus/npy/klue_ner/" + mode + "_token_type_ids.pt")
-        torch.save(all_labels, "../corpus/npy/klue_ner/" + mode + "_label_ids.pt")
+        np.save("../corpus/npy/klue_ner/" + mode + "_input_ids", all_input_ids)
+        np.save("../corpus/npy/klue_ner/" + mode + "_attention_mask", all_attention_mask)
+        np.save("../corpus/npy/klue_ner/" + mode + "_token_type_ids", all_token_type_ids)
+        np.save("../corpus/npy/klue_ner/" + mode + "_label_ids", all_labels)
 
         print(f"[create_wordpiece_npy_datasets] Save ids - Complete !")
 

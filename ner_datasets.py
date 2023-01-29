@@ -13,10 +13,10 @@ class NER_POS_Dataset(Dataset):
             self,
             item_dict: Dict[str, torch.Tensor]
     ):
-        self.input_ids = item_dict["input_ids"]
-        self.attention_mask = item_dict["attention_mask"]
-        self.token_type_ids = item_dict["token_type_ids"]
-        self.labels = item_dict["label_ids"]
+        self.input_ids = torch.tensor(item_dict["input_ids"], dtype=torch.long)
+        self.attention_mask = torch.tensor(item_dict["attention_mask"], dtype=torch.long)
+        self.token_type_ids = torch.tensor(item_dict["token_type_ids"], dtype=torch.long)
+        self.labels = torch.tensor(item_dict["label_ids"], dtype=torch.long)
 
     def __len__(self):
         return len(self.input_ids)
