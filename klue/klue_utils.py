@@ -41,7 +41,9 @@ def validation_epoch_end(
             subwords = tokenizer.tokenize(word)  # 안녕 -> [안, ##녕] / 하세요 -> [하, ##세요] / ^^ -> [UNK]
             if tokenizer.unk_token in subwords:  # 뻥튀기가 필요한 case!
                 unk_aligned_subwords = tokenizer_out_aligner(
-                    word, subwords, strip_char
+                    tokenizer,
+                    word, subwords, strip_char,
+                    in_unk_token
                 )  # [UNK] -> [UNK, +UNK]
                 unk_flag = False
                 for subword in unk_aligned_subwords:
@@ -104,7 +106,7 @@ def validation_epoch_end(
 
 
 #=============================================
-def tokenizer_out_aligner(self, t_in: str, t_out: List[str], strip_char: str = "##") -> List[str]:
+def tokenizer_out_aligner(tokenizer, t_in: str, t_out: List[str], strip_char: str = "##", in_unk_token: str = "[+UNK]") -> List[str]:
 #=============================================
     """Aligns with character-level labels after tokenization.
 
@@ -125,12 +127,12 @@ def tokenizer_out_aligner(self, t_in: str, t_out: List[str], strip_char: str = "
     while True:
         if i == len(t_in) and j == len(t_out) - 1:
             break
-        step_t_out = len(t_out[j].replace(strip_char, "")) if t_out[j] != self.tokenizer.unk_token else 1
+        step_t_out = len(t_out[j].replace(strip_char, "")) if t_out[j] != tokenizer.unk_token else 1
         if UNK_flag:
-            t_out_new.append(self.in_unk_token)
+            t_out_new.append(in_unk_token)
         else:
             t_out_new.append(t_out[j])
-        if j < len(t_out) - 1 and t_out[j] == self.tokenizer.unk_token and t_out[j + 1] != self.tokenizer.unk_token:
+        if j < len(t_out) - 1 and t_out[j] == tokenizer.unk_token and t_out[j + 1] != tokenizer.unk_token:
             i += step_t_out
             UNK_flag = True
             if t_in[i] == t_out[j + 1][0]:

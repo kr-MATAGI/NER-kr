@@ -396,7 +396,7 @@ def main():
             global_step = checkpoint.split("-")[-1]
             model = load_model_checkpoints(g_user_select, checkpoint)
             model.to(args.device)
-            result = evaluate(args, model, test_dataset, mode="test", global_step=global_step)
+            result = evaluate(args, model, test_dataset, test_ori_examples, mode="test", global_step=global_step)
             result = dict((k + "_{}".format(global_step), v) for k, v in result.items())
             results.update(result)
 

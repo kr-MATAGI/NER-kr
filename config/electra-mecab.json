@@ -10,7 +10,7 @@
   "save_optimizer": false,
   "do_lower_case": false,
   "do_train": true,
-  "do_eval": false,
+  "do_eval": true,
   "max_seq_len": 128,
   "num_train_epochs": 10,
   "weight_decay": 0.0,
@@ -26,8 +26,8 @@
   "seed": 42,
   "train_batch_size": 32,
   "eval_batch_size": 128,
-  "logging_steps": 1,
-  "save_steps": 7106,
+  "logging_steps": 657,
+  "save_steps": 657,
   "learning_rate": 5e-5,
   "n_gpu": 1
 }
