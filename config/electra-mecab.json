@@ -24,7 +24,7 @@
   "model_name_or_path": "monologg/koelectra-base-v3-discriminator",
   "output_dir": "electra-mecab-wordpiece-pos-grouping-flag-test24-300M-attn-electra-addition",
   "seed": 42,
-  "train_batch_size": 32,
+  "train_batch_size": 16,
   "eval_batch_size": 64,
   "logging_steps": 657,
   "save_steps": 657,
