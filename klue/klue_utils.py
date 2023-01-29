@@ -26,9 +26,6 @@ def validation_epoch_end(
     strip_char = "##"
     in_unk_token = "[+UNK]"
 
-    with open("../corpus/npy/klue_ner/dev_origin.pkl", mode="rb") as f:
-        origin_datasets = pickle.load(f)
-
     original_examples = origin_datasets
     list_of_character_preds = []
     list_of_originals = []
