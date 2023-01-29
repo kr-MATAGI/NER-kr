@@ -2,7 +2,7 @@ import pickle
 import numpy as np
 from typing import List, Dict, Any
 import torch
-from klue_tag_def import KLUE_NER_TAG
+from klue.klue_tag_def import KLUE_NER_TAG
 
 import sklearn
 from seqeval.metrics import f1_score as ner_f1_score
