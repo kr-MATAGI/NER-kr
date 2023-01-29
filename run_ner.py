@@ -20,6 +20,7 @@ from ner_def import (
 
 from klue.klue_utils import validation_epoch_end
 
+from klue.klue_tag_def import KLUE_NER_TAG
 from ner_datasets import NER_POS_Dataset, NER_Eojeol_Datasets, SpanNERDataset
 from ner_utils import (
     init_logger, print_parameters, load_corpus_npy_datasets,
@@ -139,7 +140,7 @@ def evaluate(args, model, eval_dataset, eval_examples, mode, global_step=None, t
 
     # ETRI
     # label_map = {i: label for label, i in ETRI_TAG.items()}
-    KLUE
+    # KLUE
     label_map = {i: label for label, i in KLUE_NER_TAG.items()}
     logger.info(f"--Label Map: {label_map}")
 
