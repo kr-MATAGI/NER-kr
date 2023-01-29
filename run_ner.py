@@ -161,7 +161,7 @@ def evaluate(args, model, eval_dataset, eval_examples, mode, global_step=None, t
 
     # KLUE Metrics
     validation_epoch_end(tokenizer_name="monologg/koelectra-base-v3-discriminator",
-                         list_of_subword_preds=preds_list, origin_datasets=eval_examples)
+                         list_of_subword_preds=preds, origin_datasets=eval_examples)
 
     output_dir = os.path.join(args.output_dir, mode)
     if not os.path.exists(output_dir):
