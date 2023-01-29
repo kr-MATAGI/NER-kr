@@ -138,9 +138,9 @@ def evaluate(args, model, eval_dataset, eval_examples, mode, global_step=None, t
     }
 
     # ETRI
-    label_map = {i: label for label, i in ETRI_TAG.items()}
-    # KLUE
-    # label_map = {i: label for label, i in KLUE_NER_TAG.items()}
+    # label_map = {i: label for label, i in ETRI_TAG.items()}
+    KLUE
+    label_map = {i: label for label, i in KLUE_NER_TAG.items()}
     logger.info(f"--Label Map: {label_map}")
 
     out_label_list = [[] for _ in range(out_label_ids.shape[0])]

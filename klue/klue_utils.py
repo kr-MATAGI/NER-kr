@@ -32,6 +32,8 @@ def validation_epoch_end(
     label_list = KLUE_NER_TAG.keys()
 
     for i, (subword_preds, example) in enumerate(zip(list_of_subword_preds, original_examples)):
+        print(subword_preds)
+        input()
         original_sentence = example["original_sentence"]  # 안녕 하세요 ^^
         character_preds = [subword_preds[0].tolist()]  # [CLS]
         character_preds_idx = 1
