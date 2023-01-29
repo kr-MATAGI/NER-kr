@@ -29,7 +29,7 @@ def validation_epoch_end(
     original_examples = origin_datasets
     list_of_character_preds = []
     list_of_originals = []
-    label_list = KLUE_NER_TAG.keys()
+    label_list = [k for k in KLUE_NER_TAG.keys()]
 
     for i, (subword_preds, example) in enumerate(zip(list_of_subword_preds, original_examples)):
         original_sentence = example["original_sentence"]  # 안녕 하세요 ^^
