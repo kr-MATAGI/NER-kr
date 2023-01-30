@@ -29,6 +29,12 @@ class NerFeatures:
     attention_mask: Optional[List[int]] = None
     token_type_ids: Optional[List[int]] = None
     label: Optional[Union[int, float]] = None
+    pos_flag: Optional[List[int]] = None
+
+    all_span_idx: Optional = None
+    all_span_len: Optional = None
+    span_only_label_token: Optional = None
+    real_span_mask_token: Optional = None
 
     def to_json_string(self) -> None:
         return json.dumps(dataclasses.asdict(self)) + "\n"

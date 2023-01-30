@@ -156,6 +156,8 @@ def evaluate(args, model, eval_dataset, eval_examples, mode, global_step=None, t
         for key in sorted(results.keys()):
             logger.info("  {} = {}".format(key, str(results[key])))
             f_w.write("  {} = {}\n".format(key, str(results[key])))
+        f_w.write("  klue_entity_f1 = {}".format(entity_f1))
+        f_w.write("  klue_char_f1 = {}\n".format(char_f1))
         logger.info("\n" + show_ner_report(out_label_list, preds_list))  # Show report for each tag result
         f_w.write("\n" + show_ner_report(out_label_list, preds_list))
 
