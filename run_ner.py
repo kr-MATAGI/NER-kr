@@ -21,7 +21,7 @@ from ner_def import (
 from klue.klue_utils import validation_epoch_end
 
 from klue.klue_tag_def import KLUE_NER_TAG
-from ner_datasets import NER_POS_Dataset, NER_Eojeol_Datasets, SpanNERDataset
+from ner_datasets import NER_POS_Dataset, SpanNERDataset
 from ner_utils import (
     init_logger, print_parameters, load_corpus_npy_datasets,
     set_seed, show_ner_report, f1_pre_rec, load_ner_config_and_model,
@@ -324,17 +324,9 @@ def main():
 
     # load train/dev/test npy
     if 2 == g_user_select:
-        train_npy, train_label_ids, \
-        train_all_span_idx, train_all_span_len, train_real_span_mask, train_span_only_label, train_pos_ids = \
-            load_corpus_span_ner_npy(args.train_npy, mode="train")
-
-        dev_npy, dev_label_ids, \
-        dev_all_span_idx, dev_all_span_len, dev_real_span_mask, dev_span_only_label, dev_pos_ids = \
-            load_corpus_span_ner_npy(args.dev_npy, mode="dev")
-
-        test_npy, test_label_ids, \
-        test_all_span_idx, test_all_span_len, test_real_span_mask, test_span_only_label, test_pos_ids = \
-            load_corpus_span_ner_npy(args.test_npy, mode="test")
+        train_dict, train_ori_examples = load_corpus_span_ner_npy(args.train_npy, mode="train")
+        dev_dict, dev_ori_examples = load_corpus_span_ner_npy(args.dev_npy, mode="dev")
+        test_dict, test_ori_examples = load_corpus_span_ner_npy(args.test_npy, mode="test")
     else:
         train_dict, train_ori_examples = load_corpus_npy_datasets(args.train_npy, mode="train")
         dev_dict, dev_ori_examples = load_corpus_npy_datasets(args.dev_npy, mode="dev")
@@ -348,15 +340,9 @@ def main():
         test_dataset = NER_POS_Dataset(item_dict=test_dict)
 
     elif 2 == g_user_select:
-        train_dataset = SpanNERDataset(data=train_npy, label_ids=train_label_ids, pos_ids=train_pos_ids,
-                                       span_only_label=train_span_only_label, real_span_mask=train_real_span_mask,
-                                       all_span_len=train_all_span_len, all_span_idx=train_all_span_idx)
-        dev_dataset = SpanNERDataset(data=dev_npy, label_ids=dev_label_ids, pos_ids=dev_pos_ids,
-                                     span_only_label=dev_span_only_label, real_span_mask=dev_real_span_mask,
-                                     all_span_len=dev_all_span_len, all_span_idx=dev_all_span_idx)
-        test_dataset = SpanNERDataset(data=test_npy, label_ids=test_label_ids, pos_ids=test_pos_ids,
-                                      span_only_label=test_span_only_label, real_span_mask=test_real_span_mask,
-                                      all_span_len=test_all_span_len, all_span_idx=test_all_span_idx)
+        train_dataset = SpanNERDataset(item_dict=train_dict)
+        dev_dataset = SpanNERDataset(item_dict=dev_dict)
+        test_dataset = SpanNERDataset(item_dict=test_dict)
 
     if args.do_train:
         global_step, tr_loss = train(args, model, train_dataset, dev_dataset, dev_ori_examples)

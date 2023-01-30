@@ -61,7 +61,10 @@ def load_corpus_span_ner_npy(src_path: str, mode: str="train"):
 #===============================================================
     root_path = "/".join(src_path.split("/")[:-1]) + "/" + mode
 
-    input_token_attn_npy = np.load(src_path)
+
+    input_ids = np.load(root_path + "_input_ids.npy")
+    attention_mask = np.load(root_path + "_attention_mask.npy")
+    token_type_ids = np.load(root_path + "_token_type_ids.npy")
     label_ids = np.load(root_path + "_label_ids.npy")
 
     all_span_idx = np.load(root_path + "_all_span_idx.npy")
@@ -69,12 +72,28 @@ def load_corpus_span_ner_npy(src_path: str, mode: str="train"):
     real_span_mask = np.load(root_path + "_real_span_mask_token.npy")
     span_only_label = np.load(root_path + "_span_only_label_token.npy")
 
-    pos_ids = np.load(root_path + "_pos_ids.npy")
-    print(f"{mode}.shape - dataset: {input_token_attn_npy.shape}, label_ids: {label_ids.shape}, pos_ids: {pos_ids.shape}"
+    print(f"{mode}.shape - "
+          f"input_ids: {input_ids.shape}, attention_mask: {attention_mask.shape}, token_type_ids: {token_type_ids.shape}, "
+          f"label_ids: {label_ids.shape}"
           f"all_span_idx: {all_span_idx.shape}, all_span_len: {all_span_len.shape}, "
           f"real_span_mask: {real_span_mask.shape}, span_only_label: {span_only_label.shape}")
 
-    return input_token_attn_npy, label_ids, all_span_idx, all_span_len, real_span_mask, span_only_label, pos_ids
+    ori_examples = None
+    with open(root_path+"_origin.pkl", mode="rb") as ori_f:
+        ori_examples = pickle.load(ori_f)
+
+    ret_dict = {
+        "input_ids": input_ids,
+        "attention_mask": attention_mask,
+        "token_type_ids": token_type_ids,
+        "label_ids": label_ids,
+        "all_span_idx": all_span_idx,
+        "all_span_len": all_span_len,
+        "real_span_mask": real_span_mask,
+        "span_only_label": span_only_label
+    }
+
+    return ret_dict, ori_examples
 
 
 #===============================================================
@@ -161,13 +180,13 @@ def load_ner_config_and_model(user_select: int, args, tag_dict):
                                                label2id={label: i for i, label in enumerate(tag_dict.keys())})
 
         config.num_pos_labels = len(MECAB_POS_TAG.keys())  # Mecab All POS
-        config.max_seq_len = 510
+        config.max_seq_len = 128
     elif 2 == user_select:
         # ELECTRA SPAN NER
-        etri_tag_dict = {'O': 0,
-                         'FD': 1, 'EV': 2, 'DT': 3, 'TI': 4, 'MT': 5,
-                         'AM': 6, 'LC': 7, 'CV': 8, 'PS': 9, 'TR': 10,
-                         'TM': 11, 'AF': 12, 'PT': 13, 'OG': 14, 'QT': 15}
+        # etri_tag_dict = {'O': 0,
+        #                  'FD': 1, 'EV': 2, 'DT': 3, 'TI': 4, 'MT': 5,
+        #                  'AM': 6, 'LC': 7, 'CV': 8, 'PS': 9, 'TR': 10,
+        #                  'TM': 11, 'AF': 12, 'PT': 13, 'OG': 14, 'QT': 15}
 
         klue_tags_dict = {
             "O": 0,
@@ -175,11 +194,11 @@ def load_ner_config_and_model(user_select: int, args, tag_dict):
             "DT": 4, "TI": 5, "QT": 6
         }
 
-        span_tag_list = etri_tag_dict.keys()
-        print("SPAN_TAG_DICT: ", etri_tag_dict)
+        span_tag_list = klue_tags_dict.keys()
+        print("SPAN_TAG_DICT: ", klue_tags_dict)
         config = ElectraConfig.from_pretrained("monologg/koelectra-base-v3-discriminator",
                                                num_labels=len(span_tag_list),
-                                               id2label={idx: label for label, idx in etri_tag_dict.items()})
+                                               id2label={idx: label for label, idx in klue_tags_dict.items()})
 
     # model
     if 1 == user_select:

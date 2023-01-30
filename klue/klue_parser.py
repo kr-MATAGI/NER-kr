@@ -2,7 +2,7 @@ import random
 import copy
 import re
 import numpy as np
-import torch
+import time
 import pickle
 
 from pathlib import Path
@@ -27,10 +27,16 @@ class KlueSpanMaker:
         self.max_span_len = max_span_len
         self.span_minus = int((max_span_len + 1) * max_span_len / 2)
         self.max_num_span = int(max_seq_len * max_span_len - self.span_minus)
+        print(f"[KlueSpanMaker][__init__] tokenizer_name: {tokenizer_name}")
+        print(f"[KlueSpanMaker][__init__] max_seq_len: {self.max_seq_len}")
+        print(f"[KlueSpanMaker][__init__] max_span_len: {self.max_span_len}")
+        print(f"[KlueSpanMaker][__init__] span_minus: {self.span_minus}")
+        print(f"[KlueSpanMaker][__init__] max_num_span: {self.max_num_span}")
 
     #===========================================================
     def create_span_npy_datasets(self, src_path: str, mode: str):
     #===========================================================
+        start_time = time.time()
         print(f"[create_span_npy_datasets] src_path: {src_path}")
 
         examples, ori_examples, word_ne_pair = self.create_span_examples(src_path, mode)
@@ -86,6 +92,9 @@ class KlueSpanMaker:
         with open("../corpus/npy/klue_span_ner/" + mode + "_origin.pkl", mode="wb") as ori_file:
             pickle.dump(ori_examples, ori_file)
             print(f"[create_wordpiece_npy_datasets] pickle len: {len(ori_examples)}")
+
+        print(f"[create_wordpiece_npy_datasets] proc time: {time.time() - start_time}")
+
 
     #===========================================================
     def create_span_features(self, examples, mode: str, label_list, word_ne_pair, task_mode: str="tagging"):
@@ -147,7 +156,31 @@ class KlueSpanMaker:
             span_only_label_token = []  # 만들어진 span 집합들의 label
             for idx_str, label in span_idx_new_label_dict.items():
                 span_only_label_token.append(ne_tag2ids[label])
+
+            all_span_idx_list = all_span_idx_list[:self.max_num_span]
+            span_only_label_token = span_only_label_token[:self.max_num_span]
+            all_span_len_list = all_span_len_list[:self.max_num_span]
             real_span_mask_token = np.ones_like(span_only_label_token).tolist()
+
+            if self.max_num_span > len(span_only_label_token):
+                diff_len = self.max_num_span - len(span_only_label_token)
+                span_only_label_token += [0] * diff_len
+            if self.max_num_span > len(all_span_len_list):
+                diff_len = self.max_num_span - len(all_span_len_list)
+                all_span_len_list += [0] * diff_len
+            if self.max_num_span > len(real_span_mask_token):
+                diff_len = self.max_num_span - len(real_span_mask_token)
+                real_span_mask_token += [0] * diff_len
+            if self.max_num_span > len(all_span_idx_list):
+                diff_len = self.max_num_span - len(all_span_idx_list)
+                all_span_idx_list += [(0, 0)] * diff_len
+
+            # FOR TEST - Span
+            # print(span_idx_label_dict)
+            # print(span_idx_new_label_dict)
+            # for sp_idx, sp_len in zip(all_span_idx_list, all_span_len_list):
+            #     print(sp_idx, sp_len, decode_wp[sp_idx[0]:sp_idx[1]+1])
+            # input()
 
             inputs.update({"all_span_idx": all_span_idx_list,
                            "all_span_len": all_span_len_list,
@@ -608,7 +641,7 @@ if "__main__" == __name__:
     train_data_path = "../corpus/klue/klue-ner-v1.1_train.tsv"
     dev_data_path = "../corpus/klue/klue-ner-v1.1_dev.tsv"
 
-    making_mode = "wordpiece" # wordpiece or span
+    making_mode = "span" # wordpiece or span
     if "span" == making_mode:
         span_maker = KlueSpanMaker(tokenizer_name="monologg/koelectra-base-v3-discriminator",
                                    max_seq_len=128, max_span_len=8)
