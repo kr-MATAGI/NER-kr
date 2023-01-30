@@ -95,40 +95,19 @@ def evaluate(args, model, eval_dataset, eval_examples, mode, global_step=None, t
             label_ids = batch["label_ids"]
             inputs = make_inputs_from_batch(batch, device=args.device, user_select=g_user_select, mode="eval")
 
-            if 2 == g_user_select:
-                loss, predict = model(**inputs) # predict [batch, seq_len] List
-            else:
-                loss, outputs = model(**inputs)
-                loss = -1 * loss
-
+            loss, outputs = model(**inputs) # predict [batch, seq_len] List
             eval_loss += loss.mean().item()
 
         nb_eval_steps += 1
         tb_writer.add_scalar("Loss/val_" + str(train_epoch), eval_loss / nb_eval_steps, nb_eval_steps)
         eval_pbar.set_description("Eval Loss - %.04f" % (eval_loss / nb_eval_steps))
 
-        if 2 == g_user_select:
-            if preds is None:
-                preds = np.array(predict)
-                out_label_ids = label_ids.numpy()
-            else:
-                preds = np.append(preds, np.array(predict), axis=0)
-                out_label_ids = np.append(out_label_ids, label_ids.numpy(), axis=0)
+        if preds is None:
+            preds = np.array(outputs)
+            out_label_ids = label_ids.numpy()
         else:
-            conv_outputs = np.zeros_like(inputs["label_ids"].detach().cpu().numpy())
-            max_seq_len = conv_outputs.shape[1]
-
-            for oi_idx, out_item in enumerate(outputs):
-                out_item_len = len(out_item)
-                out_item.extend([0 for _ in range(max_seq_len - out_item_len)])
-                conv_outputs[oi_idx] = np.array(out_item)
-
-            if preds is None:
-                preds = np.array(conv_outputs)
-                out_label_ids = inputs["label_ids"].detach().cpu().numpy()
-            else:
-                preds = np.append(preds, np.array(conv_outputs), axis=0)
-                out_label_ids = np.append(out_label_ids, inputs["label_ids"].detach().cpu().numpy(), axis=0)
+            preds = np.append(preds, np.array(outputs), axis=0)
+            out_label_ids = np.append(out_label_ids, label_ids.numpy(), axis=0)
 
     logger.info("  Eval End !")
     eval_pbar.close()
@@ -160,8 +139,11 @@ def evaluate(args, model, eval_dataset, eval_examples, mode, global_step=None, t
     results.update(result)
 
     # KLUE Metrics
-    validation_epoch_end(tokenizer_name="monologg/koelectra-base-v3-discriminator",
-                         list_of_subword_preds=preds, origin_datasets=eval_examples)
+    klue_metric_outputs = torch.tensor(preds)
+    entity_f1, char_f1 = validation_epoch_end(tokenizer_name="monologg/koelectra-base-v3-discriminator",
+                                              list_of_subword_preds=klue_metric_outputs, origin_datasets=eval_examples,
+                                              max_seq_length=128)
+    logger.info(f"  KLUE Metrics, Entity_F1: {entity_f1}, Char_F1: {char_f1}")
 
     output_dir = os.path.join(args.output_dir, mode)
     if not os.path.exists(output_dir):
@@ -241,7 +223,6 @@ def train(args, model, train_dataset, dev_dataset, dev_ori_examples):
                 loss = model(**inputs)
             else:
                 loss, outputs = model(**inputs)
-                loss = -1 * loss
 
             if 1 < args.n_gpu:
                 loss = loss.mean()

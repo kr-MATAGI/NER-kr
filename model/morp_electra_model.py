@@ -78,7 +78,8 @@ class ELECTRA_MECAB_MORP(ElectraPreTrainedModel):
         # crf
         if label_ids is not None:
             log_likelihood, sequence_of_tags = self.crf(emissions=logits, tags=label_ids, mask=attention_mask.bool(),
-                                                        reduction="mean"), self.crf.decode(logits, mask=attention_mask.bool())
+                                                        reduction="mean"), self.crf.decode(logits)
+            log_likelihood = -1 * log_likelihood
             return log_likelihood, sequence_of_tags
         else:
             sequence_of_tags = self.crf.decode(logits)

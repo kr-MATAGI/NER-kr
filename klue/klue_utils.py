@@ -18,7 +18,6 @@ def validation_epoch_end(
         tokenizer_name,
         list_of_subword_preds: List[torch.Tensor],
         origin_datasets: List,
-        write_prediction: bool = False,
         max_seq_length: int = 510
 ):
 #=============================================
@@ -33,7 +32,7 @@ def validation_epoch_end(
 
     for i, (subword_preds, example) in enumerate(zip(list_of_subword_preds, original_examples)):
         original_sentence = example["original_sentence"]  # 안녕 하세요 ^^
-        character_preds = [subword_preds[0]]#.tolist()]  # [CLS]
+        character_preds = [subword_preds[0].tolist()]  # [CLS]
         character_preds_idx = 1
         for word in original_sentence.split(" "):  # ['안녕', '하세요', '^^']
             if character_preds_idx >= max_seq_length - 1:
@@ -49,7 +48,7 @@ def validation_epoch_end(
                 for subword in unk_aligned_subwords:
                     if character_preds_idx >= max_seq_length - 1:
                         break
-                    subword_pred = subword_preds[character_preds_idx]#.tolist()
+                    subword_pred = subword_preds[character_preds_idx].tolist()
                     subword_pred_label = label_list[subword_pred]
                     if subword == tokenizer.unk_token:
                         unk_flag = True
@@ -67,7 +66,7 @@ def validation_epoch_end(
                     else:
                         if unk_flag:
                             character_preds_idx += 1
-                            subword_pred = subword_preds[character_preds_idx]#.tolist()
+                            subword_pred = subword_preds[character_preds_idx].tolist()
                             character_preds.append(subword_pred)
                             unk_flag = False
                         else:
@@ -78,7 +77,7 @@ def validation_epoch_end(
                     if character_preds_idx >= max_seq_length - 1:
                         break
                     subword = subword.replace(strip_char, "")  # xlm roberta: "▁" / others "##"
-                    subword_pred = subword_preds[character_preds_idx]#.tolist()
+                    subword_pred = subword_preds[character_preds_idx].tolist()
                     subword_pred_label = label_list[subword_pred]
                     for i in range(0, len(subword)):  # 안, 녕
                         if i == 0:
@@ -92,7 +91,7 @@ def validation_epoch_end(
                                 character_pred = label_list.index(character_pred_label)
                                 character_preds.append(character_pred)
                     character_preds_idx += 1
-        character_preds.append(subword_preds[-1])#.tolist())  # [SEP] label
+        character_preds.append(subword_preds[-1].tolist())  # [SEP] label
         list_of_character_preds.extend(character_preds)
         original_labels = ["O"] + example["original_clean_labels"][: len(character_preds) - 2] + ["O"]
         originals = []
@@ -101,9 +100,10 @@ def validation_epoch_end(
         assert len(character_preds) == len(originals)
         list_of_originals.extend(originals)
 
-        klue_ner_entity_macro_f1(list_of_character_preds, list_of_originals, label_list)
-        klue_ner_char_macro_f1(list_of_character_preds, list_of_originals, label_list)
+    entity_f1 = klue_ner_entity_macro_f1(list_of_character_preds, list_of_originals, label_list)
+    char_f1 = klue_ner_char_macro_f1(list_of_character_preds, list_of_originals, label_list)
 
+    return entity_f1, char_f1
 
 #=============================================
 def tokenizer_out_aligner(tokenizer, t_in: str, t_out: List[str], strip_char: str = "##", in_unk_token: str = "[+UNK]") -> List[str]:

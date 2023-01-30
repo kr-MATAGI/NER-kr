@@ -695,5 +695,5 @@ if "__main__" == __name__:
         create_span_npy_datasets(src_path=train_data_path, target_n_pos=target_n_pos, target_tag_list=target_tag_list, mode="train")
     else:
         wp_maker = KlueWordpieceMaker(tokenizer_name="monologg/koelectra-base-v3-discriminator")
-        wp_maker.create_wordpiece_npy_datasets(src_path=dev_data_path, mode="dev")
-        wp_maker.create_wordpiece_npy_datasets(src_path=train_data_path, mode="train")
+        wp_maker.create_wordpiece_npy_datasets(src_path=dev_data_path, mode="dev", max_length=128)
+        wp_maker.create_wordpiece_npy_datasets(src_path=train_data_path, mode="train", max_length=128)
