@@ -11,7 +11,11 @@ from utils.tag_def import MECAB_POS_TAG
 from typing import List, Tuple, Union
 
 from transformers import ElectraTokenizer
-from eunjeon import Mecab
+import platform
+if "Windows" == platform.system():
+    from eunjeon import Mecab # Windows
+else:
+    from konlpy.tag import Mecab # Linux
 from allennlp.data.dataset_readers.dataset_utils import enumerate_spans
 
 #===========================================================
@@ -443,7 +447,7 @@ class KlueWordpieceMaker:
 
         features = []
         for i in range(len(examples)):
-            if 0 == (i % 500):
+            if 0 == (i % 100):
                 print(f"[convert_wordpiece_features] {i} is processing...")
             inputs = {k: batch_encoding[k][i] for k in batch_encoding}
             pos_flag = self.make_pos_flag(batch_encoding["input_ids"][i], examples[i].text_a)
@@ -604,7 +608,7 @@ if "__main__" == __name__:
     train_data_path = "../corpus/klue/klue-ner-v1.1_train.tsv"
     dev_data_path = "../corpus/klue/klue-ner-v1.1_dev.tsv"
 
-    making_mode = "span" # or span
+    making_mode = "wordpiece" # wordpiece or span
     if "span" == making_mode:
         span_maker = KlueSpanMaker(tokenizer_name="monologg/koelectra-base-v3-discriminator",
                                    max_seq_len=128, max_span_len=8)

@@ -47,4 +47,5 @@ pattern_check/results
 # iml, xml
 *.iml
 *.xml
+/.idea
 
