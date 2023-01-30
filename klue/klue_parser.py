@@ -443,6 +443,8 @@ class KlueWordpieceMaker:
 
         features = []
         for i in range(len(examples)):
+            if 0 == (i % 500):
+                print(f"[convert_wordpiece_features] {i} is processing...")
             inputs = {k: batch_encoding[k][i] for k in batch_encoding}
             pos_flag = self.make_pos_flag(batch_encoding["input_ids"][i], examples[i].text_a)
             inputs.update({"pos_flag": pos_flag})
