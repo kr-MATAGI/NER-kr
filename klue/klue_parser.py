@@ -20,6 +20,7 @@ class KlueSpanMaker:
     def __init__(self, tokenizer_name, max_span_len: int = 8, max_seq_len: int = 128):
         self.tokenizer = ElectraTokenizer.from_pretrained(tokenizer_name)
         self.max_seq_len = max_seq_len
+        self.max_span_len = max_span_len
         self.span_minus = int((max_span_len + 1) * max_span_len / 2)
         self.max_num_span = int(max_seq_len * max_span_len - self.span_minus)
 
@@ -129,7 +130,7 @@ class KlueSpanMaker:
 
             # Span
             decode_wp = self.tokenizer.convert_ids_to_tokens(batch_encoding["input_ids"][i])
-            all_span_idx_list = enumerate_spans(decode_wp, offset=0, max_span_width=max_span_len)
+            all_span_idx_list = enumerate_spans(decode_wp, offset=0, max_span_width=self.max_span_len)
             all_span_len_list = []
             for idx_pair in all_span_idx_list:
                 s_idx, e_idx = idx_pair
@@ -138,7 +139,7 @@ class KlueSpanMaker:
 
             span_idx_label_dict = self.make_span_idx_label_pair(word_ne_pair[i], decode_wp)
             span_idx_new_label_dict = self.convert2tokenIdx(span_idxLab=span_idx_label_dict,
-                                                       all_span_idxs=all_span_idx_list)
+                                                            all_span_idxs=all_span_idx_list)
             span_only_label_token = []  # 만들어진 span 집합들의 label
             for idx_str, label in span_idx_new_label_dict.items():
                 span_only_label_token.append(ne_tag2ids[label])
@@ -601,7 +602,7 @@ if "__main__" == __name__:
     train_data_path = "../corpus/klue/klue-ner-v1.1_train.tsv"
     dev_data_path = "../corpus/klue/klue-ner-v1.1_dev.tsv"
 
-    making_mode = "wordpiece" # or span
+    making_mode = "span" # or span
     if "span" == making_mode:
         span_maker = KlueSpanMaker(tokenizer_name="monologg/koelectra-base-v3-discriminator",
                                    max_seq_len=128, max_span_len=8)
