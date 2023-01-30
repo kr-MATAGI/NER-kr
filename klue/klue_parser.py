@@ -603,13 +603,11 @@ if "__main__" == __name__:
 
     making_mode = "wordpiece" # or span
     if "span" == making_mode:
-        target_n_pos = 14
-        target_tag_list = [  # NN은 NNG/NNP 통합
-            "NNG", "NNP", "SN", "NNB", "NR", "NNBC",
-            "JKS", "JKC", "JKG", "JKO", "JKB", "JX", "JC", "JKV", "JKQ",
-        ]
-        create_span_npy_datasets(src_path=dev_data_path, target_n_pos=target_n_pos, target_tag_list=target_tag_list, mode="dev")
-        create_span_npy_datasets(src_path=train_data_path, target_n_pos=target_n_pos, target_tag_list=target_tag_list, mode="train")
+        span_maker = KlueSpanMaker(tokenizer_name="monologg/koelectra-base-v3-discriminator",
+                                   max_seq_len=128, max_span_len=8)
+        span_maker.create_span_npy_datasets(src_path=dev_data_path, mode="dev")
+        span_maker.create_span_npy_datasets(src_path=train_data_path, mode="train")
+
     else:
         wp_maker = KlueWordpieceMaker(tokenizer_name="monologg/koelectra-base-v3-discriminator")
         wp_maker.create_wordpiece_npy_datasets(src_path=dev_data_path, mode="dev", max_length=128)
